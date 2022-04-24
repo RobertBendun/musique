@@ -15,10 +15,21 @@ using i16 = std::int16_t;
 using i32 = std::int32_t;
 using i64 = std::int64_t;
 
+
+namespace errors
+{
+	enum Type
+	{
+		End_Of_File
+	};
+}
+
 struct Error
 {
-	std::string_view message;
+	errors::Type type;
 	Error *child = nullptr;
+
+	bool operator==(errors::Type);
 };
 
 template<typename T>
@@ -59,6 +70,7 @@ struct Token
 		Close_Paren
 	};
 
+	Type type;
 	std::string_view source;
 };
 

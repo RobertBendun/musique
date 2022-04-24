@@ -1,4 +1,4 @@
-#include "musique.hh"
+#include <musique.hh>
 
 auto Lexer::next_token() -> Result<Token>
 {

@@ -1,5 +1,5 @@
 #include <iostream>
-#include "musique.hh"
+#include <musique.hh>
 
 std::string_view Source = R"musique(
 	nums = [ 1 2 3 ]
