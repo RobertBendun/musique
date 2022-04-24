@@ -8,5 +8,5 @@ build:
   script:
     - make
   artifacts:
-    path:
+    paths:
       - main
