@@ -1,0 +1,12 @@
+image: gcc
+
+stages:
+  - build
+
+build:
+  stage: build
+  script:
+    - make
+  artifacts:
+    path:
+      - main
