@@ -15,6 +15,8 @@ using i16 = std::int16_t;
 using i32 = std::int32_t;
 using i64 = std::int64_t;
 
+using usize = std::size_t;
+using isize = std::ptrdiff_t;
 
 namespace errors
 {
@@ -33,7 +35,20 @@ struct Error
 };
 
 template<typename T>
-using Result = tl::expected<T, Error>;
+struct Result : tl::expected<T, Error>
+{
+	constexpr Result() = default;
+
+	constexpr Result(errors::Type error) : tl::expected<T, Error>(tl::unexpected(Error { error }))
+	{
+	}
+
+	template<typename ...Args>
+	constexpr Result(Args&& ...args)
+		: tl::expected<T, Error>( T{ std::forward<Args>(args)... } )
+	{
+	}
+};
 
 std::ostream& operator<<(std::ostream& os, Error const& err);
 
@@ -44,6 +59,16 @@ std::ostream& operator<<(std::ostream& os, Error const& err);
 	if (not try_value.has_value()) return tl::unexpected(try_value.error()); \
 	*std::move(try_value); \
 	})
+
+namespace utf8
+{
+	constexpr u32 Rune_Error = 0xfffd;
+	constexpr u32 Rune_Self  = 0x80;
+	constexpr u32 Max_Bytes  = 4;
+
+	// Decodes rune and returns remaining string
+	auto decode(std::string_view str) -> std::pair<u32, std::string_view>;
+}
 
 struct Token
 {
@@ -81,9 +106,18 @@ struct Lexer
 	// Source that is beeing lexed
 	std::string_view source;
 
+	// Used for rewinding
+	u32 last_rune_length = 0;
+
 	// Determine location of tokens to produce nice errors
 	std::string_view source_name = "<unnamed>";
 	unsigned column = 1, row = 1;
 
 	auto next_token() -> Result<Token>;
+
+	// Finds next rune in source
+	auto next_rune() -> u32;
+
+	// Goes back last rune
+	void rewind();
 };

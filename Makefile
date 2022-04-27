@@ -3,7 +3,8 @@ CXXFLAGS=-std=c++20 -Wall -Wextra -O2 -Werror=switch
 CPPFLAGS=-Ilib/expected/ -Ilib/ut/ -Isrc/
 
 Obj=bin/lexer.o \
-		bin/errors.o
+		bin/errors.o \
+		bin/unicode.o
 
 all: bin/musique bin/unit-tests
 
