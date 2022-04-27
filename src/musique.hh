@@ -1,8 +1,9 @@
 #pragma once
 
+#include <cassert>
 #include <cstdint>
-#include <string_view>
 #include <ostream>
+#include <string_view>
 #include <tl/expected.hpp>
 
 using u8  = std::uint8_t;
@@ -28,6 +29,26 @@ namespace errors
 		Unrecognized_Character
 	};
 }
+
+struct Location
+{
+	std::string_view filename = "<unnamed>";
+	usize column = 1, line = 1;
+
+	Location advance(u32 rune);
+
+	bool operator==(Location const& rhs) const = default;
+
+	static Location at(usize line, usize column)
+	{
+		Location loc;
+		loc.line = line;
+		loc.column = column;
+		return loc;
+	}
+};
+
+std::ostream& operator<<(std::ostream& os, Location const& location);
 
 struct Error
 {
@@ -111,6 +132,7 @@ struct Token
 
 	Type type;
 	std::string_view source;
+	Location location;
 };
 
 std::ostream& operator<<(std::ostream& os, Token const& tok);
@@ -125,10 +147,10 @@ struct Lexer
 
 	char const* token_start = nullptr;
 	usize token_length = 0;
+	Location token_location{};
 
-	// Determine location of tokens to produce nice errors
-	std::string_view source_name = "<unnamed>";
-	unsigned column = 1, row = 1;
+	Location prev_location{};
+	Location location{};
 
 	auto next_token() -> Result<Token>;
 

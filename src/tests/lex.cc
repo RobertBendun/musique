@@ -40,6 +40,18 @@ static void expect_token_type_and_value(
 	expect_token_type_and_value(expected_type, source, source, sl);
 }
 
+static void expect_token_type_and_location(
+		Token::Type expected_type,
+		std::string_view source,
+		Location location,
+		reflection::source_location const& sl = reflection::source_location::current())
+{
+	Lexer lexer{source};
+	auto result = lexer.next_token();
+	expect(result.has_value() >> fatal, sl) << "have not parsed any tokens";
+	expect(eq(under(result->type), under(expected_type)), sl) << "different token type then expected";
+	expect(eq(result->location, location), sl) << "tokenized source is at different place then expected";
+}
 
 suite lexer_test = [] {
 	"Empty file"_test = [] {
@@ -66,5 +78,12 @@ suite lexer_test = [] {
 		expect_token_type_and_value(Token::Type::Numeric, "123.", "123");
 		expect_token_type_and_value(Token::Type::Numeric, " 1   ", "1");
 		expect_token_type_and_value(Token::Type::Numeric, " 123   ", "123");
+	};
+
+	"Proper location marking"_test = [] {
+		expect_token_type_and_location(Token::Type::Numeric, "123", Location::at(1, 1));
+		expect_token_type_and_location(Token::Type::Numeric, "   123", Location::at(1, 4));
+		expect_token_type_and_location(Token::Type::Numeric, "\n123", Location::at(2, 1));
+		expect_token_type_and_location(Token::Type::Numeric, "\n  123", Location::at(2, 3));
 	};
 };
