@@ -45,3 +45,22 @@ auto utf8::decode(std::string_view s) -> std::pair<u32, std::string_view>
 
 	return { result, s };
 }
+
+bool unicode::is_digit(u32 digit)
+{
+	return digit >= '0' && digit <= '9';
+}
+
+bool unicode::is_space(u32 space)
+{
+	switch (space) {
+	case ' ':
+	case '\t':
+	case '\n':
+	case '\f':
+	case '\r':
+	case '\v':
+		return true;
+	}
+	return false;
+}

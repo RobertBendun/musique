@@ -29,7 +29,7 @@ static void expect_token_type_and_value(
 	auto result = lexer.next_token();
 	expect(result.has_value() >> fatal, sl) << "have not parsed any tokens";
 	expect(eq(under(result->type), under(expected_type)), sl) << "different token type then expected";
-	expect(eq(result->source, expected)) << "tokenized source is not equal to original";
+	expect(eq(result->source, expected), sl) << "tokenized source is not equal to original";
 }
 
 static void expect_token_type_and_value(
@@ -64,5 +64,7 @@ suite lexer_test = [] {
 		expect_token_type_and_value(Token::Type::Numeric, "0.75");
 		expect_token_type_and_value(Token::Type::Numeric, "123456789.123456789");
 		expect_token_type_and_value(Token::Type::Numeric, "123.", "123");
+		expect_token_type_and_value(Token::Type::Numeric, " 1   ", "1");
+		expect_token_type_and_value(Token::Type::Numeric, " 123   ", "123");
 	};
 };

@@ -18,11 +18,14 @@ using i64 = std::int64_t;
 using usize = std::size_t;
 using isize = std::ptrdiff_t;
 
+#define Fun(Function) ([]<typename ...T>(T&& ...args) { return (Function)(std::forward<T>(args)...); })
+
 namespace errors
 {
 	enum Type
 	{
-		End_Of_File
+		End_Of_File,
+		Unrecognized_Character
 	};
 }
 
@@ -60,11 +63,22 @@ std::ostream& operator<<(std::ostream& os, Error const& err);
 	*std::move(try_value); \
 	})
 
+namespace unicode
+{
+	inline namespace special_runes
+	{
+		constexpr u32 Rune_Error = 0xfffd;
+		constexpr u32 Rune_Self  = 0x80;
+		constexpr u32 Max_Bytes  = 4;
+	}
+
+	bool is_digit(u32 digit);
+	bool is_space(u32 space);
+}
+
 namespace utf8
 {
-	constexpr u32 Rune_Error = 0xfffd;
-	constexpr u32 Rune_Self  = 0x80;
-	constexpr u32 Max_Bytes  = 4;
+	using namespace unicode::special_runes;
 
 	// Decodes rune and returns remaining string
 	auto decode(std::string_view str) -> std::pair<u32, std::string_view>;
@@ -109,6 +123,9 @@ struct Lexer
 	// Used for rewinding
 	u32 last_rune_length = 0;
 
+	char const* token_start = nullptr;
+	usize token_length = 0;
+
 	// Determine location of tokens to produce nice errors
 	std::string_view source_name = "<unnamed>";
 	unsigned column = 1, row = 1;
@@ -116,8 +133,22 @@ struct Lexer
 	auto next_token() -> Result<Token>;
 
 	// Finds next rune in source
-	auto next_rune() -> u32;
+	auto peek() const -> u32;
+
+	// Finds next rune in source and returns it, advancing the string
+	auto consume() -> u32;
+
+	inline auto consume_if(auto test) -> u32
+	{
+		return test(peek()) && (consume(), true);
+	}
 
 	// Goes back last rune
 	void rewind();
+
+	// Marks begin of token
+	void start();
+
+	// Marks end of token and returns it's matching source
+	std::string_view finish();
 };
