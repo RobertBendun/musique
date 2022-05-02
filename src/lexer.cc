@@ -40,7 +40,7 @@ auto Lexer::next_token() -> Result<Token>
 		return { Token::Type::Numeric, finish(), token_location };
 	}
 
-	return errors::Unrecognized_Character;
+	return errors::unrecognized_character(peek(), token_location);
 }
 
 auto Lexer::peek() const -> u32

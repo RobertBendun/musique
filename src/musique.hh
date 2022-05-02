@@ -61,18 +61,33 @@ struct Error
 	bool operator==(errors::Type);
 };
 
+namespace errors
+{
+	Error unrecognized_character(u32 invalid_character);
+	Error unrecognized_character(u32 invalid_character, Location location);
+}
+
+
 template<typename T>
 struct Result : tl::expected<T, Error>
 {
+	using Storage = tl::expected<T, Error>;
+
 	constexpr Result() = default;
 
-	constexpr Result(errors::Type error) : tl::expected<T, Error>(tl::unexpected(Error { error }))
+	constexpr Result(errors::Type error)
+		: Storage(tl::unexpected(Error { error }))
+	{
+	}
+
+	constexpr Result(Error error)
+		: Storage(tl::unexpected(std::move(error)))
 	{
 	}
 
 	template<typename ...Args>
 	constexpr Result(Args&& ...args)
-		: tl::expected<T, Error>( T{ std::forward<Args>(args)... } )
+		: Storage( T{ std::forward<Args>(args)... } )
 	{
 	}
 };

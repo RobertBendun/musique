@@ -9,6 +9,7 @@ std::string_view Source = R"musique(
 tl::expected<void, Error> Main()
 {
 	Lexer lexer{Source};
+	lexer.location.filename = "example.mq";
 
 	for (;;) {
 		auto token = Try(lexer.next_token());
@@ -20,7 +21,7 @@ int main()
 {
 	auto result = Main();
 	if (not result.has_value()) {
-		std::cerr << result.error() << std::endl;
+		std::cerr << result.error() << std::flush;
 		return 1;
 	}
 }
