@@ -2,8 +2,7 @@
 
 auto Lexer::next_token() -> Result<Token>
 {
-	while (consume_if(unicode::is_space)) {
-	}
+	while (consume_if(unicode::is_space)) {}
 	start();
 
 	if (peek() == 0) {

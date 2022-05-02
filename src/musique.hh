@@ -2,9 +2,11 @@
 
 #include <cassert>
 #include <cstdint>
+#include <optional>
 #include <ostream>
 #include <string_view>
 #include <tl/expected.hpp>
+#include <variant>
 
 using u8  = std::uint8_t;
 using u16 = std::uint16_t;
@@ -53,7 +55,8 @@ std::ostream& operator<<(std::ostream& os, Location const& location);
 struct Error
 {
 	errors::Type type;
-	Error *child = nullptr;
+	std::optional<Location> location = std::nullopt;
+	u32 invalid_character = 0;
 
 	bool operator==(errors::Type);
 };
@@ -102,8 +105,13 @@ namespace utf8
 	using namespace unicode::special_runes;
 
 	// Decodes rune and returns remaining string
-	auto decode(std::string_view str) -> std::pair<u32, std::string_view>;
+	auto decode(std::string_view s) -> std::pair<u32, std::string_view>;
+	auto length(std::string_view s) -> usize;
+
+	struct Print { u32 rune; };
 }
+
+std::ostream& operator<<(std::ostream& os, utf8::Print const& print);
 
 struct Token
 {
