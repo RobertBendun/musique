@@ -2,7 +2,7 @@
 
 constexpr std::string_view Notes_Symbols = "abcedefgh";
 constexpr std::string_view Valid_Operator_Chars =
-	"+-*/" // arithmetic
+	"+-*/:%" // arithmetic
 	"|&^"  // logic & bit operations
 	"<>=!" // comparisons
 	;
@@ -51,7 +51,7 @@ auto Lexer::next_token() -> Result<Token>
 		return { Token::Type::Numeric, finish(), token_location };
 	}
 
-	if (consume_if([](u32 ch) { return Notes_Symbols.find(ch) != std::string_view::npos; })) {
+	if (consume_if(Notes_Symbols)) {
 		// chord declaration
 		constexpr u8 Expect_Number         = 0b01;
 		constexpr u8 Expect_Move           = 0b10;
@@ -61,10 +61,10 @@ auto Lexer::next_token() -> Result<Token>
 		std::string_view accepted_digits = "12357";
 		usize digit_cursor = 0;
 
+		consume_if('#');
+
 		for (;;) {
-			if ((current & Expect_Move) == Expect_Move
-			&& consume_if([](u32 c) { return c == ',' || c == '\''; })
-			) {
+			if ((current & Expect_Move) == Expect_Move && consume_if(",'")) {
 				current = Expect_Number;
 				continue;
 			}
@@ -72,7 +72,7 @@ auto Lexer::next_token() -> Result<Token>
 			if ((current & Expect_Number) == Expect_Number) {
 				bool found = false;
 				for (; digit_cursor < accepted_digits.size(); ++digit_cursor) {
-					if (consume_if([&](u32 c) { return u32(accepted_digits[digit_cursor]) == c; })) {
+					if (consume_if(accepted_digits[digit_cursor])) {
 						found = true;
 						break;
 					}
@@ -104,11 +104,13 @@ auto Lexer::next_token() -> Result<Token>
 		) {
 		}
 
-		return { Token::Type::Symbol, finish(), token_location };
+		Token t = { Token::Type::Symbol, finish(), token_location };
+		if (t.source == "v") t.type = Token::Type::Operator;
+		return t;
 	}
 
-	if (Valid_Operator_Chars.find(peek()) != std::string_view::npos) {
-		while (consume() && Valid_Operator_Chars.find(peek()) != std::string_view::npos) {}
+	if (consume_if(Valid_Operator_Chars)) {
+		while (consume_if(Valid_Operator_Chars)) {}
 		return { Token::Type::Operator, finish(), token_location };
 	}
 

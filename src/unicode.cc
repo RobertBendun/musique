@@ -106,7 +106,7 @@ bool unicode::is_letter(u32 letter)
 
 bool unicode::is_identifier(u32 letter, unicode::First_Character is_first_character)
 {
-	return (unicode::is_letter(letter) || letter == '_')
+	return (unicode::is_letter(letter) || letter == '_' || letter == '#' || letter == '$' || letter == '@')
 	|| (!bool(is_first_character) && (
-			letter == '-' || letter == '_' || letter == '\'' || unicode::is_digit(letter)));
+			letter == '-' || letter == '\'' || unicode::is_digit(letter)));
 }

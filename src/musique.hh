@@ -1,7 +1,9 @@
 #pragma once
 
 #include <cassert>
+#include <concepts>
 #include <cstdint>
+#include <cstring>
 #include <optional>
 #include <ostream>
 #include <string_view>
@@ -202,7 +204,18 @@ struct Lexer
 
 	inline auto consume_if(auto test) -> bool
 	{
-		return test(peek()) && (consume(), true);
+		bool condition;
+		if constexpr (requires { test(peek()) && true; }) {
+			condition = test(peek());
+		} else if constexpr (std::is_integral_v<decltype(test)>) {
+			condition = (u32(test) == peek());
+		} else if constexpr (std::is_convertible_v<decltype(test), char const*>) {
+			auto const end = test + std::strlen(test);
+			condition = std::find(test, end, peek()) != end;
+		} else {
+			condition = std::find(std::begin(test), std::end(test), peek()) != std::end(test);
+		}
+		return condition && (consume(), true);
 	}
 
 	// Goes back last rune
