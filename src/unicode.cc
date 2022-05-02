@@ -97,3 +97,9 @@ bool unicode::is_space(u32 space)
 	}
 	return false;
 }
+
+bool unicode::is_letter(u32 letter)
+{
+	// TODO Unicode letters handling
+	return std::isalpha(letter);
+}

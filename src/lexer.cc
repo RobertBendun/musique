@@ -1,5 +1,7 @@
 #include <musique.hh>
 
+constexpr std::string_view Notes_Symbols = "abcedefgh";
+
 auto Lexer::next_token() -> Result<Token>
 {
 	while (consume_if(unicode::is_space)) {}
@@ -38,6 +40,51 @@ auto Lexer::next_token() -> Result<Token>
 			}
 		}
 		return { Token::Type::Numeric, finish(), token_location };
+	}
+
+	if (consume_if([](u32 ch) { return Notes_Symbols.find(ch) != std::string_view::npos; })) {
+		// chord declaration
+		constexpr u8 Expect_Number         = 0b01;
+		constexpr u8 Expect_Move           = 0b10;
+		constexpr u8 Expect_Number_Or_Move = 0b11;
+
+		auto current = Expect_Number;
+		std::string_view accepted_digits = "12357";
+		usize digit_cursor = 0;
+
+		for (;;) {
+			if ((current & Expect_Move) == Expect_Move
+			&& consume_if([](u32 c) { return c == ',' || c == '\''; })
+			) {
+				current = Expect_Number;
+				continue;
+			}
+
+			if ((current & Expect_Number) == Expect_Number) {
+				bool found = false;
+				for (; digit_cursor < accepted_digits.size(); ++digit_cursor) {
+					if (consume_if([&](u32 c) { return u32(accepted_digits[digit_cursor]) == c; })) {
+						found = true;
+						break;
+					}
+				}
+
+				if (found) {
+					current = digit_cursor < accepted_digits.size()
+						? Expect_Number_Or_Move
+						: Expect_Move;
+					continue;
+				}
+			}
+
+			break;
+		}
+
+		if (unicode::is_letter(peek())) {
+			assert(false && "symbols are not implemented yet");
+		}
+
+		return { Token::Type::Chord, finish(), token_location };
 	}
 
 	return errors::unrecognized_character(peek(), token_location);

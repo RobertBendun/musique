@@ -27,9 +27,12 @@ static void expect_token_type_and_value(
 {
 	Lexer lexer{source};
 	auto result = lexer.next_token();
-	expect(result.has_value() >> fatal, sl) << "have not parsed any tokens";
-	expect(eq(under(result->type), under(expected_type)), sl) << "different token type then expected";
-	expect(eq(result->source, expected), sl) << "tokenized source is not equal to original";
+	expect(result.has_value(), sl) << "have not parsed any tokens";
+
+	if (result.has_value()) {
+		expect(eq(under(result->type), under(expected_type)), sl) << "different token type then expected";
+		expect(eq(result->source, expected), sl) << "tokenized source is not equal to original";
+	}
 }
 
 static void expect_token_type_and_value(
@@ -85,5 +88,14 @@ suite lexer_test = [] {
 		expect_token_type_and_location(Token::Type::Numeric, "   123", Location::at(1, 4));
 		expect_token_type_and_location(Token::Type::Numeric, "\n123", Location::at(2, 1));
 		expect_token_type_and_location(Token::Type::Numeric, "\n  123", Location::at(2, 3));
+	};
+
+	"Chord literals"_test = [] {
+		expect_token_type_and_value(Token::Type::Chord, "c1");
+		expect_token_type_and_value(Token::Type::Chord, "d1257");
+		expect_token_type_and_value(Token::Type::Chord, "e1'");
+		expect_token_type_and_value(Token::Type::Chord, "g127");
+		expect_token_type_and_value(Token::Type::Chord, "f1'2'3'5'7'");
+		expect_token_type_and_value(Token::Type::Chord, "b1,2,5,7,");
 	};
 };

@@ -113,6 +113,7 @@ namespace unicode
 
 	bool is_digit(u32 digit);
 	bool is_space(u32 space);
+	bool is_letter(u32 letter);
 }
 
 namespace utf8
@@ -183,7 +184,7 @@ struct Lexer
 	// Finds next rune in source and returns it, advancing the string
 	auto consume() -> u32;
 
-	inline auto consume_if(auto test) -> u32
+	inline auto consume_if(auto test) -> bool
 	{
 		return test(peek()) && (consume(), true);
 	}
