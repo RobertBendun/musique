@@ -7,9 +7,52 @@ constexpr std::string_view Valid_Operator_Chars =
 	"<>=!" // comparisons
 	;
 
+void Lexer::skip_whitespace_and_comments()
+{
+	for (;;) {
+		bool done_something = false;
+
+		while (consume_if(unicode::is_space)) {
+			done_something = true;
+		}
+
+		// #! line comments
+		if (consume_if('#', '!')) {
+			done_something = true;
+			while (peek() && peek() != '\n') {
+				consume();
+			}
+		}
+
+		// -- line and multiline coments
+		if (consume_if('-', '-')) {
+			done_something = true;
+			if (consume_if('-')) {
+				// multiline
+				unsigned count = 0;
+				while (count < 3) if (consume_if('-')) {
+					++count;
+				} else {
+					consume();
+					count = 0;
+				}
+				while (consume_if('-')) {}
+			} else {
+				// single line
+				while (peek() && peek() != '\n') {
+					consume();
+				}
+			}
+		}
+
+		if (not done_something)
+			break;
+	}
+}
+
 auto Lexer::next_token() -> Result<Token>
 {
-	while (consume_if(unicode::is_space)) {}
+	skip_whitespace_and_comments();
 	start();
 
 	if (peek() == 0) {

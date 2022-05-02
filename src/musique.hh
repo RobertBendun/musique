@@ -196,6 +196,9 @@ struct Lexer
 
 	auto next_token() -> Result<Token>;
 
+	// Utility function for next_token()
+	void skip_whitespace_and_comments();
+
 	// Finds next rune in source
 	auto peek() const -> u32;
 
@@ -216,6 +219,18 @@ struct Lexer
 			condition = std::find(std::begin(test), std::end(test), peek()) != std::end(test);
 		}
 		return condition && (consume(), true);
+	}
+
+	inline auto consume_if(auto first, auto second) -> bool
+	{
+		if (consume_if(first)) {
+			if (consume_if(second)) {
+				return true;
+			} else {
+				rewind();
+			}
+		}
+		return false;
 	}
 
 	// Goes back last rune

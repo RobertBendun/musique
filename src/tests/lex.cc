@@ -51,12 +51,32 @@ static void expect_token_type_and_location(
 	expect(eq(result->location, location), sl) << "tokenized source is at different place then expected";
 }
 
+static void expect_empty_file(
+		std::string_view source,
+		reflection::source_location const& sl = reflection::source_location::current())
+{
+		Lexer lexer{source};
+		auto result = lexer.next_token();
+		expect(!result.has_value(), sl) << "could not produce any tokens from empty file";
+		if (not result.has_value()) {
+			expect(result.error() == errors::End_Of_File, sl) << "could not produce any tokens from empty file";
+		}
+}
+
 suite lexer_test = [] {
 	"Empty file"_test = [] {
-		Lexer lexer{""};
-		auto result = lexer.next_token();
-		expect(!result.has_value() >> fatal) << "could not produce any tokens from empty file";
-		expect(result.error() == errors::End_Of_File) << "could not produce any tokens from empty file";
+		expect_empty_file("");
+	};
+
+	"Comments"_test = [] {
+		expect_empty_file("#!/bin/sh");
+		expect_empty_file("-- line comment");
+		expect_token_type_and_value(Token::Type::Numeric, "--- block comment --- 0", "0");
+		expect_empty_file(R"musique(
+		--- hello
+		multiline comment
+		---
+		)musique");
 	};
 
 	"Simple token types"_test = [] {
