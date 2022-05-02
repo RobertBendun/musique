@@ -1,5 +1,12 @@
 # Musique interpreter
 
+## Dostępne komendy
+
+- `make` - Buduje interpreter `bin/musique`
+- `make clean` - Usuwa reprodukowalne elementy projektu (automatycznie stworzone pliki binarne czy raporty)
+- `make unit-tests-coverage` - Uruchamia raport pokrycia kodu przez testy jednostkowe
+- `make unit-tests` - Uruchamia testy jednostkowe interpretera
+
 ## Budowa projektu
 
 ```

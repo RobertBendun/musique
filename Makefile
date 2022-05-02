@@ -31,7 +31,7 @@ bin/unit-tests: src/tests/*.cc $(Obj)
 	g++ $(CXXFLAGS) $(CPPFLAGS) -o $@ $^
 
 clean:
-	rm -rf bin
+	rm -rf bin coverage
 
 .PHONY: clean
 
