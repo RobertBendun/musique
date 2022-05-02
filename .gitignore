@@ -1,3 +1,4 @@
 .ccls-cache
 bin/*
 compile_commands.json
+coverage
