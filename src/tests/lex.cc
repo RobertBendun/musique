@@ -98,4 +98,16 @@ suite lexer_test = [] {
 		expect_token_type_and_value(Token::Type::Chord, "f1'2'3'5'7'");
 		expect_token_type_and_value(Token::Type::Chord, "b1,2,5,7,");
 	};
+
+	"Symbol literals"_test = [] {
+		expect_token_type_and_value(Token::Type::Symbol, "i");
+		expect_token_type_and_value(Token::Type::Symbol, "i2");
+		expect_token_type_and_value(Token::Type::Symbol, "example");
+		expect_token_type_and_value(Token::Type::Symbol, "d1envelope");
+		expect_token_type_and_value(Token::Type::Symbol, "kebab-case");
+		expect_token_type_and_value(Token::Type::Symbol, "snake_case");
+		expect_token_type_and_value(Token::Type::Symbol, "camelCase");
+		expect_token_type_and_value(Token::Type::Symbol, "PascalCase");
+		expect_token_type_and_value(Token::Type::Symbol, "haskell'");
+	};
 };

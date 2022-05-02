@@ -111,9 +111,21 @@ namespace unicode
 		constexpr u32 Max_Bytes  = 4;
 	}
 
+	// is_digit returns true if `digit` is ASCII digit
 	bool is_digit(u32 digit);
+
+	// is_space return true if `space` is ASCII blank character
 	bool is_space(u32 space);
+
+	// is_letter returns true if `letter` is considered a letter by Unicode
 	bool is_letter(u32 letter);
+
+	// is_identifier returns true if `letter` is valid character for identifier.
+	//
+	// It's modifier by is_first_character flag to determine some character classes
+	// allowance like numbers, which are only allowed NOT at the front of the identifier
+	enum class First_Character : bool { Yes = true, No = false };
+	bool is_identifier(u32 letter, First_Character is_first_character);
 }
 
 namespace utf8

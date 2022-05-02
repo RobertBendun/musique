@@ -80,11 +80,22 @@ auto Lexer::next_token() -> Result<Token>
 			break;
 		}
 
-		if (unicode::is_letter(peek())) {
-			assert(false && "symbols are not implemented yet");
+		if (unicode::is_identifier(peek(), unicode::First_Character::No)) {
+			goto symbol_lexing;
 		}
 
 		return { Token::Type::Chord, finish(), token_location };
+	}
+
+	using namespace std::placeholders;
+	if (consume_if(std::bind(unicode::is_identifier, _1, unicode::First_Character::Yes))) {
+	symbol_lexing:
+		for (auto predicate = std::bind(unicode::is_identifier, _1, unicode::First_Character::No);
+				consume_if(predicate);
+		) {
+		}
+
+		return { Token::Type::Symbol, finish(), token_location };
 	}
 
 	return errors::unrecognized_character(peek(), token_location);
