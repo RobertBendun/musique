@@ -20,6 +20,8 @@ unit-tests: bin/unit-tests
 	./$<
 
 unit-test-coverage:
+	@which gcov >/dev/null || ( echo "[ERROR] gcov is required for test coverage report"; false )
+	@which gcovr >/dev/null || ( echo "[ERROR] gcovr is required for test coverage report"; false )
 	CXXFLAGS=--coverage $(MAKE) bin/unit-tests -B
 	bin/unit-tests
 	rm -rf coverage
