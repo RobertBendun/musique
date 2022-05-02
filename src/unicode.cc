@@ -98,12 +98,6 @@ bool unicode::is_space(u32 space)
 	return false;
 }
 
-bool unicode::is_letter(u32 letter)
-{
-	// TODO Unicode letters handling
-	return std::isalpha(letter);
-}
-
 bool unicode::is_identifier(u32 letter, unicode::First_Character is_first_character)
 {
 	return (unicode::is_letter(letter) || letter == '_' || letter == '#' || letter == '$' || letter == '@')

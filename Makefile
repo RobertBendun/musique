@@ -4,7 +4,8 @@ CPPFLAGS=-Ilib/expected/ -Ilib/ut/ -Isrc/
 
 Obj=bin/errors.o \
 		bin/lexer.o \
-		bin/unicode.o
+		bin/unicode.o \
+		bin/unicode_tables.o
 
 all: bin/musique bin/unit-tests
 
