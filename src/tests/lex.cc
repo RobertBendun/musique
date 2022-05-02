@@ -3,11 +3,6 @@
 
 using namespace boost::ut;
 
-auto under(auto enumeration) requires std::is_enum_v<decltype(enumeration)>
-{
-	return static_cast<std::underlying_type_t<decltype(enumeration)>>(enumeration);
-}
-
 static void expect_token_type(
 		Token::Type expected_type,
 		std::string source,
@@ -16,7 +11,7 @@ static void expect_token_type(
 	Lexer lexer{source};
 	auto result = lexer.next_token();
 	expect(result.has_value() >> fatal, sl) << "have not parsed any tokens";
-	expect(eq(under(result->type), under(expected_type)), sl) << "different token type then expected";
+	expect(eq(result->type, expected_type), sl) << "different token type then expected";
 }
 
 static void expect_token_type_and_value(
@@ -30,7 +25,7 @@ static void expect_token_type_and_value(
 	expect(result.has_value(), sl) << "have not parsed any tokens";
 
 	if (result.has_value()) {
-		expect(eq(under(result->type), under(expected_type)), sl) << "different token type then expected";
+		expect(eq(result->type, expected_type), sl) << "different token type then expected";
 		expect(eq(result->source, expected), sl) << "tokenized source is not equal to original";
 	}
 }
@@ -52,7 +47,7 @@ static void expect_token_type_and_location(
 	Lexer lexer{source};
 	auto result = lexer.next_token();
 	expect(result.has_value() >> fatal, sl) << "have not parsed any tokens";
-	expect(eq(under(result->type), under(expected_type)), sl) << "different token type then expected";
+	expect(eq(result->type, expected_type), sl) << "different token type then expected";
 	expect(eq(result->location, location), sl) << "tokenized source is at different place then expected";
 }
 
@@ -109,5 +104,15 @@ suite lexer_test = [] {
 		expect_token_type_and_value(Token::Type::Symbol, "camelCase");
 		expect_token_type_and_value(Token::Type::Symbol, "PascalCase");
 		expect_token_type_and_value(Token::Type::Symbol, "haskell'");
+	};
+
+	"Operators"_test = [] {
+		expect_token_type_and_value(Token::Type::Operator, "+");
+		expect_token_type_and_value(Token::Type::Operator, "&&");
+		expect_token_type_and_value(Token::Type::Operator, "||");
+		expect_token_type_and_value(Token::Type::Operator, "*");
+		expect_token_type_and_value(Token::Type::Operator, "**");
+		expect_token_type_and_value(Token::Type::Operator, "=");
+		expect_token_type_and_value(Token::Type::Operator, "<");
 	};
 };

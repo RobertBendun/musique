@@ -148,6 +148,9 @@ struct Token
 		// like repeat or choose or chord
 		Symbol,
 
+		// like + - ++ < >
+		Operator,
+
 		// chord literal, like c125
 		Chord,
 
@@ -172,6 +175,7 @@ struct Token
 };
 
 std::ostream& operator<<(std::ostream& os, Token const& tok);
+std::ostream& operator<<(std::ostream& os, Token::Type type);
 
 struct Lexer
 {

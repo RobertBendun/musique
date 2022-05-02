@@ -1,6 +1,11 @@
 #include <musique.hh>
 
 constexpr std::string_view Notes_Symbols = "abcedefgh";
+constexpr std::string_view Valid_Operator_Chars =
+	"+-*/" // arithmetic
+	"|&^"  // logic & bit operations
+	"<>=!" // comparisons
+	;
 
 auto Lexer::next_token() -> Result<Token>
 {
@@ -16,7 +21,11 @@ auto Lexer::next_token() -> Result<Token>
 	case ')': consume(); return { Token::Type::Close_Paren,        finish(), token_location };
 	case '[': consume(); return { Token::Type::Open_Block,         finish(), token_location };
 	case ']': consume(); return { Token::Type::Close_Block,        finish(), token_location };
-	case '|': consume(); return { Token::Type::Variable_Separator, finish(), token_location };
+	case '|':
+		consume();
+		// We explicitly allow for `|foo|=0` here
+		if (Valid_Operator_Chars.find(peek()) == std::string_view::npos || peek() == '=')
+			return { Token::Type::Variable_Separator, finish(), token_location };
 	}
 
 	// Number literals like .75
@@ -98,6 +107,11 @@ auto Lexer::next_token() -> Result<Token>
 		return { Token::Type::Symbol, finish(), token_location };
 	}
 
+	if (Valid_Operator_Chars.find(peek()) != std::string_view::npos) {
+		while (consume() && Valid_Operator_Chars.find(peek()) != std::string_view::npos) {}
+		return { Token::Type::Operator, finish(), token_location };
+	}
+
 	return errors::unrecognized_character(peek(), token_location);
 }
 
@@ -154,6 +168,23 @@ std::ostream& operator<<(std::ostream& os, Token const&)
 {
 	os << "Token";
 	return os;
+}
+
+std::ostream& operator<<(std::ostream& os, Token::Type type)
+{
+	switch (type) {
+	case Token::Type::Open_Block:         return os << "OPEN BLOCK";
+	case Token::Type::Close_Block:        return os << "CLOSE BLOCK";
+	case Token::Type::Open_Paren:         return os << "OPEN PAREN";
+	case Token::Type::Close_Paren:        return os << "CLOSE PAREN";
+	case Token::Type::Variable_Separator: return os << "VARIABLE SEPARATOR";
+	case Token::Type::Chord:              return os << "CHORD";
+	case Token::Type::Numeric:            return os << "NUMERIC";
+	case Token::Type::Symbol:             return os << "SYMBOL";
+	case Token::Type::Operator:           return os << "OPERATOR";
+	}
+
+	assert(false && "exhaustive handling of Token::Type enumeration");
 }
 
 Location Location::advance(u32 rune)
