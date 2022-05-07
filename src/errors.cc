@@ -21,7 +21,7 @@ enum class Error_Level
 	Bug
 };
 
-static void error_heading(std::ostream &os, std::optional<Location> location, Error_Level lvl)
+static std::ostream& error_heading(std::ostream &os, std::optional<Location> location, Error_Level lvl)
 {
 	if (location) {
 		os << *location;
@@ -30,10 +30,32 @@ static void error_heading(std::ostream &os, std::optional<Location> location, Er
 	}
 
 	switch (lvl) {
-	case Error_Level::Bug:    os << ": implementation bug: "; return;
-	case Error_Level::Error:  os << ": error: ";              return;
-	case Error_Level::Notice: os << ": notice: ";             return;
+	case Error_Level::Error:  return os << ": error: ";
+	case Error_Level::Notice: return os << ": notice: ";
+
+	// This branch should be reached if we have Error_Level::Bug
+	// or definetely where error level is outside of enum Error_Level
+	default:                  return os << ": implementation bug: ";
 	}
+}
+
+void assert(bool condition, std::string message, Location loc)
+{
+	if (condition) return;
+	error_heading(std::cerr, loc, Error_Level::Bug) << message << std::endl;
+	std::exit(1);
+}
+
+[[noreturn]] void unimplemented(Location loc)
+{
+	error_heading(std::cerr, loc, Error_Level::Bug) << "this part was not implemented yet" << std::endl;
+	std::exit(1);
+}
+
+[[noreturn]] void unreachable(Location loc)
+{
+	error_heading(std::cerr, loc, Error_Level::Bug) << "this place should not be reached" << std::endl;
+	std::exit(1);
 }
 
 std::ostream& operator<<(std::ostream& os, Error const& err)

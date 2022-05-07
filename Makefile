@@ -2,10 +2,11 @@ MAKEFLAGS="-j $(grep -c ^processor /proc/cpuinfo)"
 CXXFLAGS:=$(CXXFLAGS) -std=c++20 -Wall -Wextra -Werror=switch
 CPPFLAGS:=$(CPPFLAGS) -Ilib/expected/ -Ilib/ut/ -Isrc/
 
-Obj=bin/errors.o \
-		bin/lexer.o \
-		bin/parser.o \
-		bin/unicode.o \
+Obj=bin/errors.o        \
+		bin/lexer.o         \
+		bin/location.o      \
+		bin/parser.o        \
+		bin/unicode.o       \
 		bin/unicode_tables.o
 
 all: bin/musique bin/unit-tests

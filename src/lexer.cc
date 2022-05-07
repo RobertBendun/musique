@@ -221,7 +221,7 @@ auto Lexer::consume_if(auto first, auto second) -> bool
 
 void Lexer::rewind()
 {
-	assert(last_rune_length != 0);
+	assert(last_rune_length != 0, "cannot rewind to not existing rune");
 	source = { source.data() - last_rune_length, source.size() + last_rune_length };
 	token_length -= last_rune_length;
 	location = prev_location;
@@ -262,25 +262,5 @@ std::ostream& operator<<(std::ostream& os, Token::Type type)
 	case Token::Type::Operator:             return os << "OPERATOR";
 	case Token::Type::Expression_Separator: return os << "EXPRESSION SEPARATOR";
 	}
-
-	assert(false && "exhaustive handling of Token::Type enumeration");
-}
-
-Location Location::advance(u32 rune)
-{
-	switch (rune) {
-	case '\n':
-		line += 1;
-		[[fallthrough]];
-	case '\r':
-		column = 1;
-		return *this;
-	}
-	column += 1;
-	return *this;
-}
-
-std::ostream& operator<<(std::ostream& os, Location const& location)
-{
-	return os << location.filename << ':' << location.line << ':' << location.column;
+	unreachable();
 }

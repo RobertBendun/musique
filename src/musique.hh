@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cassert>
 #include <concepts>
 #include <cstdint>
 #include <cstring>
@@ -10,6 +9,15 @@
 #include <string_view>
 #include <tl/expected.hpp>
 #include <variant>
+
+#if defined(__cpp_lib_source_location)
+#include <source_location>
+#endif
+
+// To make sure, that we don't collide with <cassert> macro
+#ifdef assert
+#undef assert
+#endif
 
 using u8  = std::uint8_t;
 using u16 = std::uint16_t;
@@ -23,10 +31,6 @@ using i64 = std::int64_t;
 
 using usize = std::size_t;
 using isize = std::ptrdiff_t;
-
-struct Unit {};
-
-#define Fun(Function) ([]<typename ...T>(T&& ...args) { return (Function)(std::forward<T>(args)...); })
 
 // Error handling mechanism inspired by Andrew Kelly approach, that was implemented
 // as first class feature in Zig programming language.
@@ -45,7 +49,7 @@ namespace errors
 struct Location
 {
 	std::string_view filename = "<unnamed>";
-	usize column = 1, line = 1;
+	usize line = 1, column = 1;
 
 	Location advance(u32 rune);
 
@@ -58,9 +62,26 @@ struct Location
 		loc.column = column;
 		return loc;
 	}
+
+	// Used to describe location of function call in interpreter (internal use only)
+#if defined(__cpp_lib_source_location)
+	static Location caller(std::source_location loc = std::source_location::current());
+#elif (__has_builtin(__builtin_FILE) and __has_builtin(__builtin_LINE))
+	static Location caller(char const* file = __builtin_FILE(), usize line = __builtin_LINE());
+#else
+#error Cannot implement Location::caller function
+#endif
 };
 
 std::ostream& operator<<(std::ostream& os, Location const& location);
+
+void assert(bool condition, std::string message, Location loc = Location::caller());
+
+// Marks part of code that was not implemented yet
+[[noreturn]] void unimplemented(Location loc = Location::caller());
+
+// Marks location that should not be reached
+[[noreturn]] void unreachable(Location loc = Location::caller());
 
 struct Error
 {
@@ -72,19 +93,29 @@ struct Error
 	Error with(Location) &&;
 };
 
+std::ostream& operator<<(std::ostream& os, Error const& err);
+
 template<typename T>
 struct Result : tl::expected<T, Error>
 {
 	using Storage = tl::expected<T, Error>;
 
-	constexpr Result()                         = default;
-	constexpr Result(Result const&)            = default;
-	constexpr Result(Result&&)                 = default;
-	constexpr Result& operator=(Result const&) = default;
-	constexpr Result& operator=(Result&&)      = default;
+	constexpr Result() = default;
+
+	template<typename ...Args> requires (not std::is_void_v<T>) && std::is_constructible_v<T, Args...>
+	constexpr Result(Args&& ...args)
+		: Storage( T{ std::forward<Args>(args)... } )
+	{
+	}
+
+	template<typename Arg> requires std::is_constructible_v<Storage, Arg>
+	constexpr Result(Arg &&arg)
+		: Storage(std::forward<Arg>(arg))
+	{
+	}
 
 	constexpr Result(errors::Type error)
-		: Storage(tl::unexpected(Error { error }))
+		: Storage(tl::unexpect, Error { error } )
 	{
 	}
 
@@ -93,36 +124,34 @@ struct Result : tl::expected<T, Error>
 	{
 	}
 
-	inline Result(tl::unexpected<Error> error)
-		: Storage(std::move(error))
+	// Internal function used for definition of Try macro
+	inline auto value() &&
 	{
-	}
-
-	template<typename ...Args>
-	requires std::is_constructible_v<T, Args...>
-	constexpr Result(Args&& ...args)
-		: Storage( T{ std::forward<Args>(args)... } )
-	{
+		if constexpr (not std::is_void_v<T>) {
+			return Storage::value();
+		}
 	}
 };
 
-std::ostream& operator<<(std::ostream& os, Error const& err);
-
 // NOTE This implementation requires C++ language extension: statement expressions
-// It's supported by GCC, other compilers i don't know
-#define Try(Value) ({ \
-	auto try_value = (Value); \
-	if (not try_value.has_value()) return tl::unexpected(try_value.error()); \
-	*std::move(try_value); \
+// It's supported by GCC and Clang, other compilers i don't know
+//
+// Inspired by SerenityOS TRY macro
+#define Try(Value)                               \
+	({                                             \
+		auto try_value = (Value);                    \
+		if (not try_value.has_value()) [[unlikely]]  \
+			return tl::unexpected(try_value.error());  \
+		std::move(try_value).value();                \
 	})
 
 namespace unicode
 {
 	inline namespace special_runes
 	{
-		constexpr u32 Rune_Error = 0xfffd;
-		constexpr u32 Rune_Self  = 0x80;
-		constexpr u32 Max_Bytes  = 4;
+		[[maybe_unused]] constexpr u32 Rune_Error = 0xfffd;
+		[[maybe_unused]] constexpr u32 Rune_Self  = 0x80;
+		[[maybe_unused]] constexpr u32 Max_Bytes  = 4;
 	}
 
 	// is_digit returns true if `digit` is ASCII digit
@@ -257,9 +286,6 @@ struct Ast
 	Token token;
 };
 
-template<typename Expected, typename ...T>
-concept Var_Args = (std::is_same_v<Expected, T> && ...) && (sizeof...(T) >= 1);
-
 struct Parser
 {
 	std::vector<Token> tokens;
@@ -280,7 +306,7 @@ struct Parser
 
 	// Ensures that current token has one of types given.
 	// Otherwise returns error
-	Result<Unit> ensure(Token::Type type) const;
+	Result<void> ensure(Token::Type type) const;
 };
 
 namespace errors

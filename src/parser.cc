@@ -49,13 +49,13 @@ bool Parser::expect(Token::Type type) const
 	return token_id < tokens.size() && tokens[token_id].type == type;
 }
 
-Result<Unit> Parser::ensure(Token::Type type) const
+Result<void> Parser::ensure(Token::Type type) const
 {
 	return token_id >= tokens.size()
 		? errors::unexpected_end_of_source(tokens.back().location)
 		: tokens[token_id].type != type
 		? errors::unexpected_token(type, tokens[token_id])
-		: Result<Unit>{};
+		: Result<void>{};
 }
 
 Ast Ast::literal(Token token)
