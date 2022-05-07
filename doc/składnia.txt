@@ -1,4 +1,4 @@
-program = ws*, expression, ws*, { expression, ws* }
+program = { expression, ws*, ";", { ws*, ";" }, ws* } ;
 block   = "[", program, "]" ;
 
 (* At interpreter runtime it is determined which symbols pass as operators, and which not *)
