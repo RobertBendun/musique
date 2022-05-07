@@ -1,5 +1,7 @@
 #include <musique.hh>
 
+#include <iomanip>
+
 constexpr std::string_view Notes_Symbols = "abcedefgh";
 constexpr std::string_view Valid_Operator_Chars =
 	"+-*/:%" // arithmetic
@@ -241,10 +243,9 @@ std::string_view Lexer::finish()
 	return result;
 }
 
-std::ostream& operator<<(std::ostream& os, Token const&)
+std::ostream& operator<<(std::ostream& os, Token const& token)
 {
-	os << "Token";
-	return os;
+	return os << '{' << token.type << ", " << std::quoted(token.source) << ", " << token.location << '}';
 }
 
 std::ostream& operator<<(std::ostream& os, Token::Type type)

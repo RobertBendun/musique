@@ -6,6 +6,7 @@
 #include <cstring>
 #include <optional>
 #include <ostream>
+#include <span>
 #include <string_view>
 #include <tl/expected.hpp>
 #include <variant>
@@ -23,14 +24,21 @@ using i64 = std::int64_t;
 using usize = std::size_t;
 using isize = std::ptrdiff_t;
 
+struct Unit {};
+
 #define Fun(Function) ([]<typename ...T>(T&& ...args) { return (Function)(std::forward<T>(args)...); })
 
+// Error handling mechanism inspired by Andrew Kelly approach, that was implemented
+// as first class feature in Zig programming language.
 namespace errors
 {
 	enum Type
 	{
 		End_Of_File,
-		Unrecognized_Character
+		Unrecognized_Character,
+
+		Unexpected_Token_Type,
+		Unexpected_Empty_Source,
 	};
 }
 
@@ -58,36 +66,40 @@ struct Error
 {
 	errors::Type type;
 	std::optional<Location> location = std::nullopt;
-	u32 invalid_character = 0;
+	std::string message{};
 
 	bool operator==(errors::Type);
+	Error with(Location) &&;
 };
-
-namespace errors
-{
-	Error unrecognized_character(u32 invalid_character);
-	Error unrecognized_character(u32 invalid_character, Location location);
-}
-
 
 template<typename T>
 struct Result : tl::expected<T, Error>
 {
 	using Storage = tl::expected<T, Error>;
 
-	constexpr Result() = default;
+	constexpr Result()                         = default;
+	constexpr Result(Result const&)            = default;
+	constexpr Result(Result&&)                 = default;
+	constexpr Result& operator=(Result const&) = default;
+	constexpr Result& operator=(Result&&)      = default;
 
 	constexpr Result(errors::Type error)
 		: Storage(tl::unexpected(Error { error }))
 	{
 	}
 
-	constexpr Result(Error error)
+	inline Result(Error error)
 		: Storage(tl::unexpected(std::move(error)))
 	{
 	}
 
+	inline Result(tl::unexpected<Error> error)
+		: Storage(std::move(error))
+	{
+	}
+
 	template<typename ...Args>
+	requires std::is_constructible_v<T, Args...>
 	constexpr Result(Args&& ...args)
 		: Storage( T{ std::forward<Args>(args)... } )
 	{
@@ -230,3 +242,55 @@ struct Lexer
 	// Marks end of token and returns it's matching source
 	std::string_view finish();
 };
+
+struct Ast
+{
+	// Named constructors of AST structure
+	static Ast literal(Token);
+
+	enum class Type
+	{
+		Literal
+	};
+
+	Type type;
+	Token token;
+};
+
+template<typename Expected, typename ...T>
+concept Var_Args = (std::is_same_v<Expected, T> && ...) && (sizeof...(T) >= 1);
+
+struct Parser
+{
+	std::vector<Token> tokens;
+	unsigned token_id = 0;
+
+	// Parses whole source code producing Ast or Error
+	// using Parser structure internally
+	static Result<Ast> parse(std::string_view source, std::string_view filename);
+
+	Result<Ast> parse_expression();
+	Result<Ast> parse_binary_operator();
+	Result<Ast> parse_literal();
+
+	Token consume();
+
+	// Tests if current token has given type
+	bool expect(Token::Type type) const;
+
+	// Ensures that current token has one of types given.
+	// Otherwise returns error
+	Result<Unit> ensure(Token::Type type) const;
+};
+
+namespace errors
+{
+	Error unrecognized_character(u32 invalid_character);
+	Error unrecognized_character(u32 invalid_character, Location location);
+
+	Error unexpected_token(Token::Type expected, Token const& unexpected);
+	Error unexpected_end_of_source(Location location);
+
+	[[noreturn]]
+	void all_tokens_were_not_parsed(std::span<Token>);
+}

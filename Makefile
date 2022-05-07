@@ -4,6 +4,7 @@ CPPFLAGS:=$(CPPFLAGS) -Ilib/expected/ -Ilib/ut/ -Isrc/
 
 Obj=bin/errors.o \
 		bin/lexer.o \
+		bin/parser.o \
 		bin/unicode.o \
 		bin/unicode_tables.o
 
