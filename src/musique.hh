@@ -208,33 +208,18 @@ struct Lexer
 	// Finds next rune in source and returns it, advancing the string
 	auto consume() -> u32;
 
-	inline auto consume_if(auto test) -> bool
-	{
-		bool condition;
-		if constexpr (requires { test(peek()) && true; }) {
-			condition = test(peek());
-		} else if constexpr (std::is_integral_v<decltype(test)>) {
-			condition = (u32(test) == peek());
-		} else if constexpr (std::is_convertible_v<decltype(test), char const*>) {
-			auto const end = test + std::strlen(test);
-			condition = std::find(test, end, peek()) != end;
-		} else {
-			condition = std::find(std::begin(test), std::end(test), peek()) != std::end(test);
-		}
-		return condition && (consume(), true);
-	}
+	// For test beeing
+	//	callable,  current rune is passed to test
+	//  integral,  current rune is tested for equality with test
+	//  string,    current rune is tested for beeing in it
+	//  otherwise, current rune is tested for beeing in test
+	//
+	//  When testing above yields truth, current rune is consumed.
+	//  Returns if rune was consumed
+	auto consume_if(auto test) -> bool;
 
-	inline auto consume_if(auto first, auto second) -> bool
-	{
-		if (consume_if(first)) {
-			if (consume_if(second)) {
-				return true;
-			} else {
-				rewind();
-			}
-		}
-		return false;
-	}
+	// Consume two runes with given tests otherwise backtrack
+	auto consume_if(auto first, auto second) -> bool;
 
 	// Goes back last rune
 	void rewind();
