@@ -63,6 +63,29 @@ static void expect_empty_file(
 		}
 }
 
+template<auto N>
+static void expect_token_sequence(
+		std::string_view source,
+		std::array<Token, N> const& expected_tokens,
+		reflection::source_location const& sl = reflection::source_location::current())
+{
+	Lexer lexer{source};
+
+	for (Token const& expected : expected_tokens) {
+		auto const result = lexer.next_token();
+		expect(result.has_value(), sl)                  << "expected token, received nothing";
+
+		if (result.has_value()) {
+			expect(eq(result->type, expected.type))         << "different token type then expected";
+			expect(eq(result->source, expected.source))     << "different token source then expected";
+			expect(eq(result->location, expected.location)) << "different token location then expected";
+		}
+	}
+
+	auto const result = lexer.next_token();
+	expect(not result.has_value(), sl) << "more tokens then expected";
+}
+
 suite lexer_test = [] {
 	"Empty file"_test = [] {
 		expect_empty_file("");
@@ -80,11 +103,12 @@ suite lexer_test = [] {
 	};
 
 	"Simple token types"_test = [] {
-		expect_token_type(Token::Type::Close_Block,        "]");
-		expect_token_type(Token::Type::Close_Paren,        ")");
-		expect_token_type(Token::Type::Open_Block,         "[");
-		expect_token_type(Token::Type::Open_Paren,         "(");
-		expect_token_type(Token::Type::Variable_Separator, "|");
+		expect_token_type(Token::Type::Close_Block,          "]");
+		expect_token_type(Token::Type::Close_Paren,          ")");
+		expect_token_type(Token::Type::Open_Block,           "[");
+		expect_token_type(Token::Type::Open_Paren,           "(");
+		expect_token_type(Token::Type::Variable_Separator,   "|");
+		expect_token_type(Token::Type::Expression_Separator, ";");
 	};
 
 	"Numeric tokens"_test = [] {
@@ -142,5 +166,25 @@ suite lexer_test = [] {
 		expect_token_type_and_value(Token::Type::Operator, ":");
 		expect_token_type_and_value(Token::Type::Operator, "v");
 		expect_token_type_and_value(Token::Type::Operator, "%");
+	};
+
+	"Multiple tokens"_test = [] {
+		Location l;
+
+		expect_token_sequence("1 + foo", std::array {
+			Token { Token::Type::Numeric,  "1",   l.at(1, 1) },
+			Token { Token::Type::Operator, "+",   l.at(1, 3) },
+			Token { Token::Type::Symbol,   "foo", l.at(1, 5) }
+		});
+
+		expect_token_sequence("foo 1 2; bar 3 4", std::array {
+			Token { Token::Type::Symbol,               "foo", l.at(1,  1) },
+			Token { Token::Type::Numeric,              "1",   l.at(1,  5) },
+			Token { Token::Type::Numeric,              "2",   l.at(1,  7) },
+			Token { Token::Type::Expression_Separator, ";",   l.at(1,  8) },
+			Token { Token::Type::Symbol,               "bar", l.at(1, 10) },
+			Token { Token::Type::Numeric,              "3",   l.at(1, 14) },
+			Token { Token::Type::Numeric,              "4",   l.at(1, 16) }
+		});
 	};
 };

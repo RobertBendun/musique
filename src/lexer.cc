@@ -60,13 +60,17 @@ auto Lexer::next_token() -> Result<Token>
 	}
 
 	switch (peek()) {
-	case '(': consume(); return { Token::Type::Open_Paren,         finish(), token_location };
-	case ')': consume(); return { Token::Type::Close_Paren,        finish(), token_location };
-	case '[': consume(); return { Token::Type::Open_Block,         finish(), token_location };
-	case ']': consume(); return { Token::Type::Close_Block,        finish(), token_location };
+	case '(': consume(); return { Token::Type::Open_Paren,           finish(), token_location };
+	case ')': consume(); return { Token::Type::Close_Paren,          finish(), token_location };
+	case '[': consume(); return { Token::Type::Open_Block,           finish(), token_location };
+	case ']': consume(); return { Token::Type::Close_Block,          finish(), token_location };
+	case ';': consume(); return { Token::Type::Expression_Separator, finish(), token_location };
+
 	case '|':
 		consume();
-		// We explicitly allow for `|foo|=0` here
+		// `|` may be part of operator, like `||`. So we need to check what follows. If next char
+		// is operator, then this character is part of operator sequence.
+		// Additionally we explicitly allow for `|foo|=0` here
 		if (Valid_Operator_Chars.find(peek()) == std::string_view::npos || peek() == '=')
 			return { Token::Type::Variable_Separator, finish(), token_location };
 	}
@@ -218,15 +222,16 @@ std::ostream& operator<<(std::ostream& os, Token const&)
 std::ostream& operator<<(std::ostream& os, Token::Type type)
 {
 	switch (type) {
-	case Token::Type::Open_Block:         return os << "OPEN BLOCK";
-	case Token::Type::Close_Block:        return os << "CLOSE BLOCK";
-	case Token::Type::Open_Paren:         return os << "OPEN PAREN";
-	case Token::Type::Close_Paren:        return os << "CLOSE PAREN";
-	case Token::Type::Variable_Separator: return os << "VARIABLE SEPARATOR";
-	case Token::Type::Chord:              return os << "CHORD";
-	case Token::Type::Numeric:            return os << "NUMERIC";
-	case Token::Type::Symbol:             return os << "SYMBOL";
-	case Token::Type::Operator:           return os << "OPERATOR";
+	case Token::Type::Open_Block:           return os << "OPEN BLOCK";
+	case Token::Type::Close_Block:          return os << "CLOSE BLOCK";
+	case Token::Type::Open_Paren:           return os << "OPEN PAREN";
+	case Token::Type::Close_Paren:          return os << "CLOSE PAREN";
+	case Token::Type::Variable_Separator:   return os << "VARIABLE SEPARATOR";
+	case Token::Type::Chord:                return os << "CHORD";
+	case Token::Type::Numeric:              return os << "NUMERIC";
+	case Token::Type::Symbol:               return os << "SYMBOL";
+	case Token::Type::Operator:             return os << "OPERATOR";
+	case Token::Type::Expression_Separator: return os << "EXPRESSION SEPARATOR";
 	}
 
 	assert(false && "exhaustive handling of Token::Type enumeration");

@@ -162,6 +162,9 @@ struct Token
 		// "|" separaters arguments from block body, and provides variable introduction syntax
 		Variable_Separator,
 
+		// ";" separates expressions. Used to separate calls, like `foo 1 2; bar 3 4`
+		Expression_Separator,
+
 		// "[" and "]", delimit anonymous block of code (potentially a function)
 		Open_Block,
 		Close_Block,
