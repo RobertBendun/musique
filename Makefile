@@ -1,5 +1,5 @@
 MAKEFLAGS="-j $(grep -c ^processor /proc/cpuinfo)"
-CXXFLAGS:=$(CXXFLAGS) -std=c++20 -Wall -Wextra -Werror=switch
+CXXFLAGS:=$(CXXFLAGS) -std=c++20 -Wall -Wextra -Werror=switch -Werror=unused-result
 CPPFLAGS:=$(CPPFLAGS) -Ilib/expected/ -Ilib/ut/ -Isrc/
 
 Obj=bin/errors.o        \

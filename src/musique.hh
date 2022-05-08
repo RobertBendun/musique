@@ -96,7 +96,7 @@ struct Error
 std::ostream& operator<<(std::ostream& os, Error const& err);
 
 template<typename T>
-struct Result : tl::expected<T, Error>
+struct [[nodiscard("This value may contain critical error, so it should NOT be ignored")]] Result : tl::expected<T, Error>
 {
 	using Storage = tl::expected<T, Error>;
 
