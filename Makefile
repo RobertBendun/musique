@@ -21,6 +21,7 @@ bin/musique: $(Obj) bin/main.o src/*.hh
 unit-tests: bin/unit-tests
 	./$<
 
+.PHONY: unit-test-coverage
 unit-test-coverage:
 	@which gcov >/dev/null || ( echo "[ERROR] gcov is required for test coverage report"; false )
 	@which gcovr >/dev/null || ( echo "[ERROR] gcovr is required for test coverage report"; false )
@@ -30,6 +31,12 @@ unit-test-coverage:
 	mkdir coverage
 	gcovr -e '.*\.hpp' --html --html-details -o coverage/index.html
 	rm -rf bin
+	xdg-open coverage/index.html
+
+.PHONY: doc
+doc: Doxyfile src/*.cc src/*.hh
+	doxygen
+	cd doc; $(MAKE) html
 
 bin/unit-tests: src/tests/*.cc $(Obj)
 	g++ $(CXXFLAGS) $(CPPFLAGS) -o $@ $^

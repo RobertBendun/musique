@@ -2,3 +2,6 @@
 bin/*
 compile_commands.json
 coverage
+doc/musique
+doc/build
+doc/source/api

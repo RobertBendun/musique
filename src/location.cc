@@ -1,6 +1,14 @@
 #include <musique.hh>
 
-Location Location::advance(u32 rune)
+Location Location::at(usize line, usize column)
+{
+	Location loc;
+	loc.line = line;
+	loc.column = column;
+	return loc;
+}
+
+Location& Location::advance(u32 rune)
 {
 	switch (rune) {
 	case '\n':
