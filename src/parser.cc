@@ -30,7 +30,16 @@ Result<Ast> Parser::parse_expression()
 
 Result<Ast> Parser::parse_binary_operator()
 {
-	return parse_literal();
+	return parse_literal().and_then([&](Ast lhs) -> tl::expected<Ast, Error> {
+		if (expect(Token::Type::Operator)) {
+			auto op = consume();
+			return parse_expression().map([&](Ast rhs) {
+				return Ast::binary(std::move(op), std::move(lhs), std::move(rhs));
+			});
+		} else {
+			return lhs;
+		}
+	});
 }
 
 Result<Ast> Parser::parse_literal()
@@ -61,7 +70,50 @@ Result<void> Parser::ensure(Token::Type type) const
 Ast Ast::literal(Token token)
 {
 	Ast ast;
-	ast.type = Ast::Type::Literal;
+	ast.type = Type::Literal;
 	ast.token = std::move(token);
 	return ast;
+}
+
+Ast Ast::binary(Token token, Ast lhs, Ast rhs)
+{
+	Ast ast;
+	ast.type = Type::Binary;
+	ast.token = std::move(token);
+	ast.arguments.push_back(std::move(lhs));
+	ast.arguments.push_back(std::move(rhs));
+	return ast;
+}
+
+bool operator==(Ast const& lhs, Ast const& rhs)
+{
+	if (lhs.type != rhs.type) {
+		return false;
+	}
+
+	switch (lhs.type) {
+	case Ast::Type::Literal:
+		return lhs.token.type == rhs.token.type && lhs.token.source == rhs.token.source;
+
+	case Ast::Type::Binary:
+		return lhs.token.type == rhs.token.type
+			&& lhs.token.source == rhs.token.source
+			&& lhs.arguments.size() == rhs.arguments.size()
+			&& std::equal(lhs.arguments.begin(), lhs.arguments.end(), rhs.arguments.begin());
+	}
+
+	unreachable();
+}
+
+std::ostream& operator<<(std::ostream& os, Ast const& tree)
+{
+	os << "Ast(" << tree.token.source << ")";
+	if (!tree.arguments.empty()) {
+		os << " { ";
+		for (auto const& arg : tree.arguments) {
+			os << arg << ' ';
+		}
+		os << '}';
+	}
+	return os;
 }

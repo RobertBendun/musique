@@ -288,15 +288,21 @@ struct Ast
 {
 	// Named constructors of AST structure
 	static Ast literal(Token);
+	static Ast binary(Token, Ast lhs, Ast rhs);
 
 	enum class Type
 	{
-		Literal
+		Literal,  // Compile time known constant like c or 1
+		Binary    // Binary operator application like 1 + 2
 	};
 
 	Type type;
 	Token token;
+	std::vector<Ast> arguments;
 };
+
+bool operator==(Ast const& lhs, Ast const& rhs);
+std::ostream& operator<<(std::ostream& os, Ast const& tree);
 
 struct Parser
 {
