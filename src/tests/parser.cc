@@ -86,7 +86,7 @@ suite parser_test = [] {
 			Ast::literal({ Token::Type::Numeric, "2", {} })
 		}));
 
-		expect_ast("say (fib (n - 1) + fib (n - 2))", Ast::call({
+		expect_ast("say (fib (n-1) + fib (n-2))", Ast::call({
 			Ast::literal({ Token::Type::Symbol, "say", {} }),
 			Ast::binary(
 				{ Token::Type::Operator, "+", {} },

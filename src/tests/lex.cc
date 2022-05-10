@@ -145,7 +145,6 @@ suite lexer_test = [] {
 		expect_token_type_and_value(Token::Type::Symbol, "i2");
 		expect_token_type_and_value(Token::Type::Symbol, "example");
 		expect_token_type_and_value(Token::Type::Symbol, "d1envelope");
-		expect_token_type_and_value(Token::Type::Symbol, "kebab-case");
 		expect_token_type_and_value(Token::Type::Symbol, "snake_case");
 		expect_token_type_and_value(Token::Type::Symbol, "camelCase");
 		expect_token_type_and_value(Token::Type::Symbol, "PascalCase");

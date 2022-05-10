@@ -101,6 +101,5 @@ bool unicode::is_space(u32 space)
 bool unicode::is_identifier(u32 letter, unicode::First_Character is_first_character)
 {
 	return (unicode::is_letter(letter) || letter == '_' || letter == '#' || letter == '$' || letter == '@')
-	|| (!bool(is_first_character) && (
-			letter == '-' || letter == '\'' || unicode::is_digit(letter)));
+	|| (!bool(is_first_character) && (letter == '\'' || unicode::is_digit(letter)));
 }
