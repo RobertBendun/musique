@@ -60,6 +60,26 @@ Result<Ast> Parser::parse_atomic_expression()
 	case Token::Type::Numeric:
 		return Ast::literal(consume());
 
+	case Token::Type::Open_Block:
+		{
+			consume();
+			auto start = token_id;
+			std::vector<Ast> parameters;
+
+			if (auto p = parse_one_or_more(*this, &Parser::parse_identifier); p && expect(Token::Type::Variable_Separator)) {
+				consume();
+				parameters = std::move(p).value();
+			} else {
+				token_id = start;
+			}
+
+			return parse_sequence().and_then([&](Ast ast) -> tl::expected<Ast, Error> {
+				Try(ensure(Token::Type::Close_Block));
+				consume();
+				return Ast::block(ast, std::move(parameters));
+			});
+		}
+
 	case Token::Type::Open_Paren:
 		consume();
 		return parse_expression().and_then([&](Ast ast) -> tl::expected<Ast, Error> {
@@ -73,6 +93,12 @@ Result<Ast> Parser::parse_atomic_expression()
 			return tl::unexpected(errors::unexpected_token(token));
 		});
 	}
+}
+
+Result<Ast> Parser::parse_identifier()
+{
+	Try(ensure(Token::Type::Symbol));
+	return Ast::literal(consume());
 }
 
 Result<std::vector<Ast>> parse_one_or_more(Parser &p, Result<Ast> (Parser::*parser)(), std::optional<Token::Type> separator)
@@ -161,6 +187,18 @@ Ast Ast::sequence(std::vector<Ast> expressions)
 	return ast;
 }
 
+Ast Ast::block(Ast seq, std::vector<Ast> parameters)
+{
+	Ast ast;
+	ast.type = Type::Block;
+	ast.parameters = std::move(parameters);
+	if (seq.type == Type::Sequence)
+		ast.arguments = std::move(seq).arguments;
+	else
+		ast.arguments.push_back(std::move(seq));
+	return ast;
+}
+
 Ast wrap_if_several(std::vector<Ast> &&ast, Ast(*wrapper)(std::vector<Ast>))
 {
 	if (ast.size() == 1)
@@ -184,6 +222,7 @@ bool operator==(Ast const& lhs, Ast const& rhs)
 			&& lhs.arguments.size() == rhs.arguments.size()
 			&& std::equal(lhs.arguments.begin(), lhs.arguments.end(), rhs.arguments.begin());
 
+	case Ast::Type::Block:
 	case Ast::Type::Call:
 	case Ast::Type::Sequence:
 		return lhs.arguments.size() == rhs.arguments.size()
@@ -193,9 +232,21 @@ bool operator==(Ast const& lhs, Ast const& rhs)
 	unreachable();
 }
 
+std::ostream& operator<<(std::ostream& os, Ast::Type type)
+{
+	switch (type) {
+	case Ast::Type::Binary:   return os << "BINARY";
+	case Ast::Type::Block:    return os << "BLOCK";
+	case Ast::Type::Call:     return os << "CALL";
+	case Ast::Type::Literal:  return os << "LITERAL";
+	case Ast::Type::Sequence: return os << "SEQUENCE";
+	}
+	unreachable();
+}
+
 std::ostream& operator<<(std::ostream& os, Ast const& tree)
 {
-	os << "Ast(" << tree.token.source << ")";
+	os << "Ast::" << tree.type << "(" << tree.token.source << ")";
 	if (!tree.arguments.empty()) {
 		os << " { ";
 		for (auto const& arg : tree.arguments) {
@@ -203,5 +254,50 @@ std::ostream& operator<<(std::ostream& os, Ast const& tree)
 		}
 		os << '}';
 	}
+
+	if (!tree.parameters.empty()) {
+		os << " with parameters { ";
+		for (auto const& arg : tree.parameters) {
+			os << arg << ' ';
+		}
+		os << '}';
+	}
 	return os;
+}
+
+struct Indent
+{
+	unsigned count;
+	Indent operator+() { return { count + 2 }; }
+	operator unsigned() { return count; }
+};
+
+std::ostream& operator<<(std::ostream& os, Indent n)
+{
+	while (n.count-- > 0)
+		os.put(' ');
+	return os;
+}
+
+void dump(Ast const& tree, unsigned indent)
+{
+	Indent i{indent};
+	std::cout << i << "Ast::" << tree.type << "(" << tree.token.source << ")";
+	if (!tree.arguments.empty()) {
+		std::cout << " {\n";
+		for (auto const& arg : tree.arguments) {
+			dump(arg, +i);
+		}
+		std::cout << i << '}';
+	}
+
+	if (!tree.parameters.empty()) {
+		std::cout << " with parameters {\n";
+		for (auto const& arg : tree.parameters) {
+			dump(arg, +i);
+		}
+		std::cout << i << '}';
+	}
+
+	std::cout << '\n';
 }

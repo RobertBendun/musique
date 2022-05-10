@@ -29,8 +29,9 @@ void usage()
 
 static Result<void> run(std::string_view source, std::string_view filename)
 {
-	Try(Parser::parse(source, filename));
+	auto ast = Try(Parser::parse(source, filename));
 	std::cout << "successfully parsed: " << source << " \n";
+	dump(ast);
 	return {};
 }
 

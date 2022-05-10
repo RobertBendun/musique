@@ -291,6 +291,7 @@ struct Ast
 	static Ast binary(Token, Ast lhs, Ast rhs);
 	static Ast call(std::vector<Ast> call);
 	static Ast sequence(std::vector<Ast> call);
+	static Ast block(Ast seq, std::vector<Ast> parameters = {});
 
 	enum class Type
 	{
@@ -298,15 +299,19 @@ struct Ast
 		Binary,   // Binary operator application like `1` + `2`
 		Call,     // Function call application like `print 42`
 		Sequence, // Several expressions sequences like `42`, `42; 32`
+		Block,    // Block expressions like `[42; hello]`
 	};
 
 	Type type;
 	Token token;
-	std::vector<Ast> arguments;
+	std::vector<Ast> arguments{};
+	std::vector<Ast> parameters{};
 };
 
 bool operator==(Ast const& lhs, Ast const& rhs);
+std::ostream& operator<<(std::ostream& os, Ast::Type type);
 std::ostream& operator<<(std::ostream& os, Ast const& tree);
+void dump(Ast const& ast, unsigned indent = 0);
 
 struct Parser
 {
@@ -321,6 +326,7 @@ struct Parser
 	Result<Ast> parse_expression();
 	Result<Ast> parse_infix_expression();
 	Result<Ast> parse_atomic_expression();
+	Result<Ast> parse_identifier();
 
 	Result<Token> peek() const;
 	Result<Token::Type> peek_type() const;
