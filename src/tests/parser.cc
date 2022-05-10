@@ -56,4 +56,26 @@ suite parser_test = [] {
 				Ast::literal({ Token::Type::Numeric, "303", {} })
 		));
 	};
+
+	"Grouping expressions in parentheses"_test = [] {
+		expect_ast("(101 + 202) * 303", Ast::binary(
+				Token { Token::Type::Operator, "*", {} },
+				Ast::binary(
+							Token { Token::Type::Operator, "+", {} },
+							Ast::literal({ Token::Type::Numeric, "101", {} }),
+							Ast::literal({ Token::Type::Numeric, "202", {} })
+				),
+				Ast::literal({ Token::Type::Numeric, "303", {} })
+		));
+
+		expect_ast("101 * (202 + 303)", Ast::binary(
+				Token { Token::Type::Operator, "*", {} },
+				Ast::literal({ Token::Type::Numeric, "101", {} }),
+				Ast::binary(
+							Token { Token::Type::Operator, "+", {} },
+							Ast::literal({ Token::Type::Numeric, "202", {} }),
+							Ast::literal({ Token::Type::Numeric, "303", {} })
+				)
+		));
+	};
 };

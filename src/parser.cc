@@ -44,8 +44,28 @@ Result<Ast> Parser::parse_binary_operator()
 
 Result<Ast> Parser::parse_literal()
 {
-	Try(ensure(Token::Type::Numeric));
-	return Ast::literal(consume());
+	switch (Try(peek_type())) {
+	case Token::Type::Numeric:
+		return Ast::literal(consume());
+
+	case Token::Type::Open_Paren:
+		consume();
+		return parse_expression().and_then([&](Ast ast) -> tl::expected<Ast, Error> {
+			Try(ensure(Token::Type::Close_Paren));
+			consume();
+			return ast;
+		});
+
+	default:
+		unimplemented();
+	}
+}
+
+Result<Token::Type> Parser::peek_type() const
+{
+	return token_id >= tokens.size()
+		? errors::unexpected_end_of_source(tokens.back().location)
+		: Result<Token::Type>(tokens[token_id].type);
 }
 
 Token Parser::consume()

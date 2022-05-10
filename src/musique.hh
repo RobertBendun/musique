@@ -317,6 +317,7 @@ struct Parser
 	Result<Ast> parse_binary_operator();
 	Result<Ast> parse_literal();
 
+	Result<Token::Type> peek_type() const;
 	Token consume();
 
 	// Tests if current token has given type
