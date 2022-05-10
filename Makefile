@@ -38,6 +38,10 @@ doc: Doxyfile src/*.cc src/*.hh
 	doxygen
 	cd doc; $(MAKE) html
 
+.PHONY: doc-open
+doc-open: doc
+	xdg-open ./doc/build/html/index.html
+
 bin/unit-tests: src/tests/*.cc $(Obj)
 	g++ $(CXXFLAGS) $(CPPFLAGS) -o $@ $^
 

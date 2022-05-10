@@ -289,11 +289,13 @@ struct Ast
 	// Named constructors of AST structure
 	static Ast literal(Token);
 	static Ast binary(Token, Ast lhs, Ast rhs);
+	static Ast call(std::vector<Ast> call);
 
 	enum class Type
 	{
-		Literal,  // Compile time known constant like c or 1
-		Binary    // Binary operator application like 1 + 2
+		Literal,  // Compile time known constant like `c` or `1`
+		Binary,   // Binary operator application like `1` + `2`
+		Call      // Function call application like `print 42`
 	};
 
 	Type type;
@@ -314,9 +316,10 @@ struct Parser
 	static Result<Ast> parse(std::string_view source, std::string_view filename);
 
 	Result<Ast> parse_expression();
-	Result<Ast> parse_binary_operator();
-	Result<Ast> parse_literal();
+	Result<Ast> parse_infix_expression();
+	Result<Ast> parse_atomic_expression();
 
+	Result<Token> peek() const;
 	Result<Token::Type> peek_type() const;
 	Token consume();
 
@@ -334,6 +337,7 @@ namespace errors
 	Error unrecognized_character(u32 invalid_character, Location location);
 
 	Error unexpected_token(Token::Type expected, Token const& unexpected);
+	Error unexpected_token(Token const& unexpected);
 	Error unexpected_end_of_source(Location location);
 
 	[[noreturn]]

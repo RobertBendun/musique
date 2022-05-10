@@ -1,4 +1,5 @@
 #include <musique.hh>
+#include <iostream>
 
 Result<Ast> Parser::parse(std::string_view source, std::string_view filename)
 {
@@ -25,26 +26,39 @@ Result<Ast> Parser::parse(std::string_view source, std::string_view filename)
 
 Result<Ast> Parser::parse_expression()
 {
-	return parse_binary_operator();
+	return parse_infix_expression();
 }
 
-Result<Ast> Parser::parse_binary_operator()
+Result<Ast> Parser::parse_infix_expression()
 {
-	return parse_literal().and_then([&](Ast lhs) -> tl::expected<Ast, Error> {
-		if (expect(Token::Type::Operator)) {
-			auto op = consume();
-			return parse_expression().map([&](Ast rhs) {
-				return Ast::binary(std::move(op), std::move(lhs), std::move(rhs));
-			});
-		} else {
-			return lhs;
-		}
-	});
+	std::vector<Ast> atomics;
+	Result<Ast> expr;
+	while ((expr = parse_atomic_expression()).has_value()) {
+		atomics.push_back(std::move(expr).value());
+	}
+
+	if (atomics.empty()) {
+		return expr;
+	}
+
+	auto lhs = atomics.size() == 1
+		? std::move(atomics[0])
+		: Ast::call(std::move(atomics));
+
+	if (expect(Token::Type::Operator)) {
+		auto op = consume();
+		return parse_expression().map([&](Ast rhs) {
+			return Ast::binary(std::move(op), std::move(lhs), std::move(rhs));
+		});
+	}
+
+	return lhs;
 }
 
-Result<Ast> Parser::parse_literal()
+Result<Ast> Parser::parse_atomic_expression()
 {
 	switch (Try(peek_type())) {
+	case Token::Type::Symbol:
 	case Token::Type::Numeric:
 		return Ast::literal(consume());
 
@@ -57,15 +71,22 @@ Result<Ast> Parser::parse_literal()
 		});
 
 	default:
-		unimplemented();
+		return peek().and_then([](auto const& token) -> tl::expected<Ast, Error> {
+			return tl::unexpected(errors::unexpected_token(token));
+		});
 	}
+}
+
+Result<Token> Parser::peek() const
+{
+	return token_id >= tokens.size()
+		? errors::unexpected_end_of_source(tokens.back().location)
+		: Result<Token>(tokens[token_id]);
 }
 
 Result<Token::Type> Parser::peek_type() const
 {
-	return token_id >= tokens.size()
-		? errors::unexpected_end_of_source(tokens.back().location)
-		: Result<Token::Type>(tokens[token_id].type);
+	return peek().map([](Token const& token) { return token.type; });
 }
 
 Token Parser::consume()
@@ -105,6 +126,14 @@ Ast Ast::binary(Token token, Ast lhs, Ast rhs)
 	return ast;
 }
 
+Ast Ast::call(std::vector<Ast> call)
+{
+	Ast ast;
+	ast.type = Type::Call;
+	ast.arguments = std::move(call);
+	return ast;
+}
+
 bool operator==(Ast const& lhs, Ast const& rhs)
 {
 	if (lhs.type != rhs.type) {
@@ -119,6 +148,10 @@ bool operator==(Ast const& lhs, Ast const& rhs)
 		return lhs.token.type == rhs.token.type
 			&& lhs.token.source == rhs.token.source
 			&& lhs.arguments.size() == rhs.arguments.size()
+			&& std::equal(lhs.arguments.begin(), lhs.arguments.end(), rhs.arguments.begin());
+
+	case Ast::Type::Call:
+		return lhs.arguments.size() == rhs.arguments.size()
 			&& std::equal(lhs.arguments.begin(), lhs.arguments.end(), rhs.arguments.begin());
 	}
 

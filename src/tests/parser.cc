@@ -78,4 +78,35 @@ suite parser_test = [] {
 				)
 		));
 	};
+
+	"Explicit function call"_test = [] {
+		expect_ast("foo 1 2", Ast::call({
+			Ast::literal({ Token::Type::Symbol, "foo", {} }),
+			Ast::literal({ Token::Type::Numeric, "1", {} }),
+			Ast::literal({ Token::Type::Numeric, "2", {} })
+		}));
+
+		expect_ast("say (fib (n - 1) + fib (n - 2))", Ast::call({
+			Ast::literal({ Token::Type::Symbol, "say", {} }),
+			Ast::binary(
+				{ Token::Type::Operator, "+", {} },
+				Ast::call({
+					Ast::literal({ Token::Type::Symbol, "fib", {} }),
+					Ast::binary(
+						{ Token::Type::Operator, "-", {} },
+						Ast::literal({ Token::Type::Symbol, "n", {} }),
+						Ast::literal({ Token::Type::Numeric, "1", {} })
+					)
+				}),
+				Ast::call({
+					Ast::literal({ Token::Type::Symbol, "fib", {} }),
+					Ast::binary(
+						{ Token::Type::Operator, "-", {} },
+						Ast::literal({ Token::Type::Symbol, "n", {} }),
+						Ast::literal({ Token::Type::Numeric, "2", {} })
+					)
+				})
+			)
+		}));
+	};
 };

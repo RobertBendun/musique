@@ -103,6 +103,15 @@ Error errors::unrecognized_character(u32 invalid_character, Location location)
 	return unrecognized_character(invalid_character).with(std::move(location));
 }
 
+Error errors::unexpected_token(Token const& unexpected)
+{
+	Error err;
+	err.type = errors::Unexpected_Token_Type;
+	err.location = unexpected.location;
+	err.message = format("unexpected ", unexpected.type);
+	return err;
+}
+
 Error errors::unexpected_token(Token::Type expected, Token const& unexpected)
 {
 	Error err;
