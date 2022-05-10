@@ -290,12 +290,14 @@ struct Ast
 	static Ast literal(Token);
 	static Ast binary(Token, Ast lhs, Ast rhs);
 	static Ast call(std::vector<Ast> call);
+	static Ast sequence(std::vector<Ast> call);
 
 	enum class Type
 	{
 		Literal,  // Compile time known constant like `c` or `1`
 		Binary,   // Binary operator application like `1` + `2`
-		Call      // Function call application like `print 42`
+		Call,     // Function call application like `print 42`
+		Sequence, // Several expressions sequences like `42`, `42; 32`
 	};
 
 	Type type;
@@ -315,6 +317,7 @@ struct Parser
 	// using Parser structure internally
 	static Result<Ast> parse(std::string_view source, std::string_view filename);
 
+	Result<Ast> parse_sequence();
 	Result<Ast> parse_expression();
 	Result<Ast> parse_infix_expression();
 	Result<Ast> parse_atomic_expression();

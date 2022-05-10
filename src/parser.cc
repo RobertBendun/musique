@@ -1,6 +1,9 @@
 #include <musique.hh>
 #include <iostream>
 
+static Ast wrap_if_several(std::vector<Ast> &&ast, Ast(*wrapper)(std::vector<Ast>));
+static Result<std::vector<Ast>> parse_one_or_more(Parser &p, Result<Ast> (Parser::*parser)(), std::optional<Token::Type> separator = std::nullopt);
+
 Result<Ast> Parser::parse(std::string_view source, std::string_view filename)
 {
 	Lexer lexer{source};
@@ -15,13 +18,19 @@ Result<Ast> Parser::parse(std::string_view source, std::string_view filename)
 		return std::move(maybe_token).error();
 	}
 
-	auto const result = parser.parse_expression();
+	auto const result = parser.parse_sequence();
 
 	if (parser.token_id < parser.tokens.size()) {
 		errors::all_tokens_were_not_parsed(std::span(parser.tokens).subspan(parser.token_id));
 	}
 
 	return result;
+}
+
+Result<Ast> Parser::parse_sequence()
+{
+	auto seq = Try(parse_one_or_more(*this, &Parser::parse_expression, Token::Type::Expression_Separator));
+	return wrap_if_several(std::move(seq), Ast::sequence);
 }
 
 Result<Ast> Parser::parse_expression()
@@ -31,19 +40,8 @@ Result<Ast> Parser::parse_expression()
 
 Result<Ast> Parser::parse_infix_expression()
 {
-	std::vector<Ast> atomics;
-	Result<Ast> expr;
-	while ((expr = parse_atomic_expression()).has_value()) {
-		atomics.push_back(std::move(expr).value());
-	}
-
-	if (atomics.empty()) {
-		return expr;
-	}
-
-	auto lhs = atomics.size() == 1
-		? std::move(atomics[0])
-		: Ast::call(std::move(atomics));
+	auto atomics = Try(parse_one_or_more(*this, &Parser::parse_atomic_expression));
+	auto lhs = wrap_if_several(std::move(atomics), Ast::call);
 
 	if (expect(Token::Type::Operator)) {
 		auto op = consume();
@@ -75,6 +73,27 @@ Result<Ast> Parser::parse_atomic_expression()
 			return tl::unexpected(errors::unexpected_token(token));
 		});
 	}
+}
+
+Result<std::vector<Ast>> parse_one_or_more(Parser &p, Result<Ast> (Parser::*parser)(), std::optional<Token::Type> separator)
+{
+	std::vector<Ast> trees;
+	Result<Ast> expr;
+	while ((expr = (p.*parser)()).has_value()) {
+		trees.push_back(std::move(expr).value());
+		if (separator) {
+			if (auto s = p.ensure(*separator); !s.has_value()) {
+				break;
+			}
+			do p.consume(); while (p.expect(*separator));
+		}
+	}
+
+	if (trees.empty()) {
+		return expr.error();
+	}
+
+	return trees;
 }
 
 Result<Token> Parser::peek() const
@@ -134,6 +153,21 @@ Ast Ast::call(std::vector<Ast> call)
 	return ast;
 }
 
+Ast Ast::sequence(std::vector<Ast> expressions)
+{
+	Ast ast;
+	ast.type = Type::Sequence;
+	ast.arguments = std::move(expressions);
+	return ast;
+}
+
+Ast wrap_if_several(std::vector<Ast> &&ast, Ast(*wrapper)(std::vector<Ast>))
+{
+	if (ast.size() == 1)
+		return std::move(ast)[0];
+	return wrapper(std::move(ast));
+}
+
 bool operator==(Ast const& lhs, Ast const& rhs)
 {
 	if (lhs.type != rhs.type) {
@@ -151,6 +185,7 @@ bool operator==(Ast const& lhs, Ast const& rhs)
 			&& std::equal(lhs.arguments.begin(), lhs.arguments.end(), rhs.arguments.begin());
 
 	case Ast::Type::Call:
+	case Ast::Type::Sequence:
 		return lhs.arguments.size() == rhs.arguments.size()
 			&& std::equal(lhs.arguments.begin(), lhs.arguments.end(), rhs.arguments.begin());
 	}

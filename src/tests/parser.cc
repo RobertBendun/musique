@@ -109,4 +109,22 @@ suite parser_test = [] {
 			)
 		}));
 	};
+
+	"Sequence"_test = [] {
+		expect_ast("42; 101", Ast::sequence({
+			Ast::literal({ Token::Type::Numeric, "42", {} }),
+			Ast::literal({ Token::Type::Numeric, "101", {} })
+		}));
+
+		expect_ast("say hello; say world", Ast::sequence({
+			Ast::call({
+				Ast::literal({ Token::Type::Symbol, "say", {} }),
+				Ast::literal({ Token::Type::Symbol, "hello", {} })
+			}),
+			Ast::call({
+				Ast::literal({ Token::Type::Symbol, "say", {} }),
+				Ast::literal({ Token::Type::Symbol, "world", {} })
+			})
+		}));
+	};
 };
