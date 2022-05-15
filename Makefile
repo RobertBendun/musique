@@ -7,6 +7,7 @@ Obj=bin/errors.o        \
 		bin/location.o      \
 		bin/parser.o        \
 		bin/unicode.o       \
+		bin/number.o        \
 		bin/unicode_tables.o
 
 all: bin/musique bin/unit-tests

@@ -340,6 +340,32 @@ struct Parser
 	Result<void> ensure(Token::Type type) const;
 };
 
+// Number type supporting integer and fractional constants
+// Invariant: gcd(num, den) == 1, after any operation
+struct Number
+{
+	i64 num = 0, den = 1;
+
+	auto as_int()      const -> i64;    // Returns self as int
+	auto simplify()    const -> Number; // Returns self, but with gcd(num, den) == 1
+	void simplify_inplace();            // Update self, to have gcd(num, den) == 1
+
+	bool operator==(Number const&) const;
+	bool operator!=(Number const&) const;
+	std::strong_ordering operator<=>(Number const&) const;
+
+	Number  operator+(Number const& rhs) const;
+	Number& operator+=(Number const& rhs);
+	Number  operator-(Number const& rhs) const;
+	Number& operator-=(Number const& rhs);
+	Number  operator*(Number const& rhs) const;
+	Number& operator*=(Number const& rhs);
+	Number  operator/(Number const& rhs) const;
+	Number& operator/=(Number const& rhs);
+};
+
+std::ostream& operator<<(std::ostream& os, Number const& num);
+
 namespace errors
 {
 	Error unrecognized_character(u32 invalid_character);
