@@ -43,6 +43,7 @@ namespace errors
 
 		Unexpected_Token_Type,
 		Unexpected_Empty_Source,
+		Failed_Numeric_Parsing,
 	};
 }
 
@@ -100,6 +101,7 @@ struct Error
 	errors::Type type;
 	std::optional<Location> location = std::nullopt;
 	std::string message{};
+	std::errc error_code{};
 
 	bool operator==(errors::Type);
 	Error with(Location) &&;
@@ -344,11 +346,21 @@ struct Parser
 // Invariant: gcd(num, den) == 1, after any operation
 struct Number
 {
-	i64 num = 0, den = 1;
+	using value_type = i64;
+	value_type num = 0, den = 1;
 
-	auto as_int()      const -> i64;    // Returns self as int
-	auto simplify()    const -> Number; // Returns self, but with gcd(num, den) == 1
-	void simplify_inplace();            // Update self, to have gcd(num, den) == 1
+	constexpr Number()              = default;
+	constexpr Number(Number const&) = default;
+	constexpr Number(Number &&)     = default;
+	constexpr Number& operator=(Number const&) = default;
+	constexpr Number& operator=(Number &&)     = default;
+
+	explicit Number(value_type v);
+	Number(value_type num, value_type den);
+
+	auto as_int()      const -> value_type; // Returns self as int
+	auto simplify()    const -> Number;     // Returns self, but with gcd(num, den) == 1
+	void simplify_inplace();                // Update self, to have gcd(num, den) == 1
 
 	bool operator==(Number const&) const;
 	bool operator!=(Number const&) const;
@@ -362,6 +374,8 @@ struct Number
 	Number& operator*=(Number const& rhs);
 	Number  operator/(Number const& rhs) const;
 	Number& operator/=(Number const& rhs);
+
+	static Result<Number> from(Token token);
 };
 
 std::ostream& operator<<(std::ostream& os, Number const& num);
@@ -374,6 +388,8 @@ namespace errors
 	Error unexpected_token(Token::Type expected, Token const& unexpected);
 	Error unexpected_token(Token const& unexpected);
 	Error unexpected_end_of_source(Location location);
+
+	Error failed_numeric_parsing(Location location, std::errc errc, std::string_view source);
 
 	[[noreturn]]
 	void all_tokens_were_not_parsed(std::span<Token>);

@@ -1,6 +1,17 @@
 #include <musique.hh>
 #include <cmath>
 #include <numeric>
+#include <charconv>
+
+Number::Number(value_type v)
+	: num(v), den(1)
+{
+}
+
+Number::Number(value_type num, value_type den)
+	: num(num), den(den)
+{
+}
 
 auto Number::as_int() const -> i64
 {
@@ -113,4 +124,63 @@ std::ostream& operator<<(std::ostream& os, Number const& n)
 	return n.den == 1
 		? os << n.num
 		: os << n.num << '/' << n.den;
+}
+
+static constexpr usize Number_Of_Powers = std::numeric_limits<Number::value_type>::digits10 + 1;
+
+/// Computes compile time array with all possible powers of `multiplier` for given `Number::value_type` value range.
+static consteval auto compute_powers(Number::value_type multiplier) -> std::array<Number::value_type, Number_Of_Powers>
+{
+	using V = Number::value_type;
+
+	std::array<V, Number_Of_Powers> powers;
+	powers.front() = 1;
+	std::transform(
+		powers.begin(), std::prev(powers.end()),
+		std::next(powers.begin()),
+		[multiplier](V x) { return x * multiplier; });
+	return powers;
+}
+
+/// Returns `10^n`
+static Number::value_type pow10(usize n)
+{
+	static constexpr auto Powers = compute_powers(10);
+	assert(n < Powers.size(), "Trying to compute power of 10 grater then current type can hold");
+	return Powers[n];
+}
+
+Result<Number> Number::from(Token token)
+{
+	Number result;
+
+	bool parsed_numerator = false;
+	auto const begin = token.source.data();
+	auto const end   = token.source.data() + token.source.size();
+
+	auto [num_end, ec] = std::from_chars(begin, end, result.num);
+
+	if (ec != std::errc{}) {
+		if (ec == std::errc::invalid_argument && begin != end && *begin == '.') {
+			num_end = begin;
+			goto parse_fractional;
+		}
+		return errors::failed_numeric_parsing(std::move(token.location), ec, token.source);
+	}
+	parsed_numerator = true;
+
+	if (num_end != end && *num_end == '.') {
+parse_fractional:
+		++num_end;
+		decltype(Number::num) frac;
+		auto [frac_end, ec] = std::from_chars(num_end, end, frac);
+		if (ec != std::errc{}) {
+			if (parsed_numerator && ec == std::errc::invalid_argument && token.source != ".")
+				return result;
+			return errors::failed_numeric_parsing(std::move(token.location), ec, token.source);
+		}
+		result += Number{ frac, pow10(frac_end - num_end) };
+	}
+
+	return result.simplify();
 }

@@ -4,6 +4,18 @@
 using namespace boost::ut;
 using namespace std::string_view_literals;
 
+void test_number_from(
+		std::string_view source,
+		Number expected,
+		reflection::source_location sl = reflection::source_location::current())
+{
+	auto result = Number::from(Token { Token::Type::Numeric, source, {} });
+	expect(result.has_value(), sl) << "failed to parse number";
+	if (result.has_value()) {
+		expect(eq(*result, expected), sl);
+	}
+}
+
 suite number_test = [] {
 	"Number"_test = [] {
 		should("provide arithmetic operators") = [] {
@@ -31,5 +43,13 @@ suite number_test = [] {
 			expect(eq(Number{2, 1}.as_int(), 2))    << "for fraction 2/1";
 			expect(eq(Number{0, 1000}.as_int(), 0)) << "for fraction 0/1000";
 		};
+	};
+
+	"Number::from"_test = [] {
+		test_number_from("0",    Number(0));
+		test_number_from("100",  Number(100));
+		test_number_from("0.75", Number(3, 4));
+		test_number_from(".75",  Number(3, 4));
+		test_number_from("120.", Number(120, 1));
 	};
 };

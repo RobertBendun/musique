@@ -74,6 +74,11 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 
 	case errors::Unexpected_Empty_Source:
 		return os << "unexpected end of input\n";
+
+	case errors::Failed_Numeric_Parsing:
+		return err.error_code == std::errc::result_out_of_range
+			? os << "number " << err.message << " cannot be represented with " << (sizeof(Number::num)*8) << " bit number\n"
+			: os << "couldn't parse number " << err.message << '\n';
 	}
 
 	return os << "unrecognized error type\n";
@@ -126,6 +131,16 @@ Error errors::unexpected_end_of_source(Location location)
 	Error err;
 	err.type = errors::Unexpected_Empty_Source;
 	err.location = location;
+	return err;
+}
+
+Error errors::failed_numeric_parsing(Location location, std::errc errc, std::string_view source)
+{
+	Error err;
+	err.type = errors::Failed_Numeric_Parsing;
+	err.location = location;
+	err.error_code = errc;
+	err.message = source;
 	return err;
 }
 
