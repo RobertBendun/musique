@@ -127,4 +127,42 @@ suite parser_test = [] {
 			})
 		}));
 	};
+
+	"Block"_test = [] {
+		expect_ast("[]", Ast::block(Location{}));
+
+		expect_ast("[ i; j; k ]", Ast::block({}, Ast::sequence({
+			Ast::literal({ Token::Type::Symbol, "i", {} }),
+			Ast::literal({ Token::Type::Symbol, "j", {} }),
+			Ast::literal({ Token::Type::Symbol, "k", {} })
+		}), {}));
+
+		expect_ast("[ i j k | i + j + k ]", Ast::block({}, Ast::binary(
+			{ Token::Type::Operator, "+", {} },
+			Ast::literal({ Token::Type::Symbol, "i", {} }),
+			Ast::binary(
+				{ Token::Type::Operator, "+", {} },
+				Ast::literal({ Token::Type::Symbol, "j", {} }),
+				Ast::literal({ Token::Type::Symbol, "k", {} })
+			)
+		), {
+			Ast::literal({ Token::Type::Symbol, "i", {} }),
+			Ast::literal({ Token::Type::Symbol, "j", {} }),
+			Ast::literal({ Token::Type::Symbol, "k", {} })
+		}));
+
+		expect_ast("[ i; j; k | i + j + k ]", Ast::block({}, Ast::binary(
+			{ Token::Type::Operator, "+", {} },
+			Ast::literal({ Token::Type::Symbol, "i", {} }),
+			Ast::binary(
+				{ Token::Type::Operator, "+", {} },
+				Ast::literal({ Token::Type::Symbol, "j", {} }),
+				Ast::literal({ Token::Type::Symbol, "k", {} })
+			)
+		), {
+			Ast::literal({ Token::Type::Symbol, "i", {} }),
+			Ast::literal({ Token::Type::Symbol, "j", {} }),
+			Ast::literal({ Token::Type::Symbol, "k", {} })
+		}));
+	};
 };

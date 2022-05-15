@@ -62,7 +62,12 @@ Result<Ast> Parser::parse_atomic_expression()
 
 	case Token::Type::Open_Block:
 		{
-			consume();
+			auto opening = consume();
+			if (expect(Token::Type::Close_Block)) {
+				consume();
+				return Ast::block(std::move(opening).location);
+			}
+
 			auto start = token_id;
 			std::vector<Ast> parameters;
 
@@ -76,7 +81,7 @@ Result<Ast> Parser::parse_atomic_expression()
 			return parse_sequence().and_then([&](Ast ast) -> tl::expected<Ast, Error> {
 				Try(ensure(Token::Type::Close_Block));
 				consume();
-				return Ast::block(ast, std::move(parameters));
+				return Ast::block(opening.location, ast, std::move(parameters));
 			});
 		}
 
@@ -98,7 +103,9 @@ Result<Ast> Parser::parse_atomic_expression()
 Result<Ast> Parser::parse_identifier()
 {
 	Try(ensure(Token::Type::Symbol));
-	return Ast::literal(consume());
+	auto lit = Ast::literal(consume());
+	while (expect(Token::Type::Expression_Separator)) { consume(); }
+	return lit;
 }
 
 Result<std::vector<Ast>> parse_one_or_more(Parser &p, Result<Ast> (Parser::*parser)(), std::optional<Token::Type> separator)
@@ -157,6 +164,7 @@ Ast Ast::literal(Token token)
 {
 	Ast ast;
 	ast.type = Type::Literal;
+	ast.location = token.location;
 	ast.token = std::move(token);
 	return ast;
 }
@@ -165,6 +173,7 @@ Ast Ast::binary(Token token, Ast lhs, Ast rhs)
 {
 	Ast ast;
 	ast.type = Type::Binary;
+	ast.location = token.location;
 	ast.token = std::move(token);
 	ast.arguments.push_back(std::move(lhs));
 	ast.arguments.push_back(std::move(rhs));
@@ -173,8 +182,11 @@ Ast Ast::binary(Token token, Ast lhs, Ast rhs)
 
 Ast Ast::call(std::vector<Ast> call)
 {
+	assert(!call.empty(), "Call must have at least pice of code that is beeing called");
+
 	Ast ast;
 	ast.type = Type::Call;
+	ast.location = call.front().location;
 	ast.arguments = std::move(call);
 	return ast;
 }
@@ -183,19 +195,20 @@ Ast Ast::sequence(std::vector<Ast> expressions)
 {
 	Ast ast;
 	ast.type = Type::Sequence;
+	if (!expressions.empty()) {
+		ast.location = expressions.front().location;
+	}
 	ast.arguments = std::move(expressions);
 	return ast;
 }
 
-Ast Ast::block(Ast seq, std::vector<Ast> parameters)
+Ast Ast::block(Location location, Ast seq, std::vector<Ast> parameters)
 {
 	Ast ast;
 	ast.type = Type::Block;
-	ast.parameters = std::move(parameters);
-	if (seq.type == Type::Sequence)
-		ast.arguments = std::move(seq).arguments;
-	else
-		ast.arguments.push_back(std::move(seq));
+	ast.location = location;
+	ast.arguments = std::move(parameters);
+	ast.arguments.push_back(std::move(seq));
 	return ast;
 }
 
@@ -255,13 +268,6 @@ std::ostream& operator<<(std::ostream& os, Ast const& tree)
 		os << '}';
 	}
 
-	if (!tree.parameters.empty()) {
-		os << " with parameters { ";
-		for (auto const& arg : tree.parameters) {
-			os << arg << ' ';
-		}
-		os << '}';
-	}
 	return os;
 }
 
@@ -290,14 +296,5 @@ void dump(Ast const& tree, unsigned indent)
 		}
 		std::cout << i << '}';
 	}
-
-	if (!tree.parameters.empty()) {
-		std::cout << " with parameters {\n";
-		for (auto const& arg : tree.parameters) {
-			dump(arg, +i);
-		}
-		std::cout << i << '}';
-	}
-
 	std::cout << '\n';
 }

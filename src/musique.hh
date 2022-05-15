@@ -291,7 +291,7 @@ struct Ast
 	static Ast binary(Token, Ast lhs, Ast rhs);
 	static Ast call(std::vector<Ast> call);
 	static Ast sequence(std::vector<Ast> call);
-	static Ast block(Ast seq, std::vector<Ast> parameters = {});
+	static Ast block(Location location, Ast seq = sequence({}), std::vector<Ast> parameters = {});
 
 	enum class Type
 	{
@@ -303,9 +303,9 @@ struct Ast
 	};
 
 	Type type;
+	Location location;
 	Token token;
 	std::vector<Ast> arguments{};
-	std::vector<Ast> parameters{};
 };
 
 bool operator==(Ast const& lhs, Ast const& rhs);
