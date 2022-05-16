@@ -2,6 +2,19 @@
 
 #include <iostream>
 
+static auto numeric_binary_operator(auto binop)
+{
+	return [binop = std::move(binop)](std::vector<Value> args) {
+		auto result = std::move(args.front());
+		for (auto &v : std::span(args).subspan(1)) {
+			assert(result.type == Value::Type::Number, "LHS should be a number");
+			assert(v.type == Value::Type::Number,      "RHS should be a number");
+			result.n = binop(std::move(result.n), v.n);
+		}
+		return result;
+	};
+}
+
 Interpreter::Interpreter()
 	: Interpreter(std::cout)
 {
@@ -20,7 +33,7 @@ Interpreter::Interpreter(std::ostream& out)
 		unreachable();
 	};
 
-	functions["say"] = [&](std::vector<Value> args) -> Value {
+	functions["say"] = [&out](std::vector<Value> args) -> Value {
 		for (auto it = args.begin(); it != args.end(); ++it) {
 			out << *it;
 			if (std::next(it) != args.end())
@@ -29,6 +42,11 @@ Interpreter::Interpreter(std::ostream& out)
 		out << '\n';
 		return {};
 	};
+
+	operators["+"] = numeric_binary_operator(std::plus<>{});
+	operators["-"] = numeric_binary_operator(std::minus<>{});
+	operators["*"] = numeric_binary_operator(std::multiplies<>{});
+	operators["/"] = numeric_binary_operator(std::divides<>{});
 }
 
 Result<Value> Interpreter::eval(Ast &&ast)
@@ -41,28 +59,18 @@ Result<Value> Interpreter::eval(Ast &&ast)
 		{
 			std::vector<Value> values;
 			values.reserve(ast.arguments.size());
+
+			auto op = operators.find(std::string(ast.token.source));
+
+			if (op == operators.end()) {
+				return errors::unresolved_operator(ast.token);
+			}
+
 			for (auto& a : ast.arguments) {
 				values.push_back(Try(eval(std::move(a))));
 			}
 
-			Value result = values.front();
-			if (ast.token.source == "+") {
-				for (auto &v : std::span(values).subspan(1)) {
-					assert(result.type == Value::Type::Number, "LHS of + should be a number");
-					assert(v.type == Value::Type::Number,      "RHS of + should be a number");
-					result.n += v.n;
-				}
-				return result;
-			} else if (ast.token.source == "*") {
-				for (auto &v : std::span(values).subspan(1)) {
-					assert(result.type == Value::Type::Number, "LHS of * should be a number");
-					assert(v.type == Value::Type::Number,      "RHS of * should be a number");
-					result.n *= v.n;
-				}
-				return result;
-			}
-
-			unimplemented();
+			return op->second(std::move(values));
 		}
 		break;
 

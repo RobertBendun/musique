@@ -46,6 +46,8 @@ suite intepreter_test = [] {
 		should("evaluate arithmetic") = [] {
 			evaluates_to(Value::number(Number(10)), "5 + 3 + 2");
 			evaluates_to(Value::number(Number(25)), "5 * (3 + 2)");
+			evaluates_to(Value::number(Number(1, 2)), "1 / 2");
+			evaluates_to(Value::number(Number(-10)), "10 - 20");
 		};
 
 		should("call builtin functions") = [] {

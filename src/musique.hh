@@ -45,7 +45,8 @@ namespace errors
 		Unexpected_Empty_Source,
 		Failed_Numeric_Parsing,
 
-		Function_Not_Defined
+		Function_Not_Defined,
+		Unresolved_Operator
 	};
 }
 
@@ -416,6 +417,7 @@ struct Interpreter
 {
 	std::ostream &out;
 	std::unordered_map<std::string, Function> functions;
+	std::unordered_map<std::string, Function> operators;
 
 	Interpreter();
 	Interpreter(std::ostream& out);
@@ -437,6 +439,7 @@ namespace errors
 	Error failed_numeric_parsing(Location location, std::errc errc, std::string_view source);
 
 	Error function_not_defined(Value const& v);
+	Error unresolved_operator(Token const& op);
 
 	[[noreturn]]
 	void all_tokens_were_not_parsed(std::span<Token>);

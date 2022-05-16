@@ -71,6 +71,7 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 
 	case errors::Function_Not_Defined:
 	case errors::Unexpected_Token_Type:
+	case errors::Unresolved_Operator:
 		return os << err.message << '\n';
 
 	case errors::Unexpected_Empty_Source:
@@ -150,6 +151,15 @@ Error errors::function_not_defined(Value const& value)
 	Error err;
 	err.type = Function_Not_Defined;
 	err.message = "Function '" + value.s + "' has not been defined yet";
+	return err;
+}
+
+Error errors::unresolved_operator(Token const& op)
+{
+	Error err;
+	err.type = errors::Unresolved_Operator;
+	err.location = op.location;
+	err.message = format("Unresolved operator '", op.source, "'");
 	return err;
 }
 
