@@ -74,7 +74,7 @@ auto Lexer::next_token() -> Result<Token>
 		// is operator, then this character is part of operator sequence.
 		// Additionally we explicitly allow for `|foo|=0` here
 		if (Valid_Operator_Chars.find(peek()) == std::string_view::npos || peek() == '=')
-			return { Token::Type::Variable_Separator, finish(), token_location };
+			return { Token::Type::Parameter_Separator, finish(), token_location };
 	}
 
 	// Number literals like .75
@@ -251,16 +251,16 @@ std::ostream& operator<<(std::ostream& os, Token const& token)
 std::ostream& operator<<(std::ostream& os, Token::Type type)
 {
 	switch (type) {
-	case Token::Type::Open_Block:           return os << "OPEN BLOCK";
-	case Token::Type::Close_Block:          return os << "CLOSE BLOCK";
-	case Token::Type::Open_Paren:           return os << "OPEN PAREN";
-	case Token::Type::Close_Paren:          return os << "CLOSE PAREN";
-	case Token::Type::Variable_Separator:   return os << "VARIABLE SEPARATOR";
-	case Token::Type::Chord:                return os << "CHORD";
-	case Token::Type::Numeric:              return os << "NUMERIC";
-	case Token::Type::Symbol:               return os << "SYMBOL";
-	case Token::Type::Operator:             return os << "OPERATOR";
-	case Token::Type::Expression_Separator: return os << "EXPRESSION SEPARATOR";
+	case Token::Type::Open_Block:            return os << "OPEN BLOCK";
+	case Token::Type::Close_Block:           return os << "CLOSE BLOCK";
+	case Token::Type::Open_Paren:            return os << "OPEN PAREN";
+	case Token::Type::Close_Paren:           return os << "CLOSE PAREN";
+	case Token::Type::Parameter_Separator:   return os << "PARAMETER SEPARATOR";
+	case Token::Type::Chord:                 return os << "CHORD";
+	case Token::Type::Numeric:               return os << "NUMERIC";
+	case Token::Type::Symbol:                return os << "SYMBOL";
+	case Token::Type::Operator:              return os << "OPERATOR";
+	case Token::Type::Expression_Separator:  return os << "EXPRESSION SEPARATOR";
 	}
 	unreachable();
 }

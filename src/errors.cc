@@ -69,6 +69,7 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 	case errors::Unrecognized_Character:
 		return err.message.empty() ? os << "unrecognized character\n" : os << err.message;
 
+	case errors::Expected_Keyword:
 	case errors::Function_Not_Defined:
 	case errors::Unexpected_Token_Type:
 	case errors::Unresolved_Operator:
@@ -160,6 +161,15 @@ Error errors::unresolved_operator(Token const& op)
 	err.type = errors::Unresolved_Operator;
 	err.location = op.location;
 	err.message = format("Unresolved operator '", op.source, "'");
+	return err;
+}
+
+Error errors::expected_keyword(Token const& unexpected, std::string_view keyword)
+{
+	Error err;
+	err.type = errors::Expected_Keyword;
+	err.location = unexpected.location;
+	err.message = format("Expected keyword '", keyword, "', but found ", unexpected);
 	return err;
 }
 

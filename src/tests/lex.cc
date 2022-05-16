@@ -107,7 +107,7 @@ suite lexer_test = [] {
 		expect_token_type(Token::Type::Close_Paren,          ")");
 		expect_token_type(Token::Type::Open_Block,           "[");
 		expect_token_type(Token::Type::Open_Paren,           "(");
-		expect_token_type(Token::Type::Variable_Separator,   "|");
+		expect_token_type(Token::Type::Parameter_Separator,   "|");
 		expect_token_type(Token::Type::Expression_Separator, ";");
 	};
 

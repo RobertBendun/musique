@@ -47,7 +47,27 @@ Result<Ast> Parser::parse_sequence()
 
 Result<Ast> Parser::parse_expression()
 {
-	return parse_infix_expression();
+	auto var = parse_variable_declaration();
+	if (!var.has_value())
+		return parse_infix_expression();
+	return var;
+}
+
+Result<Ast> Parser::parse_variable_declaration()
+{
+	if (!expect(Token::Type::Symbol, "var")) {
+		return errors::expected_keyword(Try(peek()), "var");
+	}
+	auto var = consume();
+
+	auto lvalue = Try(parse_many(*this, &Parser::parse_identifier, std::nullopt, At_Least::One));
+
+	if (expect(Token::Type::Operator, "=")) {
+		consume();
+		return Ast::variable_declaration(var.location, std::move(lvalue), Try(parse_expression()));
+	}
+
+	return Ast::variable_declaration(var.location, std::move(lvalue), std::nullopt);
 }
 
 Result<Ast> Parser::parse_infix_expression()
@@ -83,7 +103,7 @@ Result<Ast> Parser::parse_atomic_expression()
 			auto start = token_id;
 			std::vector<Ast> parameters;
 
-			if (auto p = parse_many(*this, &Parser::parse_identifier, std::nullopt, At_Least::One); p && expect(Token::Type::Variable_Separator)) {
+			if (auto p = parse_many(*this, &Parser::parse_identifier_with_trailing_separators, std::nullopt, At_Least::One); p && expect(Token::Type::Parameter_Separator)) {
 				consume();
 				parameters = std::move(p).value();
 			} else {
@@ -112,7 +132,7 @@ Result<Ast> Parser::parse_atomic_expression()
 	}
 }
 
-Result<Ast> Parser::parse_identifier()
+Result<Ast> Parser::parse_identifier_with_trailing_separators()
 {
 	Try(ensure(Token::Type::Symbol));
 	auto lit = Ast::literal(consume());
@@ -120,7 +140,11 @@ Result<Ast> Parser::parse_identifier()
 	return lit;
 }
 
-
+Result<Ast> Parser::parse_identifier()
+{
+	Try(ensure(Token::Type::Symbol));
+	return Ast::literal(consume());
+}
 
 static Result<std::vector<Ast>> parse_many(
 	Parser &p,
@@ -171,6 +195,11 @@ Token Parser::consume()
 bool Parser::expect(Token::Type type) const
 {
 	return token_id < tokens.size() && tokens[token_id].type == type;
+}
+
+bool Parser::expect(Token::Type type, std::string_view lexeme) const
+{
+	return token_id < tokens.size() && tokens[token_id].type == type && tokens[token_id].source == lexeme;
 }
 
 Result<void> Parser::ensure(Token::Type type) const
@@ -234,6 +263,18 @@ Ast Ast::block(Location location, Ast seq, std::vector<Ast> parameters)
 	return ast;
 }
 
+Ast Ast::variable_declaration(Location loc, std::vector<Ast> lvalues, std::optional<Ast> rvalue)
+{
+	Ast ast;
+	ast.type = Type::Variable_Declaration;
+	ast.location = loc;
+	ast.arguments = std::move(lvalues);
+	if (rvalue) {
+		ast.arguments.push_back(*std::move(rvalue));
+	}
+	return ast;
+}
+
 Ast wrap_if_several(std::vector<Ast> &&ast, Ast(*wrapper)(std::vector<Ast>))
 {
 	if (ast.size() == 1)
@@ -260,6 +301,7 @@ bool operator==(Ast const& lhs, Ast const& rhs)
 	case Ast::Type::Block:
 	case Ast::Type::Call:
 	case Ast::Type::Sequence:
+	case Ast::Type::Variable_Declaration:
 		return lhs.arguments.size() == rhs.arguments.size()
 			&& std::equal(lhs.arguments.begin(), lhs.arguments.end(), rhs.arguments.begin());
 	}
@@ -270,11 +312,12 @@ bool operator==(Ast const& lhs, Ast const& rhs)
 std::ostream& operator<<(std::ostream& os, Ast::Type type)
 {
 	switch (type) {
-	case Ast::Type::Binary:   return os << "BINARY";
-	case Ast::Type::Block:    return os << "BLOCK";
-	case Ast::Type::Call:     return os << "CALL";
-	case Ast::Type::Literal:  return os << "LITERAL";
-	case Ast::Type::Sequence: return os << "SEQUENCE";
+	case Ast::Type::Binary:               return os << "BINARY";
+	case Ast::Type::Block:                return os << "BLOCK";
+	case Ast::Type::Call:                 return os << "CALL";
+	case Ast::Type::Literal:              return os << "LITERAL";
+	case Ast::Type::Sequence:             return os << "SEQUENCE";
+	case Ast::Type::Variable_Declaration: return os << "VAR";
 	}
 	unreachable();
 }

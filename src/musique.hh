@@ -46,7 +46,8 @@ namespace errors
 		Failed_Numeric_Parsing,
 
 		Function_Not_Defined,
-		Unresolved_Operator
+		Unresolved_Operator,
+		Expected_Keyword,
 	};
 }
 
@@ -218,7 +219,7 @@ struct Token
 		Numeric,
 
 		// "|" separaters arguments from block body, and provides variable introduction syntax
-		Variable_Separator,
+		Parameter_Separator,
 
 		// ";" separates expressions. Used to separate calls, like `foo 1 2; bar 3 4`
 		Expression_Separator,
@@ -292,19 +293,21 @@ struct Lexer
 struct Ast
 {
 	// Named constructors of AST structure
-	static Ast literal(Token);
 	static Ast binary(Token, Ast lhs, Ast rhs);
-	static Ast call(std::vector<Ast> call);
-	static Ast sequence(std::vector<Ast> call);
 	static Ast block(Location location, Ast seq = sequence({}), std::vector<Ast> parameters = {});
+	static Ast call(std::vector<Ast> call);
+	static Ast literal(Token);
+	static Ast sequence(std::vector<Ast> call);
+	static Ast variable_declaration(Location loc, std::vector<Ast> lvalues, std::optional<Ast> rvalue);
 
 	enum class Type
 	{
-		Literal,  // Compile time known constant like `c` or `1`
-		Binary,   // Binary operator application like `1` + `2`
-		Call,     // Function call application like `print 42`
-		Sequence, // Several expressions sequences like `42`, `42; 32`
-		Block,    // Block expressions like `[42; hello]`
+		Binary,               // Binary operator application like `1` + `2`
+		Block,                // Block expressions like `[42; hello]`
+		Call,                 // Function call application like `print 42`
+		Literal,              // Compile time known constant like `c` or `1`
+		Sequence,             // Several expressions sequences like `42`, `42; 32`
+		Variable_Declaration, // Declaration of a variable with optional value assigment like `var x = 10` or `var y`
 	};
 
 	Type type;
@@ -331,6 +334,9 @@ struct Parser
 	Result<Ast> parse_expression();
 	Result<Ast> parse_infix_expression();
 	Result<Ast> parse_atomic_expression();
+	Result<Ast> parse_variable_declaration();
+
+	Result<Ast> parse_identifier_with_trailing_separators();
 	Result<Ast> parse_identifier();
 
 	Result<Token> peek() const;
@@ -339,6 +345,7 @@ struct Parser
 
 	// Tests if current token has given type
 	bool expect(Token::Type type) const;
+	bool expect(Token::Type type, std::string_view lexeme) const;
 
 	// Ensures that current token has one of types given.
 	// Otherwise returns error
@@ -440,6 +447,7 @@ namespace errors
 
 	Error function_not_defined(Value const& v);
 	Error unresolved_operator(Token const& op);
+	Error expected_keyword(Token const& unexpected, std::string_view keyword);
 
 	[[noreturn]]
 	void all_tokens_were_not_parsed(std::span<Token>);

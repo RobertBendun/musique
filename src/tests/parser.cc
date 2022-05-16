@@ -169,4 +169,21 @@ suite parser_test = [] {
 			Ast::literal({ Token::Type::Symbol, "k", {} })
 		}));
 	};
+
+	"Variable declarations"_test = [] {
+		expect_ast("var x = 10", Ast::variable_declaration(
+			{},
+			{ Ast::literal({ Token::Type::Symbol, "x", {} }) },
+			Ast::literal({ Token::Type::Numeric, "10", {} })));
+
+		expect_ast("var x", Ast::variable_declaration(
+			{},
+			{ Ast::literal({ Token::Type::Symbol, "x", {} }) },
+			std::nullopt));
+
+		expect_ast("var x y", Ast::variable_declaration(
+			{},
+			{Ast::literal({ Token::Type::Symbol, "x", {} }), Ast::literal({ Token::Type::Symbol, "y", {} })},
+			std::nullopt));
+	};
 };
