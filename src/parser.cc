@@ -2,7 +2,19 @@
 #include <iostream>
 
 static Ast wrap_if_several(std::vector<Ast> &&ast, Ast(*wrapper)(std::vector<Ast>));
-static Result<std::vector<Ast>> parse_one_or_more(Parser &p, Result<Ast> (Parser::*parser)(), std::optional<Token::Type> separator = std::nullopt);
+
+enum class At_Least : bool
+{
+	Zero,
+	One
+};
+
+static Result<std::vector<Ast>> parse_many(
+	Parser &p,
+	Result<Ast> (Parser::*parser)(),
+	std::optional<Token::Type> separator,
+	At_Least at_least);
+
 
 Result<Ast> Parser::parse(std::string_view source, std::string_view filename)
 {
@@ -29,7 +41,7 @@ Result<Ast> Parser::parse(std::string_view source, std::string_view filename)
 
 Result<Ast> Parser::parse_sequence()
 {
-	auto seq = Try(parse_one_or_more(*this, &Parser::parse_expression, Token::Type::Expression_Separator));
+	auto seq = Try(parse_many(*this, &Parser::parse_expression, Token::Type::Expression_Separator, At_Least::Zero));
 	return wrap_if_several(std::move(seq), Ast::sequence);
 }
 
@@ -40,7 +52,7 @@ Result<Ast> Parser::parse_expression()
 
 Result<Ast> Parser::parse_infix_expression()
 {
-	auto atomics = Try(parse_one_or_more(*this, &Parser::parse_atomic_expression));
+	auto atomics = Try(parse_many(*this, &Parser::parse_atomic_expression, std::nullopt, At_Least::One));
 	auto lhs = wrap_if_several(std::move(atomics), Ast::call);
 
 	if (expect(Token::Type::Operator)) {
@@ -71,7 +83,7 @@ Result<Ast> Parser::parse_atomic_expression()
 			auto start = token_id;
 			std::vector<Ast> parameters;
 
-			if (auto p = parse_one_or_more(*this, &Parser::parse_identifier); p && expect(Token::Type::Variable_Separator)) {
+			if (auto p = parse_many(*this, &Parser::parse_identifier, std::nullopt, At_Least::One); p && expect(Token::Type::Variable_Separator)) {
 				consume();
 				parameters = std::move(p).value();
 			} else {
@@ -108,10 +120,20 @@ Result<Ast> Parser::parse_identifier()
 	return lit;
 }
 
-Result<std::vector<Ast>> parse_one_or_more(Parser &p, Result<Ast> (Parser::*parser)(), std::optional<Token::Type> separator)
+
+
+static Result<std::vector<Ast>> parse_many(
+	Parser &p,
+	Result<Ast> (Parser::*parser)(),
+	std::optional<Token::Type> separator,
+	At_Least at_least)
 {
 	std::vector<Ast> trees;
 	Result<Ast> expr;
+
+	if (at_least == At_Least::Zero && p.token_id >= p.tokens.size())
+		return {};
+
 	while ((expr = (p.*parser)()).has_value()) {
 		trees.push_back(std::move(expr).value());
 		if (separator) {
@@ -197,8 +219,8 @@ Ast Ast::sequence(std::vector<Ast> expressions)
 	ast.type = Type::Sequence;
 	if (!expressions.empty()) {
 		ast.location = expressions.front().location;
+		ast.arguments = std::move(expressions);
 	}
-	ast.arguments = std::move(expressions);
 	return ast;
 }
 
@@ -280,8 +302,7 @@ struct Indent
 
 std::ostream& operator<<(std::ostream& os, Indent n)
 {
-	while (n.count-- > 0)
-		os.put(' ');
+	std::fill_n(std::ostreambuf_iterator<char>(os), n.count, ' ');
 	return os;
 }
 

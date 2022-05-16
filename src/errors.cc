@@ -69,8 +69,9 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 	case errors::Unrecognized_Character:
 		return err.message.empty() ? os << "unrecognized character\n" : os << err.message;
 
+	case errors::Function_Not_Defined:
 	case errors::Unexpected_Token_Type:
-		return os << err.message;
+		return os << err.message << '\n';
 
 	case errors::Unexpected_Empty_Source:
 		return os << "unexpected end of input\n";
@@ -141,6 +142,14 @@ Error errors::failed_numeric_parsing(Location location, std::errc errc, std::str
 	err.location = location;
 	err.error_code = errc;
 	err.message = source;
+	return err;
+}
+
+Error errors::function_not_defined(Value const& value)
+{
+	Error err;
+	err.type = Function_Not_Defined;
+	err.message = "Function '" + value.s + "' has not been defined yet";
 	return err;
 }
 

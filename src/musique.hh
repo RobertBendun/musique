@@ -44,6 +44,8 @@ namespace errors
 		Unexpected_Token_Type,
 		Unexpected_Empty_Source,
 		Failed_Numeric_Parsing,
+
+		Function_Not_Defined
 	};
 }
 
@@ -380,6 +382,49 @@ struct Number
 
 std::ostream& operator<<(std::ostream& os, Number const& num);
 
+// TODO Add location
+struct Value
+{
+	static Result<Value> from(Token t);
+	static Value number(Number n);
+	static Value symbol(std::string s);
+
+	enum class Type
+	{
+		Nil,
+		Number,
+		Symbol,
+	};
+
+	Type type = Type::Nil;
+	Number n{};
+
+	// TODO Most strings should not be allocated by Value, but reference to string allocated previously
+	// Wrapper for std::string is needed that will allocate only when needed, middle ground between:
+	//   std::string      - always owning string type
+	//   std::string_view - not-owning string type
+	std::string s{};
+
+	bool operator==(Value const& other) const;
+};
+
+std::ostream& operator<<(std::ostream& os, Value const& v);
+
+using Function = std::function<Value(std::vector<Value>)>;
+
+struct Interpreter
+{
+	std::ostream &out;
+	std::unordered_map<std::string, Function> functions;
+
+	Interpreter();
+	Interpreter(std::ostream& out);
+	Interpreter(Interpreter const&) = delete;
+	Interpreter(Interpreter &&) = default;
+
+	Result<Value> eval(Ast &&ast);
+};
+
 namespace errors
 {
 	Error unrecognized_character(u32 invalid_character);
@@ -390,6 +435,8 @@ namespace errors
 	Error unexpected_end_of_source(Location location);
 
 	Error failed_numeric_parsing(Location location, std::errc errc, std::string_view source);
+
+	Error function_not_defined(Value const& v);
 
 	[[noreturn]]
 	void all_tokens_were_not_parsed(std::span<Token>);

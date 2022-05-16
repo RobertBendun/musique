@@ -1,14 +1,17 @@
 MAKEFLAGS="-j $(grep -c ^processor /proc/cpuinfo)"
-CXXFLAGS:=$(CXXFLAGS) -std=c++20 -Wall -Wextra -Werror=switch -Werror=unused-result
+CXXFLAGS:=$(CXXFLAGS) -std=c++20 -Wall -Wextra -Werror=switch -Werror=return-type -Werror=unused-result
 CPPFLAGS:=$(CPPFLAGS) -Ilib/expected/ -Ilib/ut/ -Isrc/
 
-Obj=bin/errors.o        \
-		bin/lexer.o         \
-		bin/location.o      \
-		bin/parser.o        \
-		bin/unicode.o       \
-		bin/number.o        \
-		bin/unicode_tables.o
+Obj=                     \
+		bin/errors.o         \
+		bin/interpreter.o    \
+		bin/lexer.o          \
+		bin/location.o       \
+		bin/number.o         \
+		bin/parser.o         \
+		bin/unicode.o        \
+		bin/unicode_tables.o \
+		bin/value.o
 
 all: bin/musique bin/unit-tests
 

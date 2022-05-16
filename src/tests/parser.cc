@@ -14,6 +14,10 @@ void expect_ast(
 }
 
 suite parser_test = [] {
+	"Empty file parsing"_test = [] {
+		expect_ast("", Ast::sequence({}));
+	};
+
 	"Literal parsing"_test = [] {
 		expect_ast("1", Ast::literal(Token { Token::Type::Numeric, "1", {} }));
 	};

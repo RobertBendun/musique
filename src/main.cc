@@ -7,6 +7,8 @@
 
 namespace fs = std::filesystem;
 
+static bool ast_only_mode = false;
+
 static std::string_view pop(std::span<char const*> &span)
 {
 	auto element = span.front();
@@ -23,15 +25,23 @@ void usage()
 		"  where options are:\n"
 		"    -c CODE\n"
 		"    --run CODE\n"
-		"      executes given code\n";
+		"      executes given code\n"
+		"\n"
+		"    --ast\n"
+		"      prints ast for given code\n";
 	std::exit(1);
 }
 
 static Result<void> run(std::string_view source, std::string_view filename)
 {
 	auto ast = Try(Parser::parse(source, filename));
-	std::cout << "successfully parsed: " << source << " \n";
-	dump(ast);
+
+	if (ast_only_mode) {
+		dump(ast);
+		return {};
+	}
+	Interpreter interpreter;
+	std::cout << Try(interpreter.eval(std::move(ast))) << std::endl;
 	return {};
 }
 
@@ -44,12 +54,13 @@ static Result<void> Main(std::span<char const*> args)
 		usage();
 	}
 
+	bool runned_something = false;
 	std::vector<std::string_view> files;
 
 	while (not args.empty()) {
 		std::string_view arg = pop(args);
 
-		if (!arg.starts_with('-')) {
+		if (arg == "-" || !arg.starts_with('-')) {
 			files.push_back(std::move(arg));
 			continue;
 		}
@@ -62,6 +73,12 @@ static Result<void> Main(std::span<char const*> args)
 
 			auto const source = pop(args);
 			Try(run(source, "arguments"));
+			runned_something = true;
+			continue;
+		}
+
+		if (arg == "--ast") {
+			ast_only_mode = true;
 			continue;
 		}
 
@@ -69,13 +86,18 @@ static Result<void> Main(std::span<char const*> args)
 		std::exit(1);
 	}
 
-	for (auto const& path : files) {
-		if (not fs::exists(path)) {
-			std::cerr << "musique: error: couldn't open file: " << path << std::endl;
-			std::exit(1);
-		}
+	if (!runned_something && files.empty()) {
+		usage();
+	}
 
-		{
+	for (auto const& path : files) {
+		if (path == "-") {
+			eternal_sources.emplace_back(std::istreambuf_iterator<char>(std::cin), std::istreambuf_iterator<char>());
+		} else {
+			if (not fs::exists(path)) {
+				std::cerr << "musique: error: couldn't open file: " << path << std::endl;
+				std::exit(1);
+			}
 			std::ifstream source_file{fs::path(path)};
 			eternal_sources.emplace_back(std::istreambuf_iterator<char>(source_file), std::istreambuf_iterator<char>());
 		}
