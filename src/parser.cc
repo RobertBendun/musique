@@ -110,23 +110,23 @@ Result<Ast> Parser::parse_atomic_expression()
 				token_id = start;
 			}
 
-			return parse_sequence().and_then([&](Ast ast) -> tl::expected<Ast, Error> {
+			return parse_sequence().and_then([&](Ast &&ast) -> Result<Ast> {
 				Try(ensure(Token::Type::Close_Block));
 				consume();
-				return Ast::block(opening.location, ast, std::move(parameters));
+				return Ast::block(opening.location, std::move(ast), std::move(parameters));
 			});
 		}
 
 	case Token::Type::Open_Paren:
 		consume();
-		return parse_expression().and_then([&](Ast ast) -> tl::expected<Ast, Error> {
+		return parse_expression().and_then([&](Ast ast) -> Result<Ast> {
 			Try(ensure(Token::Type::Close_Paren));
 			consume();
 			return ast;
 		});
 
 	default:
-		return peek().and_then([](auto const& token) -> tl::expected<Ast, Error> {
+		return peek().and_then([](auto const& token) -> Result<Ast> {
 			return tl::unexpected(errors::unexpected_token(token));
 		});
 	}

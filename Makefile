@@ -3,6 +3,7 @@ CXXFLAGS:=$(CXXFLAGS) -std=c++20 -Wall -Wextra -Werror=switch -Werror=return-typ
 CPPFLAGS:=$(CPPFLAGS) -Ilib/expected/ -Ilib/ut/ -Isrc/
 
 Obj=                     \
+		bin/environment.o    \
 		bin/errors.o         \
 		bin/interpreter.o    \
 		bin/lexer.o          \

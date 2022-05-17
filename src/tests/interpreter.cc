@@ -59,5 +59,20 @@ suite intepreter_test = [] {
 			produces_output("say 1; say 2; say 3", "1\n2\n3\n");
 			produces_output("say 1 2 3", "1 2 3\n");
 		};
+
+		should("allows only for calling which is callable") = [] {
+			Interpreter i;
+			{
+				auto result = Parser::parse("10 20", "test").and_then([&](Ast &&ast) { return i.eval(std::move(ast)); });
+				expect(!result.has_value()) << "Expected code to have failed";
+				expect(eq(result.error().type, errors::Not_Callable));
+			}
+			{
+				i.env().force_define("call_me", Value::number(Number(10)));
+				auto result = Parser::parse("call_me 20", "test").and_then([&](Ast &&ast) { return i.eval(std::move(ast)); });
+				expect(!result.has_value()) << "Expected code to have failed";
+				expect(eq(result.error().type, errors::Not_Callable));
+			}
+		};
 	};
 };

@@ -71,6 +71,7 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 
 	case errors::Expected_Keyword:
 	case errors::Function_Not_Defined:
+	case errors::Not_Callable:
 	case errors::Unexpected_Token_Type:
 	case errors::Unresolved_Operator:
 		return os << err.message << '\n';
@@ -170,6 +171,15 @@ Error errors::expected_keyword(Token const& unexpected, std::string_view keyword
 	err.type = errors::Expected_Keyword;
 	err.location = unexpected.location;
 	err.message = format("Expected keyword '", keyword, "', but found ", unexpected);
+	return err;
+}
+
+Error errors::not_callable(std::optional<Location> location, Value::Type value_type)
+{
+	Error err;
+	err.type = errors::Not_Callable;
+	err.location = std::move(location);
+	err.message = format("Couldn't call value of type ", type_name(value_type));
 	return err;
 }
 

@@ -48,6 +48,7 @@ namespace errors
 		Function_Not_Defined,
 		Unresolved_Operator,
 		Expected_Keyword,
+		Not_Callable
 	};
 }
 
@@ -113,6 +114,15 @@ struct Error
 
 std::ostream& operator<<(std::ostream& os, Error const& err);
 
+template<template<typename ...> typename Template, typename>
+struct is_template : std::false_type {};
+
+template<template<typename ...> typename Template, typename ...T>
+struct is_template<Template, Template<T...>> : std::true_type {};
+
+template<template<typename ...> typename Template, typename T>
+constexpr auto is_template_v = is_template<Template, T>::value;
+
 template<typename T>
 struct [[nodiscard("This value may contain critical error, so it should NOT be ignored")]] Result : tl::expected<T, Error>
 {
@@ -149,6 +159,23 @@ struct [[nodiscard("This value may contain critical error, so it should NOT be i
 			return Storage::value();
 		}
 	}
+
+	inline tl::expected<T, Error> to_expected() &&
+	{
+		return *static_cast<Storage*>(this);
+	}
+
+	template<typename Map>
+	requires is_template_v<Result, std::invoke_result_t<Map, T&&>>
+	auto and_then(Map &&map) &&
+	{
+		return std::move(*static_cast<Storage*>(this)).and_then(
+			[map = std::forward<Map>(map)](T &&value) {
+				return std::move(map)(std::move(value)).to_expected();
+			});
+	}
+
+	using Storage::and_then;
 };
 
 // NOTE This implementation requires C++ language extension: statement expressions
@@ -390,22 +417,54 @@ struct Number
 
 std::ostream& operator<<(std::ostream& os, Number const& num);
 
+struct Value;
+
+using Function = std::function<Result<Value>(std::vector<Value>)>;
+
+template<typename T, typename ...XS>
+constexpr auto is_one_of = (std::is_same_v<T, XS> || ...);
+
 // TODO Add location
 struct Value
 {
 	static Result<Value> from(Token t);
 	static Value number(Number n);
 	static Value symbol(std::string s);
+	static Value lambda(Function f);
 
 	enum class Type
 	{
 		Nil,
 		Number,
 		Symbol,
+		Lambda,
 	};
+
+	Value() = default;
+	Value(Value const&) = default;
+	Value(Value &&) = default;
+	Value& operator=(Value const&) = default;
+	Value& operator=(Value &&) = default;
+
+	template<typename Callable>
+	requires (!std::is_same_v<std::remove_cvref_t<Callable>, Value>)
+		&& std::invocable<Callable, std::vector<Value>>
+		&& is_one_of<std::invoke_result_t<Callable, std::vector<Value>>, Value, Result<Value>>
+	inline Value(Callable &&callable)
+		: type{Type::Lambda}
+	{
+		if constexpr (std::is_same_v<Result<Value>, std::invoke_result_t<Callable, std::vector<Value>>>) {
+			f = std::move(callable);
+		} else {
+			f = [fun = std::move(callable)](std::vector<Value> args) -> Result<Value> {
+				return fun(std::move(args));
+			};
+		}
+	}
 
 	Type type = Type::Nil;
 	Number n{};
+	Function f{};
 
 	// TODO Most strings should not be allocated by Value, but reference to string allocated previously
 	// Wrapper for std::string is needed that will allocate only when needed, middle ground between:
@@ -413,23 +472,55 @@ struct Value
 	//   std::string_view - not-owning string type
 	std::string s{};
 
+	Result<Value> operator()(std::vector<Value> args);
+
 	bool operator==(Value const& other) const;
 };
 
+std::string_view type_name(Value::Type t);
+
 std::ostream& operator<<(std::ostream& os, Value const& v);
 
-using Function = std::function<Value(std::vector<Value>)>;
+struct Env
+{
+	static std::vector<Env> *pool;
+	std::unordered_map<std::string, Value> variables;
+	usize parent_enviroment_id;
+
+	Env() = default;
+	Env(Env const&) = delete;
+	Env(Env &&) = default;
+	Env& operator=(Env const&) = delete;
+	Env& operator=(Env &&) = default;
+
+	static Env& global();
+
+	/// Defines new variable regardless of it's current existance
+	Env& force_define(std::string name, Value new_value);
+	Env& parent();
+	Value* find(std::string const& name);
+
+	usize operator++() const;
+	usize operator--();
+
+	static constexpr decltype(Env::parent_enviroment_id) Unused = -1;
+};
 
 struct Interpreter
 {
 	std::ostream &out;
-	std::unordered_map<std::string, Function> functions;
 	std::unordered_map<std::string, Function> operators;
+	std::vector<Env> env_pool;
+	usize current_env = 0;
 
 	Interpreter();
+	~Interpreter();
 	Interpreter(std::ostream& out);
 	Interpreter(Interpreter const&) = delete;
 	Interpreter(Interpreter &&) = default;
+
+	Env& env();
+	Env const& env() const;
 
 	Result<Value> eval(Ast &&ast);
 };
@@ -448,6 +539,8 @@ namespace errors
 	Error function_not_defined(Value const& v);
 	Error unresolved_operator(Token const& op);
 	Error expected_keyword(Token const& unexpected, std::string_view keyword);
+
+	Error not_callable(std::optional<Location> location, Value::Type value_type);
 
 	[[noreturn]]
 	void all_tokens_were_not_parsed(std::span<Token>);
