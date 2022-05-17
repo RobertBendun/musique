@@ -69,7 +69,17 @@ Result<Value> Interpreter::eval(Ast &&ast)
 {
 	switch (ast.type) {
 	case Ast::Type::Literal:
-		return Value::from(ast.token);
+		switch (ast.token.type) {
+		case Token::Type::Symbol:
+			{
+				auto const value = env().find(std::string(ast.token.source));
+				assert(value, "Missing variable error is not implemented yet");
+				return *value;
+			}
+
+		default:
+			return Value::from(ast.token);
+		}
 
 	case Ast::Type::Binary:
 		{
@@ -100,21 +110,23 @@ Result<Value> Interpreter::eval(Ast &&ast)
 
 	case Ast::Type::Call:
 		{
-			auto location = ast.arguments.front().location;
 			Value func = Try(eval(std::move(ast.arguments.front())));
-			if (func.type != Value::Type::Symbol)
-				return errors::not_callable(std::move(location), func.type);
 
-			if (auto body = env().find(func.s); body) {
-				std::vector<Value> values;
-				values.reserve(ast.arguments.size());
-				for (auto& a : std::span(ast.arguments).subspan(1)) {
-					values.push_back(Try(eval(std::move(a))));
-				}
-				return (*body)(std::move(values));
-			} else {
-				return errors::function_not_defined(func);
+			std::vector<Value> values;
+			values.reserve(ast.arguments.size());
+			for (auto& a : std::span(ast.arguments).subspan(1)) {
+				values.push_back(Try(eval(std::move(a))));
 			}
+			return std::move(func)(std::move(values));
+		}
+
+	case Ast::Type::Variable_Declaration:
+		{
+			assert(ast.arguments.size() == 2, "Only simple assigments are supported now");
+			assert(ast.arguments.front().type == Ast::Type::Literal, "Only names are supported as LHS arguments now");
+			assert(ast.arguments.front().token.type == Token::Type::Symbol, "Only names are supported as LHS arguments now");
+			env().force_define(std::string(ast.arguments.front().token.source), Try(eval(std::move(ast.arguments.back()))));
+			return Value{};
 		}
 
 	default:
