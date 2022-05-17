@@ -40,7 +40,7 @@ suite intepreter_test = [] {
 		should("evaluate literals") = [] {
 			evaluates_to(Value{}, "nil");
 			evaluates_to(Value::number(Number(10)), "10");
-			evaluates_to(Value::symbol("notexistingsymbol"), "notexistingsymbol");
+			// evaluates_to(Value::symbol("notexistingsymbol"), "notexistingsymbol");
 		};
 
 		should("evaluate arithmetic") = [] {
@@ -52,7 +52,7 @@ suite intepreter_test = [] {
 
 		should("call builtin functions") = [] {
 			evaluates_to(Value::symbol("nil"),    "typeof nil");
-			evaluates_to(Value::symbol("symbol"), "typeof foo");
+			// evaluates_to(Value::symbol("symbol"), "typeof foo");
 			evaluates_to(Value::symbol("number"), "typeof 100");
 
 			produces_output("say 5", "5\n");

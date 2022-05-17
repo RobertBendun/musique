@@ -71,11 +71,12 @@ Result<Value> Interpreter::eval(Ast &&ast)
 	case Ast::Type::Literal:
 		switch (ast.token.type) {
 		case Token::Type::Symbol:
-			{
+			if (ast.token.source != "nil") {
 				auto const value = env().find(std::string(ast.token.source));
 				assert(value, "Missing variable error is not implemented yet");
 				return *value;
 			}
+			return Value{};
 
 		default:
 			return Value::from(ast.token);
