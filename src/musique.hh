@@ -321,8 +321,9 @@ struct Ast
 {
 	// Named constructors of AST structure
 	static Ast binary(Token, Ast lhs, Ast rhs);
-	static Ast block(Location location, Ast seq = sequence({}), std::vector<Ast> parameters = {});
+	static Ast block(Location location, Ast seq = sequence({}));
 	static Ast call(std::vector<Ast> call);
+	static Ast lambda(Location location, Ast seq = sequence({}), std::vector<Ast> parameters = {});
 	static Ast literal(Token);
 	static Ast sequence(std::vector<Ast> call);
 	static Ast variable_declaration(Location loc, std::vector<Ast> lvalues, std::optional<Ast> rvalue);
@@ -331,6 +332,7 @@ struct Ast
 	{
 		Binary,               // Binary operator application like `1` + `2`
 		Block,                // Block expressions like `[42; hello]`
+		Lambda,               // Block expression beeing functions like `[i|i+1]`
 		Call,                 // Function call application like `print 42`
 		Literal,              // Compile time known constant like `c` or `1`
 		Sequence,             // Several expressions sequences like `42`, `42; 32`
@@ -418,8 +420,18 @@ struct Number
 std::ostream& operator<<(std::ostream& os, Number const& num);
 
 struct Value;
+struct Interpreter;
 
 using Function = std::function<Result<Value>(std::vector<Value>)>;
+
+struct Lambda
+{
+	Location location;
+	std::vector<std::string> parameters;
+	Ast body;
+
+	Result<Value> operator()(Interpreter &i, std::vector<Value> params);
+};
 
 template<typename T, typename ...XS>
 constexpr auto is_one_of = (std::is_same_v<T, XS> || ...);

@@ -139,9 +139,9 @@ suite parser_test = [] {
 			Ast::literal({ Token::Type::Symbol, "i", {} }),
 			Ast::literal({ Token::Type::Symbol, "j", {} }),
 			Ast::literal({ Token::Type::Symbol, "k", {} })
-		}), {}));
+		})));
 
-		expect_ast("[ i j k | i + j + k ]", Ast::block({}, Ast::binary(
+		expect_ast("[ i j k | i + j + k ]", Ast::lambda({}, Ast::binary(
 			{ Token::Type::Operator, "+", {} },
 			Ast::literal({ Token::Type::Symbol, "i", {} }),
 			Ast::binary(
@@ -155,7 +155,7 @@ suite parser_test = [] {
 			Ast::literal({ Token::Type::Symbol, "k", {} })
 		}));
 
-		expect_ast("[ i; j; k | i + j + k ]", Ast::block({}, Ast::binary(
+		expect_ast("[ i; j; k | i + j + k ]", Ast::lambda({}, Ast::binary(
 			{ Token::Type::Operator, "+", {} },
 			Ast::literal({ Token::Type::Symbol, "i", {} }),
 			Ast::binary(
@@ -168,6 +168,8 @@ suite parser_test = [] {
 			Ast::literal({ Token::Type::Symbol, "j", {} }),
 			Ast::literal({ Token::Type::Symbol, "k", {} })
 		}));
+
+		expect_ast("[|1]", Ast::lambda({}, Ast::literal({ Token::Type::Numeric, "1", {} }), {}));
 	};
 
 	"Variable declarations"_test = [] {

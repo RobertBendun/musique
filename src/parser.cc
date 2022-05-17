@@ -102,18 +102,30 @@ Result<Ast> Parser::parse_atomic_expression()
 
 			auto start = token_id;
 			std::vector<Ast> parameters;
+			bool is_lambda = false;
 
-			if (auto p = parse_many(*this, &Parser::parse_identifier_with_trailing_separators, std::nullopt, At_Least::One); p && expect(Token::Type::Parameter_Separator)) {
+			if (expect(Token::Type::Parameter_Separator)) {
 				consume();
-				parameters = std::move(p).value();
+				is_lambda = true;
 			} else {
-				token_id = start;
+				auto p = parse_many(*this, &Parser::parse_identifier_with_trailing_separators, std::nullopt, At_Least::One);
+				if (p && expect(Token::Type::Parameter_Separator)) {
+					consume();
+					parameters = std::move(p).value();
+					is_lambda = true;
+				} else {
+					token_id = start;
+				}
 			}
 
 			return parse_sequence().and_then([&](Ast &&ast) -> Result<Ast> {
 				Try(ensure(Token::Type::Close_Block));
 				consume();
-				return Ast::block(opening.location, std::move(ast), std::move(parameters));
+				if (is_lambda) {
+					return Ast::lambda(opening.location, std::move(ast), std::move(parameters));
+				} else {
+					return Ast::block(opening.location, std::move(ast));
+				}
 			});
 		}
 
@@ -253,13 +265,22 @@ Ast Ast::sequence(std::vector<Ast> expressions)
 	return ast;
 }
 
-Ast Ast::block(Location location, Ast seq, std::vector<Ast> parameters)
+Ast Ast::block(Location location, Ast seq)
 {
 	Ast ast;
 	ast.type = Type::Block;
 	ast.location = location;
-	ast.arguments = std::move(parameters);
 	ast.arguments.push_back(std::move(seq));
+	return ast;
+}
+
+Ast Ast::lambda(Location location, Ast body, std::vector<Ast> parameters)
+{
+	Ast ast;
+	ast.type = Type::Lambda;
+	ast.location = location;
+	ast.arguments = std::move(parameters);
+	ast.arguments.push_back(std::move(body));
 	return ast;
 }
 
@@ -300,6 +321,7 @@ bool operator==(Ast const& lhs, Ast const& rhs)
 
 	case Ast::Type::Block:
 	case Ast::Type::Call:
+	case Ast::Type::Lambda:
 	case Ast::Type::Sequence:
 	case Ast::Type::Variable_Declaration:
 		return lhs.arguments.size() == rhs.arguments.size()
@@ -315,6 +337,7 @@ std::ostream& operator<<(std::ostream& os, Ast::Type type)
 	case Ast::Type::Binary:               return os << "BINARY";
 	case Ast::Type::Block:                return os << "BLOCK";
 	case Ast::Type::Call:                 return os << "CALL";
+	case Ast::Type::Lambda:               return os << "LAMBDA";
 	case Ast::Type::Literal:              return os << "LITERAL";
 	case Ast::Type::Sequence:             return os << "SEQUENCE";
 	case Ast::Type::Variable_Declaration: return os << "VAR";
