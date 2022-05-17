@@ -19,6 +19,9 @@
 #undef assert
 #endif
 
+using namespace std::string_literals;
+using namespace std::string_view_literals;
+
 using u8  = std::uint8_t;
 using u16 = std::uint16_t;
 using u32 = std::uint32_t;
@@ -422,7 +425,7 @@ std::ostream& operator<<(std::ostream& os, Number const& num);
 struct Value;
 struct Interpreter;
 
-using Function = std::function<Result<Value>(std::vector<Value>)>;
+using Function = std::function<Result<Value>(Interpreter &i, std::vector<Value>)>;
 
 struct Lambda
 {
@@ -440,6 +443,7 @@ constexpr auto is_one_of = (std::is_same_v<T, XS> || ...);
 struct Value
 {
 	static Result<Value> from(Token t);
+	static Value boolean(bool b);
 	static Value number(Number n);
 	static Value symbol(std::string s);
 	static Value lambda(Function f);
@@ -447,6 +451,7 @@ struct Value
 	enum class Type
 	{
 		Nil,
+		Bool,
 		Number,
 		Symbol,
 		Lambda,
@@ -460,21 +465,22 @@ struct Value
 
 	template<typename Callable>
 	requires (!std::is_same_v<std::remove_cvref_t<Callable>, Value>)
-		&& std::invocable<Callable, std::vector<Value>>
-		&& is_one_of<std::invoke_result_t<Callable, std::vector<Value>>, Value, Result<Value>>
+		&& std::invocable<Callable, Interpreter&, std::vector<Value>>
+		&& is_one_of<std::invoke_result_t<Callable, Interpreter&, std::vector<Value>>, Value, Result<Value>>
 	inline Value(Callable &&callable)
 		: type{Type::Lambda}
 	{
-		if constexpr (std::is_same_v<Result<Value>, std::invoke_result_t<Callable, std::vector<Value>>>) {
+		if constexpr (std::is_same_v<Result<Value>, std::invoke_result_t<Callable, Interpreter&, std::vector<Value>>>) {
 			f = std::move(callable);
 		} else {
-			f = [fun = std::move(callable)](std::vector<Value> args) -> Result<Value> {
-				return fun(std::move(args));
+			f = [fun = std::move(callable)](Interpreter &i, std::vector<Value> args) -> Result<Value> {
+				return fun(i, std::move(args));
 			};
 		}
 	}
 
 	Type type = Type::Nil;
+	bool b{};
 	Number n{};
 	Function f{};
 
@@ -484,7 +490,9 @@ struct Value
 	//   std::string_view - not-owning string type
 	std::string s{};
 
-	Result<Value> operator()(std::vector<Value> args);
+	bool truthy() const;
+	bool falsy() const;
+	Result<Value> operator()(Interpreter &i, std::vector<Value> args);
 
 	bool operator==(Value const& other) const;
 };

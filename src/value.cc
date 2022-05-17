@@ -7,6 +7,10 @@ Result<Value> Value::from(Token t)
 		return Number::from(std::move(t)).map(Value::number);
 
 	case Token::Type::Symbol:
+		if (t.source == "true")
+			return Value::boolean(true);
+		if (t.source == "false")
+			return Value::boolean(false);
 		if (t.source == "nil")
 			return Value{};
 		return Value::symbol(std::string(t.source));
@@ -14,6 +18,14 @@ Result<Value> Value::from(Token t)
 	default:
 		unimplemented();
 	}
+}
+
+Value Value::boolean(bool b)
+{
+	Value v;
+	v.type = Value::Type::Bool;
+	v.b = b;
+	return v;
 }
 
 Value Value::number(Number n)
@@ -40,13 +52,30 @@ Value Value::lambda(Function f)
 	return v;
 }
 
-Result<Value> Value::operator()(std::vector<Value> args)
+Result<Value> Value::operator()(Interpreter &i, std::vector<Value> args)
 {
 	if (type == Type::Lambda) {
-		return f(std::move(args));
+		return f(i, std::move(args));
 	}
 	// TODO Fill location
 	return errors::not_callable(std::nullopt, type);
+}
+
+bool Value::truthy() const
+{
+	switch (type) {
+	case Type::Bool:   return b;
+	case Type::Nil:    return false;
+	case Type::Number: return n != Number(0);
+	case Type::Lambda:
+	case Type::Symbol: return true;
+	}
+	unreachable();
+}
+
+bool Value::falsy() const
+{
+	return not truthy();
 }
 
 bool Value::operator==(Value const& other) const
@@ -59,6 +88,7 @@ bool Value::operator==(Value const& other) const
 	case Type::Number: return n == other.n;
 	case Type::Symbol: return s == other.s;
 	case Type::Lambda: return false; // TODO Reconsider if functions are comparable
+	case Type::Bool:   return b == other.b;
 	}
 
 	unreachable();
@@ -76,6 +106,9 @@ std::ostream& operator<<(std::ostream& os, Value const& v)
 	case Value::Type::Symbol:
 		return os << v.s;
 
+	case Value::Type::Bool:
+		return os << (v.b ? "true" : "false");
+
 	case Value::Type::Lambda:
 		return os << "<lambda>";
 	}
@@ -85,10 +118,27 @@ std::ostream& operator<<(std::ostream& os, Value const& v)
 std::string_view type_name(Value::Type t)
 {
 	switch (t) {
+	case Value::Type::Bool:   return "bool";
 	case Value::Type::Lambda: return "lambda";
 	case Value::Type::Nil:    return "nil";
 	case Value::Type::Number: return "number";
 	case Value::Type::Symbol: return "symbol";
 	}
 	unreachable();
+}
+
+Result<Value> Lambda::operator()(Interpreter &i, std::vector<Value> arguments)
+{
+	i.current_env = ++i.env();
+	assert(parameters.size() == arguments.size(), "wrong number of arguments");
+
+	auto &env = i.env();
+	for (usize j = 0; j < parameters.size(); ++j) {
+		env.force_define(parameters[j], std::move(arguments[j]));
+	}
+
+	auto result = i.eval((Ast)body);
+
+	i.current_env = --i.env();
+	return result;
 }

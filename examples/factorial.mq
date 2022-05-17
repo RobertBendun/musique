@@ -1,0 +1,12 @@
+var for = [ start stop iteration |
+	if (start > stop)
+	[| nil ]
+	[| iteration start; for (start + 1) stop iteration ]
+];
+
+var factorial = [n | if (n <= 1)
+	[| 1]
+	[| n * (factorial (n-1)) ]
+];
+
+for 1 10 [i | say (factorial i)];

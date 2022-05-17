@@ -1,5 +1,7 @@
 #include <musique.hh>
 
+#include <iostream>
+
 std::vector<Env> *Env::pool = nullptr;
 
 Env& Env::force_define(std::string name, Value new_value)
@@ -25,6 +27,7 @@ Value* Env::find(std::string const& name)
 
 usize Env::operator++() const
 {
+	std::cerr << "ENTER SCOPE" << std::endl;
 	auto const parent_id = this - pool->data();
 	auto const free = std::find_if(pool->begin(), pool->end(), [](Env const& env) { return env.parent_enviroment_id == Env::Unused; });
 	Env* next = free == pool->end()
@@ -37,6 +40,7 @@ usize Env::operator++() const
 
 usize Env::operator--()
 {
+	std::cerr << "LEAVE SCOPE" << std::endl;
 	if (this == pool->data())
 		return 0;
 	variables.clear();
