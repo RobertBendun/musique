@@ -4,7 +4,7 @@ Result<Value> Value::from(Token t)
 {
 	switch (t.type) {
 	case Token::Type::Numeric:
-		return Number::from(std::move(t)).map(Value::number);
+		return Value::number(Try(Number::from(std::move(t))));
 
 	case Token::Type::Symbol:
 		if (t.source == "true")
@@ -137,7 +137,8 @@ Result<Value> Lambda::operator()(Interpreter &i, std::vector<Value> arguments)
 		env.force_define(parameters[j], std::move(arguments[j]));
 	}
 
-	auto result = i.eval((Ast)body);
+	Ast body_copy = body;
+	auto result = i.eval(std::move(body_copy));
 
 	i.current_env = --i.env();
 	return result;

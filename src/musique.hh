@@ -159,7 +159,11 @@ struct [[nodiscard("This value may contain critical error, so it should NOT be i
 	inline auto value() &&
 	{
 		if constexpr (not std::is_void_v<T>) {
-			return Storage::value();
+			// NOTE This line in ideal world should be `return Storage::value()`
+			// but C++ does not infer that this is rvalue context.
+			// `std::add_rvalue_reference_t<Storage>::value()`
+			// also does not work, so this is probably the best way to express this:
+			return std::move(*static_cast<Storage*>(this)).value();
 		}
 	}
 
@@ -464,7 +468,7 @@ struct Value
 	Value& operator=(Value &&) = default;
 
 	template<typename Callable>
-	requires (!std::is_same_v<std::remove_cvref_t<Callable>, Value>)
+	requires (!std::is_same_v<std::decay_t<Callable>, Value>)
 		&& std::invocable<Callable, Interpreter&, std::vector<Value>>
 		&& is_one_of<std::invoke_result_t<Callable, Interpreter&, std::vector<Value>>, Value, Result<Value>>
 	inline Value(Callable &&callable)
@@ -535,7 +539,7 @@ struct Interpreter
 
 	Interpreter();
 	~Interpreter();
-	Interpreter(std::ostream& out);
+	explicit Interpreter(std::ostream& out);
 	Interpreter(Interpreter const&) = delete;
 	Interpreter(Interpreter &&) = default;
 
