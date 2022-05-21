@@ -19,7 +19,7 @@ Obj=                 \
 Release_Obj=$(addprefix bin/,$(Obj))
 Debug_Obj=$(addprefix bin/debug/,$(Obj))
 
-all: bin/musique bin/unit-tests
+all: bin/musique
 
 debug: bin/debug/musique
 
@@ -60,8 +60,8 @@ doc: Doxyfile src/*.cc src/*.hh
 doc-open: doc
 	xdg-open ./doc/build/html/index.html
 
-bin/unit-tests: src/tests/*.cc $(Release_Obj)
-	g++ $(CXXFLAGS) $(CPPFLAGS) -o $@ $^
+bin/unit-tests: src/tests/*.cc $(Debug_Obj)
+	g++ $(CXXFLAGS) $(CPPFLAGS) $(DEBUG_FLAGS) -o $@ $^
 
 clean:
 	rm -rf bin coverage

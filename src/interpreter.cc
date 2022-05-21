@@ -27,17 +27,16 @@ Interpreter::Interpreter()
 
 Interpreter::~Interpreter()
 {
-	Env::pool = nullptr;
+	Env::global.reset();
 }
 
 Interpreter::Interpreter(std::ostream& out)
 	: out(out)
 {
-	assert(Env::pool == nullptr, "Only one instance of interpreter can be at one time");
-	Env::pool = &env_pool;
+	assert(!bool(Env::global), "Only one instance of interpreter can be at one time");
 
-	auto &global = env_pool.emplace_back();
-	global.parent_enviroment_id = 0;
+	env = Env::global = Env::make();
+	auto &global = *Env::global;
 
 	global.force_define("typeof", [](Interpreter&, std::vector<Value> args) -> Value {
 		assert(args.size() == 1, "typeof expects only one argument");
@@ -78,16 +77,6 @@ Interpreter::Interpreter(std::ostream& out)
 	operators["!="] = binary_operator(std::not_equal_to<>{});
 }
 
-Env& Interpreter::env()
-{
-	return env_pool[current_env];
-}
-
-Env const& Interpreter::env() const
-{
-	return env_pool[current_env];
-}
-
 Result<Value> Interpreter::eval(Ast &&ast)
 {
 	switch (ast.type) {
@@ -95,7 +84,7 @@ Result<Value> Interpreter::eval(Ast &&ast)
 		switch (ast.token.type) {
 		case Token::Type::Symbol:
 			if (ast.token.source != "nil") {
-				auto const value = env().find(std::string(ast.token.source));
+				auto const value = env->find(std::string(ast.token.source));
 				assert(value, "Missing variable error is not implemented yet: variable: "s + std::string(ast.token.source));
 				return *value;
 			}
@@ -149,7 +138,7 @@ Result<Value> Interpreter::eval(Ast &&ast)
 			assert(ast.arguments.size() == 2, "Only simple assigments are supported now");
 			assert(ast.arguments.front().type == Ast::Type::Literal, "Only names are supported as LHS arguments now");
 			assert(ast.arguments.front().token.type == Token::Type::Symbol, "Only names are supported as LHS arguments now");
-			env().force_define(std::string(ast.arguments.front().token.source), Try(eval(std::move(ast.arguments.back()))));
+			env->force_define(std::string(ast.arguments.front().token.source), Try(eval(std::move(ast.arguments.back()))));
 			return Value{};
 		}
 
@@ -169,4 +158,14 @@ Result<Value> Interpreter::eval(Ast &&ast)
 	default:
 		unimplemented();
 	}
+}
+void Interpreter::enter_scope()
+{
+	env = env->enter();
+}
+
+void Interpreter::leave_scope()
+{
+	assert(env != Env::global, "Cannot leave global scope");
+	env = env->leave();
 }

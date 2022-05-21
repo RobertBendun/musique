@@ -129,17 +129,17 @@ std::string_view type_name(Value::Type t)
 
 Result<Value> Lambda::operator()(Interpreter &i, std::vector<Value> arguments)
 {
-	i.current_env = ++i.env();
+	// TODO Add some kind of scope guard
+	i.enter_scope();
 	assert(parameters.size() == arguments.size(), "wrong number of arguments");
 
-	auto &env = i.env();
 	for (usize j = 0; j < parameters.size(); ++j) {
-		env.force_define(parameters[j], std::move(arguments[j]));
+		i.env->force_define(parameters[j], std::move(arguments[j]));
 	}
 
 	Ast body_copy = body;
 	auto result = i.eval(std::move(body_copy));
 
-	i.current_env = --i.env();
+	i.leave_scope();
 	return result;
 }

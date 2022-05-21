@@ -2,7 +2,14 @@
 
 #include <iostream>
 
-std::vector<Env> *Env::pool = nullptr;
+std::shared_ptr<Env> Env::global = nullptr;
+
+std::shared_ptr<Env> Env::make()
+{
+	auto new_env = new Env();
+	assert(new_env, "Cannot construct new env");
+	return std::shared_ptr<Env>(new_env);
+}
 
 Env& Env::force_define(std::string name, Value new_value)
 {
@@ -10,14 +17,9 @@ Env& Env::force_define(std::string name, Value new_value)
 	return *this;
 }
 
-Env& Env::parent()
-{
-	return (*pool)[parent_enviroment_id];
-}
-
 Value* Env::find(std::string const& name)
 {
-	for (Env *prev = nullptr, *env = this; env != prev; prev = std::exchange(env, &env->parent())) {
+	for (Env *env = this; env; env = env->parent.get()) {
 		if (auto it = env->variables.find(name); it != env->variables.end()) {
 			return &it->second;
 		}
@@ -25,27 +27,14 @@ Value* Env::find(std::string const& name)
 	return nullptr;
 }
 
-usize Env::operator++() const
+std::shared_ptr<Env> Env::enter()
 {
-	auto const parent_id = this - pool->data();
-	auto const free = std::find_if(pool->begin(), pool->end(), [](Env const& env) { return env.parent_enviroment_id == Env::Unused; });
-	Env* next = free == pool->end()
-		? &pool->emplace_back()
-		: &*free;
-
-	next->parent_enviroment_id = parent_id;
-	return next - pool->data();
+	auto next = make();
+	next->parent = shared_from_this();
+	return next;
 }
 
-usize Env::operator--()
+std::shared_ptr<Env> Env::leave()
 {
-	if (this == &Env::global())
-		return 0;
-	variables.clear();
-	return std::exchange(parent_enviroment_id, Unused);
-}
-
-Env& Env::global()
-{
-	return (*pool)[0];
+	return parent;
 }

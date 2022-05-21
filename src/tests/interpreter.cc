@@ -68,7 +68,7 @@ suite intepreter_test = [] {
 				expect(eq(result.error().type, errors::Not_Callable));
 			}
 			{
-				i.env().force_define("call_me", Value::number(Number(10)));
+				i.env->force_define("call_me", Value::number(Number(10)));
 				auto result = Parser::parse("call_me 20", "test").and_then([&](Ast &&ast) { return i.eval(std::move(ast)); });
 				expect(!result.has_value()) << "Expected code to have failed";
 				expect(eq(result.error().type, errors::Not_Callable));

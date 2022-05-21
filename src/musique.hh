@@ -3,6 +3,7 @@
 #include <concepts>
 #include <cstdint>
 #include <cstring>
+#include <memory>
 #include <optional>
 #include <ostream>
 #include <span>
@@ -505,37 +506,38 @@ std::string_view type_name(Value::Type t);
 
 std::ostream& operator<<(std::ostream& os, Value const& v);
 
-struct Env
+struct Env : std::enable_shared_from_this<Env>
 {
-	static std::vector<Env> *pool;
-	std::unordered_map<std::string, Value> variables;
-	usize parent_enviroment_id;
+	// Constructor of Env class
+	static std::shared_ptr<Env> make();
 
-	Env() = default;
+	static std::shared_ptr<Env> global;
+	std::unordered_map<std::string, Value> variables;
+	std::shared_ptr<Env> parent;
+
 	Env(Env const&) = delete;
 	Env(Env &&) = default;
 	Env& operator=(Env const&) = delete;
 	Env& operator=(Env &&) = default;
 
-	static Env& global();
-
 	/// Defines new variable regardless of it's current existance
 	Env& force_define(std::string name, Value new_value);
-	Env& parent();
 	Value* find(std::string const& name);
 
-	usize operator++() const;
-	usize operator--();
+	// Scope menagment
+	std::shared_ptr<Env> enter();
+	std::shared_ptr<Env> leave();
 
-	static constexpr decltype(Env::parent_enviroment_id) Unused = -1;
+private:
+	// Ensure that all values of this class are behind shared_ptr
+	Env() = default;
 };
 
 struct Interpreter
 {
 	std::ostream &out;
 	std::unordered_map<std::string, Function> operators;
-	std::vector<Env> env_pool;
-	usize current_env = 0;
+	std::shared_ptr<Env> env;
 
 	Interpreter();
 	~Interpreter();
@@ -543,10 +545,11 @@ struct Interpreter
 	Interpreter(Interpreter const&) = delete;
 	Interpreter(Interpreter &&) = default;
 
-	Env& env();
-	Env const& env() const;
-
 	Result<Value> eval(Ast &&ast);
+
+	// Scope managment
+	void enter_scope();
+	void leave_scope();
 };
 
 namespace errors
