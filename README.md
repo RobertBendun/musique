@@ -7,7 +7,8 @@ Interpreter języka Musique. Możliwy do wykorzystywania jako:
 
 ## Dostępne komendy
 
-- `make` - Buduje interpreter `bin/musique`
+- `make` - Buduje interpreter `bin/musique` (tryb release)
+- `make debug` - Buduje interpreter `bin/debug/musique` (tryb debug)
 - `make clean` - Usuwa reprodukowalne elementy projektu (automatycznie stworzone pliki binarne czy raporty)
 
 ### Dokumentacja

@@ -1,26 +1,39 @@
 MAKEFLAGS="-j $(grep -c ^processor /proc/cpuinfo)"
 CXXFLAGS:=$(CXXFLAGS) -std=c++20 -Wall -Wextra -Werror=switch -Werror=return-type -Werror=unused-result
 CPPFLAGS:=$(CPPFLAGS) -Ilib/expected/ -Ilib/ut/ -Isrc/
+RELEASE_FLAGS=-O3
+DEBUG_FLAGS=-O0 -ggdb
 
-Obj=                     \
-		bin/environment.o    \
-		bin/errors.o         \
-		bin/interpreter.o    \
-		bin/lexer.o          \
-		bin/location.o       \
-		bin/number.o         \
-		bin/parser.o         \
-		bin/unicode.o        \
-		bin/unicode_tables.o \
-		bin/value.o
+Obj=                 \
+		environment.o    \
+		errors.o         \
+		interpreter.o    \
+		lexer.o          \
+		location.o       \
+		number.o         \
+		parser.o         \
+		unicode.o        \
+		unicode_tables.o \
+		value.o
+
+Release_Obj=$(addprefix bin/,$(Obj))
+Debug_Obj=$(addprefix bin/debug/,$(Obj))
 
 all: bin/musique bin/unit-tests
 
-bin/%.o: src/%.cc src/*.hh
-	g++ $(CXXFLAGS) $(CPPFLAGS) -o $@ $< -c
+debug: bin/debug/musique
 
-bin/musique: $(Obj) bin/main.o src/*.hh
-	g++ $(CXXFLAGS) $(CPPFLAGS) -o $@ $(Obj) bin/main.o
+bin/%.o: src/%.cc src/*.hh
+	g++ $(CXXFLAGS) $(RELEASE_FLAGS) $(CPPFLAGS) -o $@ $< -c
+
+bin/musique: $(Release_Obj) bin/main.o src/*.hh
+	g++ $(CXXFLAGS) $(RELEASE_FLAGS) $(CPPFLAGS) -o $@ $(Release_Obj) bin/main.o
+
+bin/debug/musique: $(Debug_Obj) bin/debug/main.o src/*.hh
+	g++ $(CXXFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) -o $@ $(Debug_Obj) bin/debug/main.o
+
+bin/debug/%.o: src/%.cc src/*.hh
+	g++ $(CXXFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) -o $@ $< -c
 
 .PHONY: unit-tests
 unit-tests: bin/unit-tests
@@ -47,7 +60,7 @@ doc: Doxyfile src/*.cc src/*.hh
 doc-open: doc
 	xdg-open ./doc/build/html/index.html
 
-bin/unit-tests: src/tests/*.cc $(Obj)
+bin/unit-tests: src/tests/*.cc $(Release_Obj)
 	g++ $(CXXFLAGS) $(CPPFLAGS) -o $@ $^
 
 clean:
@@ -55,4 +68,4 @@ clean:
 
 .PHONY: clean
 
-$(shell mkdir -p bin)
+$(shell mkdir -p bin/debug)
