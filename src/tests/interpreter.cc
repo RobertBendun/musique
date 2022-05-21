@@ -74,5 +74,11 @@ suite intepreter_test = [] {
 				expect(eq(result.error().type, errors::Not_Callable));
 			}
 		};
+
+		// Added to explicitly test against bug that was in old implementation of enviroments.
+		// Previously this test would segfault
+		should("allow assigning result of function calls to a variable") = [] {
+			evaluates_to(Value::number(Number(42)), "var x = [i|i] 42; x");
+		};
 	};
 };
