@@ -129,8 +129,9 @@ std::string_view type_name(Value::Type t)
 
 Result<Value> Lambda::operator()(Interpreter &i, std::vector<Value> arguments)
 {
-	// TODO Add some kind of scope guard
+	auto old_scope = std::exchange(i.env, context);
 	i.enter_scope();
+
 	assert(parameters.size() == arguments.size(), "wrong number of arguments");
 
 	for (usize j = 0; j < parameters.size(); ++j) {
@@ -140,6 +141,6 @@ Result<Value> Lambda::operator()(Interpreter &i, std::vector<Value> arguments)
 	Ast body_copy = body;
 	auto result = i.eval(std::move(body_copy));
 
-	i.leave_scope();
+	i.env = old_scope;
 	return result;
 }

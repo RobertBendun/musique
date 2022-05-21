@@ -151,6 +151,8 @@ Result<Value> Interpreter::eval(Ast &&ast)
 				assert(param.type == Ast::Type::Literal && param.token.type == Token::Type::Symbol, "Not a name in parameter section of Ast::lambda");
 				lambda.parameters.push_back(std::string(std::move(param).token.source));
 			}
+
+			lambda.context = env;
 			lambda.body = std::move(ast.arguments.back());
 			return Value::lambda(std::move(lambda));
 		}

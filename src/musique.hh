@@ -427,8 +427,9 @@ struct Number
 
 std::ostream& operator<<(std::ostream& os, Number const& num);
 
-struct Value;
+struct Env;
 struct Interpreter;
+struct Value;
 
 using Function = std::function<Result<Value>(Interpreter &i, std::vector<Value>)>;
 
@@ -437,6 +438,7 @@ struct Lambda
 	Location location;
 	std::vector<std::string> parameters;
 	Ast body;
+	std::shared_ptr<Env> context;
 
 	Result<Value> operator()(Interpreter &i, std::vector<Value> params);
 };
