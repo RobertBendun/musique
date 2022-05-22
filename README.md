@@ -17,6 +17,7 @@ Interpreter języka Musique. Możliwy do wykorzystywania jako:
 
 ### Testowanie
 
+- `make test` - Uruchom wszystkie dostępne testy automatyczne
 - `make unit-tests` - Uruchamia testy jednostkowe interpretera
 - `make unit-test-coverage` - Uruchamia raport pokrycia kodu przez testy jednostkowe
 - `etc/tools/test.py test examples` - Uruchamia testy zachowań przykładów

@@ -21,6 +21,9 @@ Debug_Obj=$(addprefix bin/debug/,$(Obj))
 
 all: bin/musique
 
+test: unit-tests
+	etc/tools/test.py test examples
+
 debug: bin/debug/musique
 
 bin/%.o: src/%.cc src/*.hh
@@ -35,11 +38,9 @@ bin/debug/musique: $(Debug_Obj) bin/debug/main.o src/*.hh
 bin/debug/%.o: src/%.cc src/*.hh
 	g++ $(CXXFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) -o $@ $< -c
 
-.PHONY: unit-tests
 unit-tests: bin/unit-tests
 	./$<
 
-.PHONY: unit-test-coverage
 unit-test-coverage:
 	@which gcov >/dev/null || ( echo "[ERROR] gcov is required for test coverage report"; false )
 	@which gcovr >/dev/null || ( echo "[ERROR] gcovr is required for test coverage report"; false )
@@ -51,12 +52,10 @@ unit-test-coverage:
 	rm -rf bin/debug
 	xdg-open coverage/index.html
 
-.PHONY: doc
 doc: Doxyfile src/*.cc src/*.hh
 	doxygen
 	cd doc; $(MAKE) html
 
-.PHONY: doc-open
 doc-open: doc
 	xdg-open ./doc/build/html/index.html
 
@@ -66,6 +65,6 @@ bin/unit-tests: src/tests/*.cc $(Debug_Obj)
 clean:
 	rm -rf bin coverage
 
-.PHONY: clean
+.PHONY: clean doc doc-open all test unit-tests
 
 $(shell mkdir -p bin/debug)
