@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-static auto binary_operator(auto binop)
+constexpr auto binary_operator(auto binop)
 {
 	return [binop = std::move(binop)](Interpreter&, std::vector<Value> args) -> Result<Value> {
 		auto result = std::move(args.front());
@@ -17,6 +17,34 @@ static auto binary_operator(auto binop)
 			}
 		}
 		return result;
+	};
+}
+
+constexpr auto equality_operator(auto binop)
+{
+	return [binop = std::move(binop)](Interpreter&, std::vector<Value> args) -> Result<Value> {
+		assert(args.size() == 2, "(in)Equality only allows for 2 operands"); // TODO(assert)
+		return Value::boolean(binop(std::move(args.front()), std::move(args.back())));
+	};
+}
+
+constexpr auto comparison_operator(auto binop)
+{
+	return [binop = std::move(binop)](Interpreter&, std::vector<Value> args) -> Result<Value> {
+		assert(args.size() == 2, "(in)Equality only allows for 2 operands"); // TODO(assert)
+		assert(args.front().type == args.back().type, "Only values of the same type can be ordered"); // TODO(assert)
+
+		switch (args.front().type) {
+		case Value::Type::Number:
+			return Value::boolean(binop(std::move(args.front()).n, std::move(args.back()).n));
+
+		case Value::Type::Bool:
+			return Value::boolean(binop(std::move(args.front()).b, std::move(args.back()).b));
+
+		default:
+			assert(false, "Cannot compare value of given types"); // TODO(assert)
+		}
+		unreachable();
 	};
 }
 
@@ -69,12 +97,13 @@ Interpreter::Interpreter(std::ostream& out)
 	operators["*"] = binary_operator(std::multiplies<>{});
 	operators["/"] = binary_operator(std::divides<>{});
 
-	operators["<"]  = binary_operator(std::less<>{});
-	operators[">"]  = binary_operator(std::greater<>{});
-	operators["<="] = binary_operator(std::less_equal<>{});
-	operators[">="] = binary_operator(std::greater_equal<>{});
-	operators["=="] = binary_operator(std::equal_to<>{});
-	operators["!="] = binary_operator(std::not_equal_to<>{});
+	operators["<"]  = comparison_operator(std::less<>{});
+	operators[">"]  = comparison_operator(std::greater<>{});
+	operators["<="] = comparison_operator(std::less_equal<>{});
+	operators[">="] = comparison_operator(std::greater_equal<>{});
+
+	operators["=="] = equality_operator(std::equal_to<>{});
+	operators["!="] = equality_operator(std::not_equal_to<>{});
 }
 
 Result<Value> Interpreter::eval(Ast &&ast)
@@ -161,6 +190,7 @@ Result<Value> Interpreter::eval(Ast &&ast)
 		unimplemented();
 	}
 }
+
 void Interpreter::enter_scope()
 {
 	env = env->enter();

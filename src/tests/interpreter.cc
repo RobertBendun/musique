@@ -19,7 +19,7 @@ void evaluates_to(Value value, std::string_view source_code, reflection::source_
 	capture_errors([=]() -> Result<void> {
 		Interpreter interpreter;
 		auto result = Try(interpreter.eval(Try(Parser::parse(source_code, "test"))));
-		expect(eq(result, value));
+		expect(eq(result, value), sl);
 		return {};
 	}, sl)();
 }
@@ -38,9 +38,10 @@ void produces_output(std::string_view source_code, std::string_view expected_out
 suite intepreter_test = [] {
 	"Interpreter"_test = [] {
 		should("evaluate literals") = [] {
-			evaluates_to(Value{}, "nil");
+			evaluates_to(Value::boolean(false),     "false");
+			evaluates_to(Value::boolean(true),      "true");
 			evaluates_to(Value::number(Number(10)), "10");
-			// evaluates_to(Value::symbol("notexistingsymbol"), "notexistingsymbol");
+			evaluates_to(Value{},                   "nil");
 		};
 
 		should("evaluate arithmetic") = [] {
@@ -60,18 +61,48 @@ suite intepreter_test = [] {
 		};
 
 		should("allows only for calling which is callable") = [] {
-			Interpreter i;
+			evaluates_to(Value::number(Number(0)), "[i|i] 0");
 			{
-				auto result = Parser::parse("10 20", "test").and_then([&](Ast &&ast) { return i.eval(std::move(ast)); });
-				expect(!result.has_value()) << "Expected code to have failed";
-				expect(eq(result.error().type, errors::Not_Callable));
+				Interpreter i;
+				{
+					auto result = Parser::parse("10 20", "test").and_then([&](Ast &&ast) { return i.eval(std::move(ast)); });
+					expect(!result.has_value()) << "Expected code to have failed";
+					expect(eq(result.error().type, errors::Not_Callable));
+				}
+				{
+					i.env->force_define("call_me", Value::number(Number(10)));
+					auto result = Parser::parse("call_me 20", "test").and_then([&](Ast &&ast) { return i.eval(std::move(ast)); });
+					expect(!result.has_value()) << "Expected code to have failed";
+					expect(eq(result.error().type, errors::Not_Callable));
+				}
 			}
-			{
-				i.env->force_define("call_me", Value::number(Number(10)));
-				auto result = Parser::parse("call_me 20", "test").and_then([&](Ast &&ast) { return i.eval(std::move(ast)); });
-				expect(!result.has_value()) << "Expected code to have failed";
-				expect(eq(result.error().type, errors::Not_Callable));
-			}
+		};
+
+		should("allow for value (in)equality comparisons") = [] {
+			evaluates_to(Value::boolean(true),  "nil == nil");
+			evaluates_to(Value::boolean(false), "nil != nil");
+
+			evaluates_to(Value::boolean(true),  "true == true");
+			evaluates_to(Value::boolean(false), "true != true");
+			evaluates_to(Value::boolean(false), "true == false");
+			evaluates_to(Value::boolean(true),  "true != false");
+
+			evaluates_to(Value::boolean(true),  "0 == 0");
+			evaluates_to(Value::boolean(false), "0 != 0");
+			evaluates_to(Value::boolean(true),  "1 != 0");
+			evaluates_to(Value::boolean(false), "1 == 0");
+		};
+
+		should("allow for value ordering comparisons") = [] {
+			evaluates_to(Value::boolean(false), "true <  true");
+			evaluates_to(Value::boolean(true),  "true <= true");
+			evaluates_to(Value::boolean(true),  "false < true");
+			evaluates_to(Value::boolean(false), "false > true");
+
+			evaluates_to(Value::boolean(false), "0 <  0");
+			evaluates_to(Value::boolean(true),  "0 <= 0");
+			evaluates_to(Value::boolean(true),  "1 <  2");
+			evaluates_to(Value::boolean(false), "1 >  2");
 		};
 
 		// Added to explicitly test against bug that was in old implementation of enviroments.
