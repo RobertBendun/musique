@@ -7,10 +7,6 @@ var x = pair 100 200;
 say (car x);
 say (cdr x);
 
--- This two values should be builtin, but currently is not
-var true = (1 == 1);
-var false = (1 != 1);
-
 -- LIST definition
 var null = pair true true;
 var is_empty = car;

@@ -3,6 +3,12 @@
 
 static Ast wrap_if_several(std::vector<Ast> &&ast, Ast(*wrapper)(std::vector<Ast>));
 
+constexpr auto Literal_Keywords = std::array {
+	"false"sv,
+	"nil"sv,
+	"true"sv,
+};
+
 enum class At_Least : bool
 {
 	Zero,
@@ -14,7 +20,6 @@ static Result<std::vector<Ast>> parse_many(
 	Result<Ast> (Parser::*parser)(),
 	std::optional<Token::Type> separator,
 	At_Least at_least);
-
 
 Result<Ast> Parser::parse(std::string_view source, std::string_view filename)
 {
@@ -55,7 +60,7 @@ Result<Ast> Parser::parse_expression()
 
 Result<Ast> Parser::parse_variable_declaration()
 {
-	if (!expect(Token::Type::Symbol, "var")) {
+	if (!expect(Token::Type::Keyword, "var")) {
 		return errors::expected_keyword(Try(peek()), "var");
 	}
 	auto var = consume();
@@ -88,6 +93,11 @@ Result<Ast> Parser::parse_infix_expression()
 Result<Ast> Parser::parse_atomic_expression()
 {
 	switch (Try(peek_type())) {
+	case Token::Type::Keyword:
+		if (std::find(Literal_Keywords.begin(), Literal_Keywords.end(), peek()->source) == Literal_Keywords.end()) {
+			return errors::unexpected_token(*peek());
+		}
+		[[fallthrough]];
 	case Token::Type::Symbol:
 	case Token::Type::Numeric:
 		return Ast::literal(consume());

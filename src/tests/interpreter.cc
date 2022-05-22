@@ -51,9 +51,8 @@ suite intepreter_test = [] {
 		};
 
 		should("call builtin functions") = [] {
-			evaluates_to(Value::symbol("nil"),    "typeof nil");
-			// evaluates_to(Value::symbol("symbol"), "typeof foo");
-			evaluates_to(Value::symbol("number"), "typeof 100");
+			evaluates_to(Value::symbol("nil"),     "typeof nil");
+			evaluates_to(Value::symbol("number"),  "typeof 100");
 
 			produces_output("say 5", "5\n");
 			produces_output("say 1; say 2; say 3", "1\n2\n3\n");

@@ -9,6 +9,13 @@ constexpr std::string_view Valid_Operator_Chars =
 	"<>=!" // comparisons
 	;
 
+constexpr auto Keywords = std::array {
+	"false"sv,
+	"nil"sv,
+	"true"sv,
+	"var"sv
+};
+
 void Lexer::skip_whitespace_and_comments()
 {
 	for (;;) {
@@ -154,7 +161,11 @@ auto Lexer::next_token() -> Result<Token>
 		}
 
 		Token t = { Token::Type::Symbol, finish(), token_location };
-		if (t.source == "v") t.type = Token::Type::Operator;
+		if (std::find(Keywords.begin(), Keywords.end(), t.source) != Keywords.end()) {
+			t.type = Token::Type::Keyword;
+		} else if (t.source == "v") {
+			t.type = Token::Type::Operator;
+		}
 		return t;
 	}
 
@@ -251,16 +262,17 @@ std::ostream& operator<<(std::ostream& os, Token const& token)
 std::ostream& operator<<(std::ostream& os, Token::Type type)
 {
 	switch (type) {
-	case Token::Type::Open_Block:            return os << "OPEN BLOCK";
-	case Token::Type::Close_Block:           return os << "CLOSE BLOCK";
-	case Token::Type::Open_Paren:            return os << "OPEN PAREN";
-	case Token::Type::Close_Paren:           return os << "CLOSE PAREN";
-	case Token::Type::Parameter_Separator:   return os << "PARAMETER SEPARATOR";
 	case Token::Type::Chord:                 return os << "CHORD";
-	case Token::Type::Numeric:               return os << "NUMERIC";
-	case Token::Type::Symbol:                return os << "SYMBOL";
-	case Token::Type::Operator:              return os << "OPERATOR";
+	case Token::Type::Close_Block:           return os << "CLOSE BLOCK";
+	case Token::Type::Close_Paren:           return os << "CLOSE PAREN";
 	case Token::Type::Expression_Separator:  return os << "EXPRESSION SEPARATOR";
+	case Token::Type::Keyword:               return os << "KEYWORD";
+	case Token::Type::Numeric:               return os << "NUMERIC";
+	case Token::Type::Open_Block:            return os << "OPEN BLOCK";
+	case Token::Type::Open_Paren:            return os << "OPEN PAREN";
+	case Token::Type::Operator:              return os << "OPERATOR";
+	case Token::Type::Parameter_Separator:   return os << "PARAMETER SEPARATOR";
+	case Token::Type::Symbol:                return os << "SYMBOL";
 	}
 	unreachable();
 }

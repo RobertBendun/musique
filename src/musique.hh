@@ -244,6 +244,9 @@ struct Token
 		// like repeat or choose or chord
 		Symbol,
 
+		// like true, false, nil
+		Keyword,
+
 		// like + - ++ < >
 		Operator,
 

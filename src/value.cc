@@ -6,13 +6,13 @@ Result<Value> Value::from(Token t)
 	case Token::Type::Numeric:
 		return Value::number(Try(Number::from(std::move(t))));
 
+	case Token::Type::Keyword:
+		if (t.source == "false") return Value::boolean(false);
+		if (t.source == "nil")   return Value{};
+		if (t.source == "true")  return Value::boolean(true);
+		unreachable();
+
 	case Token::Type::Symbol:
-		if (t.source == "true")
-			return Value::boolean(true);
-		if (t.source == "false")
-			return Value::boolean(false);
-		if (t.source == "nil")
-			return Value{};
 		return Value::symbol(std::string(t.source));
 
 	default:

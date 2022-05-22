@@ -48,7 +48,7 @@ unit-test-coverage:
 	rm -rf coverage
 	mkdir coverage
 	gcovr -e '.*\.hpp' --html --html-details -o coverage/index.html
-	rm -rf bin
+	rm -rf bin/debug
 	xdg-open coverage/index.html
 
 .PHONY: doc
