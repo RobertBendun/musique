@@ -1,12 +1,11 @@
 image: gcc
 
 stages:
-  - dependencies
   - build
   - test
 
 packages:
-  stage: dependencies
+  stage: build
   script:
     - dpkg-query -Wf'${db:Status-abbrev}' python3
 
