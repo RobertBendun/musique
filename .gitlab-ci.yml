@@ -7,7 +7,6 @@ stages:
 build:
   stage: build
   script:
-    - apt-get update && apt-get install -y python3
     - make
   artifacts:
     paths:
@@ -18,4 +17,5 @@ unit-testing:
   stage: test
   script:
     - make unit-tests
+    - apt-get update && apt-get install -y python3
     - python3 etc/tools/test.py test examples
