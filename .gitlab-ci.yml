@@ -18,3 +18,4 @@ unit-testing:
   stage: test
   script:
     - make unit-tests
+    - python3 etc/tools/test.py test examples
