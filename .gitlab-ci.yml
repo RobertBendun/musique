@@ -26,4 +26,4 @@ unit-testing:
 examples_testing:
   stage: test
   script:
-    - etc/tools/test.py examples
+    - etc/tools/test.py test examples
