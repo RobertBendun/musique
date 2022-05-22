@@ -15,7 +15,7 @@ build:
     - make
   artifacts:
     paths:
-      - main
+      - bin/musique
   stage: test
 
 unit-testing:
