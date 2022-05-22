@@ -43,3 +43,19 @@ Interpreter języka Musique. Możliwy do wykorzystywania jako:
 └── src            Główny katalog z kodem źródłowym
     └── tests      Katalog z testami jednostkowymi
 ```
+
+## Kolorowanie składni
+
+### Vim / Neovim
+
+Skopiuj plik [etc/editor/musique.vim](etc/editor/musique.vim) do folderu `syntax` wewnątrz twojej konfiguracji Vima (Neovima). Np:
+
+```console
+$ cp etc/editor/musique.vim ~/.config/nvim/syntax/
+```
+
+Następnie musisz dodać ustawienie typu pliku na podstawie rozszerzenia wewnątrz twojej konfiguracji:
+
+```vim
+au BufRead,BufNewFile *.mq set filetype=musique
+```
