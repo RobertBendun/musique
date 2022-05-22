@@ -5,3 +5,4 @@ coverage
 doc/musique
 doc/build
 doc/source/api
+__pycache__
