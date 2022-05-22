@@ -2,44 +2,47 @@
 
 #include <iostream>
 
-constexpr auto binary_operator(auto binop)
+template<typename Binary_Operation>
+constexpr auto binary_operator()
 {
-	return [binop = std::move(binop)](Interpreter&, std::vector<Value> args) -> Result<Value> {
+	return [](Interpreter&, std::vector<Value> args) -> Result<Value> {
 		auto result = std::move(args.front());
 		for (auto &v : std::span(args).subspan(1)) {
 			assert(result.type == Value::Type::Number, "LHS should be a number");
 			assert(v.type == Value::Type::Number,      "RHS should be a number");
-			if constexpr (std::is_same_v<Number, std::invoke_result_t<decltype(binop), Number, Number>>) {
-				result.n = binop(std::move(result.n), std::move(v).n);
+			if constexpr (std::is_same_v<Number, std::invoke_result_t<Binary_Operation, Number, Number>>) {
+				result.n = Binary_Operation{}(std::move(result.n), std::move(v).n);
 			} else {
 				result.type = Value::Type::Bool;
-				result.b = binop(std::move(result.n), std::move(v).n);
+				result.b = Binary_Operation{}(std::move(result.n), std::move(v).n);
 			}
 		}
 		return result;
 	};
 }
 
-constexpr auto equality_operator(auto binop)
+template<typename Binary_Predicate>
+constexpr auto equality_operator()
 {
-	return [binop = std::move(binop)](Interpreter&, std::vector<Value> args) -> Result<Value> {
+	return [](Interpreter&, std::vector<Value> args) -> Result<Value> {
 		assert(args.size() == 2, "(in)Equality only allows for 2 operands"); // TODO(assert)
-		return Value::boolean(binop(std::move(args.front()), std::move(args.back())));
+		return Value::boolean(Binary_Predicate{}(std::move(args.front()), std::move(args.back())));
 	};
 }
 
-constexpr auto comparison_operator(auto binop)
+template<typename Binary_Predicate>
+constexpr auto comparison_operator()
 {
-	return [binop = std::move(binop)](Interpreter&, std::vector<Value> args) -> Result<Value> {
+	return [](Interpreter&, std::vector<Value> args) -> Result<Value> {
 		assert(args.size() == 2, "(in)Equality only allows for 2 operands"); // TODO(assert)
 		assert(args.front().type == args.back().type, "Only values of the same type can be ordered"); // TODO(assert)
 
 		switch (args.front().type) {
 		case Value::Type::Number:
-			return Value::boolean(binop(std::move(args.front()).n, std::move(args.back()).n));
+			return Value::boolean(Binary_Predicate{}(std::move(args.front()).n, std::move(args.back()).n));
 
 		case Value::Type::Bool:
-			return Value::boolean(binop(std::move(args.front()).b, std::move(args.back()).b));
+			return Value::boolean(Binary_Predicate{}(std::move(args.front()).b, std::move(args.back()).b));
 
 		default:
 			assert(false, "Cannot compare value of given types"); // TODO(assert)
@@ -66,12 +69,12 @@ Interpreter::Interpreter(std::ostream& out)
 	env = Env::global = Env::make();
 	auto &global = *Env::global;
 
-	global.force_define("typeof", [](Interpreter&, std::vector<Value> args) -> Value {
+	global.force_define("typeof", +[](Interpreter&, std::vector<Value> args) -> Result<Value> {
 		assert(args.size() == 1, "typeof expects only one argument");
 		return Value::symbol(std::string(type_name(args.front().type)));
 	});
 
-	global.force_define("if", [](Interpreter &i, std::vector<Value> args) -> Result<Value> {
+	global.force_define("if", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
 		assert(args.size() == 2 || args.size() == 3, "argument count does not add up - expected: if <condition> <then> [<else>]");
 		if (args.front().truthy()) {
 			return args[1](i, {});
@@ -82,7 +85,7 @@ Interpreter::Interpreter(std::ostream& out)
 		}
 	});
 
-	global.force_define("say", [](Interpreter &i, std::vector<Value> args) -> Value {
+	global.force_define("say", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
 		for (auto it = args.begin(); it != args.end(); ++it) {
 			i.out << *it;
 			if (std::next(it) != args.end())
@@ -92,18 +95,18 @@ Interpreter::Interpreter(std::ostream& out)
 		return {};
 	});
 
-	operators["+"] = binary_operator(std::plus<>{});
-	operators["-"] = binary_operator(std::minus<>{});
-	operators["*"] = binary_operator(std::multiplies<>{});
-	operators["/"] = binary_operator(std::divides<>{});
+	operators["+"] = binary_operator<std::plus<>>();
+	operators["-"] = binary_operator<std::minus<>>();
+	operators["*"] = binary_operator<std::multiplies<>>();
+	operators["/"] = binary_operator<std::divides<>>();
 
-	operators["<"]  = comparison_operator(std::less<>{});
-	operators[">"]  = comparison_operator(std::greater<>{});
-	operators["<="] = comparison_operator(std::less_equal<>{});
-	operators[">="] = comparison_operator(std::greater_equal<>{});
+	operators["<"]  = comparison_operator<std::less<>>();
+	operators[">"]  = comparison_operator<std::greater<>>();
+	operators["<="] = comparison_operator<std::less_equal<>>();
+	operators[">="] = comparison_operator<std::greater_equal<>>();
 
-	operators["=="] = equality_operator(std::equal_to<>{});
-	operators["!="] = equality_operator(std::not_equal_to<>{});
+	operators["=="] = equality_operator<std::equal_to<>>();
+	operators["!="] = equality_operator<std::not_equal_to<>>();
 }
 
 Result<Value> Interpreter::eval(Ast &&ast)
@@ -171,19 +174,22 @@ Result<Value> Interpreter::eval(Ast &&ast)
 			return Value{};
 		}
 
+	case Ast::Type::Block:
 	case Ast::Type::Lambda:
 		{
-			Lambda lambda;
-			auto parameters = std::span(ast.arguments.begin(), std::prev(ast.arguments.end()));
-			lambda.parameters.reserve(parameters.size());
-			for (auto &param : parameters) {
-				assert(param.type == Ast::Type::Literal && param.token.type == Token::Type::Symbol, "Not a name in parameter section of Ast::lambda");
-				lambda.parameters.push_back(std::string(std::move(param).token.source));
+			Block block;
+			if (ast.type == Ast::Type::Lambda) {
+				auto parameters = std::span(ast.arguments.begin(), std::prev(ast.arguments.end()));
+				block.parameters.reserve(parameters.size());
+				for (auto &param : parameters) {
+					assert(param.type == Ast::Type::Literal && param.token.type == Token::Type::Symbol, "Not a name in parameter section of Ast::lambda");
+					block.parameters.push_back(std::string(std::move(param).token.source));
+				}
 			}
 
-			lambda.context = env;
-			lambda.body = std::move(ast.arguments.back());
-			return Value::lambda(std::move(lambda));
+			block.context = env;
+			block.body = std::move(ast.arguments.back());
+			return Value::block(std::move(block));
 		}
 
 	default:

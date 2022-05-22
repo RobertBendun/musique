@@ -15,20 +15,20 @@ var tail = [list | cdr (cdr list)];
 var cons = [head tail | pair false (pair head tail)];
 
 var for_each = [list iterator |
-	if (is_empty list) [| nil ] [|
+	if (is_empty list) [ nil ] [
 		iterator (head list);
 		for_each (tail list) iterator ]];
 
 var map = [list iterator |
-	if (is_empty list) [| null ] [|
+	if (is_empty list) [ null ] [|
 		cons (iterator (head list)) (map (tail list) iterator) ]];
 
 var foldr = [list init folder |
 	if (is_empty list)
-		[| init ]
-		[| foldr (tail list) (folder (head list) init) folder ]];
+		[ init ]
+		[ foldr (tail list) (folder (head list) init) folder ]];
 
-var range = [start stop | if (start >= stop) [|cons start null] [|cons start (range (start+1) stop)]];
+var range = [start stop | if (start >= stop) [cons start null] [cons start (range (start+1) stop)]];
 
 var xs = range 1 5;
 say (foldr xs 1 [x y|x*y]);

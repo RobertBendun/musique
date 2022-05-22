@@ -48,7 +48,7 @@ suite value_test = [] {
 			either_truthy_or_falsy(&Value::truthy, Value::boolean(true));
 			either_truthy_or_falsy(&Value::truthy, Value::number(Number(1)));
 			either_truthy_or_falsy(&Value::truthy, Value::symbol("foo"));
-			either_truthy_or_falsy(&Value::truthy, Value::lambda(nullptr));
+			either_truthy_or_falsy(&Value::truthy, Value(Intrinsic(nullptr)));
 
 			either_truthy_or_falsy(&Value::falsy, Value{});
 			either_truthy_or_falsy(&Value::falsy, Value::boolean(false));
@@ -57,10 +57,6 @@ suite value_test = [] {
 	};
 
 	"Value comparisons"_test = [] {
-		should("be always not equal for lambdas") = [] {
-			expect(neq(Value::lambda(nullptr), Value::lambda(nullptr)));
-		};
-
 		should("are always not equal when types differ") = [] {
 			expect(neq(Value::symbol("0"), Value::number(Number(0))));
 		};
@@ -76,6 +72,6 @@ suite value_test = [] {
 
 		expect(eq("foo"sv, str(Value::symbol("foo"))));
 
-		expect(eq("<lambda>"sv, str(Value::lambda(nullptr))));
+		expect(eq("<intrinsic>"sv, str(Value(Intrinsic(nullptr)))));
 	};
 };

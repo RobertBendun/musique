@@ -394,4 +394,7 @@ void dump(Ast const& tree, unsigned indent)
 		std::cout << i << '}';
 	}
 	std::cout << '\n';
+	if (indent == 0) {
+		std::cout << std::flush;
+	}
 }

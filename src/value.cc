@@ -44,21 +44,23 @@ Value Value::symbol(std::string s)
 	return v;
 }
 
-Value Value::lambda(Function f)
+Value Value::block(Block &&block)
 {
 	Value v;
-	v.type = Type::Lambda;
-	v.f = std::move(f);
+	v.type = Type::Block;
+	v.blk = std::move(block);
 	return v;
 }
 
 Result<Value> Value::operator()(Interpreter &i, std::vector<Value> args)
 {
-	if (type == Type::Lambda) {
-		return f(i, std::move(args));
+	switch (type) {
+	case Type::Intrinsic: return intr(i, std::move(args));
+	case Type::Block:     return blk(i, std::move(args));
+	default:
+		// TODO Fill location
+		return errors::not_callable(std::nullopt, type);
 	}
-	// TODO Fill location
-	return errors::not_callable(std::nullopt, type);
 }
 
 bool Value::truthy() const
@@ -67,7 +69,8 @@ bool Value::truthy() const
 	case Type::Bool:   return b;
 	case Type::Nil:    return false;
 	case Type::Number: return n != Number(0);
-	case Type::Lambda:
+	case Type::Block:
+	case Type::Intrinsic:
 	case Type::Symbol: return true;
 	}
 	unreachable();
@@ -84,11 +87,12 @@ bool Value::operator==(Value const& other) const
 		return false;
 
 	switch (type) {
-	case Type::Nil:    return true;
-	case Type::Number: return n == other.n;
-	case Type::Symbol: return s == other.s;
-	case Type::Lambda: return false; // TODO Reconsider if functions are comparable
-	case Type::Bool:   return b == other.b;
+	case Type::Nil:       return true;
+	case Type::Number:    return n == other.n;
+	case Type::Symbol:    return s == other.s;
+	case Type::Intrinsic: return intr == other.intr;
+	case Type::Block:     return false; // TODO Reconsider if functions are comparable
+	case Type::Bool:      return b == other.b;
 	}
 
 	unreachable();
@@ -109,8 +113,11 @@ std::ostream& operator<<(std::ostream& os, Value const& v)
 	case Value::Type::Bool:
 		return os << (v.b ? "true" : "false");
 
-	case Value::Type::Lambda:
-		return os << "<lambda>";
+	case Value::Type::Intrinsic:
+		return os << "<intrinsic>";
+
+	case Value::Type::Block:
+		return os << "<block>";
 	}
 	unreachable();
 }
@@ -118,16 +125,17 @@ std::ostream& operator<<(std::ostream& os, Value const& v)
 std::string_view type_name(Value::Type t)
 {
 	switch (t) {
-	case Value::Type::Bool:   return "bool";
-	case Value::Type::Lambda: return "lambda";
-	case Value::Type::Nil:    return "nil";
-	case Value::Type::Number: return "number";
-	case Value::Type::Symbol: return "symbol";
+	case Value::Type::Bool:      return "bool";
+	case Value::Type::Intrinsic: return "intrinsic";
+	case Value::Type::Block:     return "block";
+	case Value::Type::Nil:       return "nil";
+	case Value::Type::Number:    return "number";
+	case Value::Type::Symbol:    return "symbol";
 	}
 	unreachable();
 }
 
-Result<Value> Lambda::operator()(Interpreter &i, std::vector<Value> arguments)
+Result<Value> Block::operator()(Interpreter &i, std::vector<Value> arguments)
 {
 	auto old_scope = std::exchange(i.env, context);
 	i.enter_scope();

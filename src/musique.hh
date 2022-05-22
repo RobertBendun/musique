@@ -434,9 +434,9 @@ struct Env;
 struct Interpreter;
 struct Value;
 
-using Function = std::function<Result<Value>(Interpreter &i, std::vector<Value>)>;
+using Intrinsic = Result<Value>(*)(Interpreter &i, std::vector<Value>);
 
-struct Lambda
+struct Block
 {
 	Location location;
 	std::vector<std::string> parameters;
@@ -456,7 +456,7 @@ struct Value
 	static Value boolean(bool b);
 	static Value number(Number n);
 	static Value symbol(std::string s);
-	static Value lambda(Function f);
+	static Value block(Block &&l);
 
 	enum class Type
 	{
@@ -464,7 +464,8 @@ struct Value
 		Bool,
 		Number,
 		Symbol,
-		Lambda,
+		Intrinsic,
+		Block
 	};
 
 	Value() = default;
@@ -473,26 +474,15 @@ struct Value
 	Value& operator=(Value const&) = default;
 	Value& operator=(Value &&) = default;
 
-	template<typename Callable>
-	requires (!std::is_same_v<std::decay_t<Callable>, Value>)
-		&& std::invocable<Callable, Interpreter&, std::vector<Value>>
-		&& is_one_of<std::invoke_result_t<Callable, Interpreter&, std::vector<Value>>, Value, Result<Value>>
-	inline Value(Callable &&callable)
-		: type{Type::Lambda}
+	inline Value(Intrinsic intr) : type{Type::Intrinsic}, intr(intr)
 	{
-		if constexpr (std::is_same_v<Result<Value>, std::invoke_result_t<Callable, Interpreter&, std::vector<Value>>>) {
-			f = std::move(callable);
-		} else {
-			f = [fun = std::move(callable)](Interpreter &i, std::vector<Value> args) -> Result<Value> {
-				return fun(i, std::move(args));
-			};
-		}
 	}
 
 	Type type = Type::Nil;
 	bool b{};
 	Number n{};
-	Function f{};
+	Intrinsic intr{};
+	Block blk;
 
 	// TODO Most strings should not be allocated by Value, but reference to string allocated previously
 	// Wrapper for std::string is needed that will allocate only when needed, middle ground between:
@@ -541,7 +531,7 @@ private:
 struct Interpreter
 {
 	std::ostream &out;
-	std::unordered_map<std::string, Function> operators;
+	std::unordered_map<std::string, Intrinsic> operators;
 	std::shared_ptr<Env> env;
 
 	Interpreter();
