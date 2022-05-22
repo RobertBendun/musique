@@ -4,11 +4,6 @@ stages:
   - build
   - test
 
-packages:
-  stage: build
-  script:
-    - dpkg-query -Wf'${db:Status-abbrev}' python3
-
 build:
   stage: build
   script:
@@ -22,8 +17,3 @@ unit-testing:
   stage: test
   script:
     - make unit-tests
-
-examples_testing:
-  stage: test
-  script:
-    - python3 etc/tools/test.py test examples
