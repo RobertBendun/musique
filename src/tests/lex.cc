@@ -114,7 +114,6 @@ suite lexer_test = [] {
 	"Numeric tokens"_test = [] {
 		expect_token_type_and_value(Token::Type::Numeric, "0");
 		expect_token_type_and_value(Token::Type::Numeric, "123456789");
-		expect_token_type_and_value(Token::Type::Numeric, ".75");
 		expect_token_type_and_value(Token::Type::Numeric, "0.75");
 		expect_token_type_and_value(Token::Type::Numeric, "123456789.123456789");
 		expect_token_type_and_value(Token::Type::Numeric, "123.", "123");

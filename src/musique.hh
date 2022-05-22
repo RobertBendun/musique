@@ -444,6 +444,7 @@ struct Block
 	std::shared_ptr<Env> context;
 
 	Result<Value> operator()(Interpreter &i, std::vector<Value> params);
+	Result<Value> index(Interpreter &i, unsigned position);
 };
 
 template<typename T, typename ...XS>
@@ -530,8 +531,13 @@ private:
 
 struct Interpreter
 {
+	/// Output of IO builtins like `say`
 	std::ostream &out;
+
+	/// Operators defined for language
 	std::unordered_map<std::string, Intrinsic> operators;
+
+	/// Current environment (current scope)
 	std::shared_ptr<Env> env;
 
 	Interpreter();

@@ -152,3 +152,16 @@ Result<Value> Block::operator()(Interpreter &i, std::vector<Value> arguments)
 	i.env = old_scope;
 	return result;
 }
+
+// TODO Add memoization
+Result<Value> Block::index(Interpreter &i, unsigned position)
+{
+	assert(parameters.size() == 0, "cannot index into block with parameters (for now)");
+	if (body.type != Ast::Type::Sequence) {
+		assert(position == 0, "Out of range"); // TODO(assert)
+		return i.eval((Ast)body);
+	}
+
+	assert(position < body.arguments.size(), "Out of range"); // TODO(assert)
+	return i.eval((Ast)body.arguments[position]);
+}

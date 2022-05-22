@@ -95,6 +95,16 @@ Interpreter::Interpreter(std::ostream& out)
 		return {};
 	});
 
+	global.force_define("len", +[](Interpreter &, std::vector<Value> args) -> Result<Value> {
+		assert(args.size() == 1, "len only accepts one argument");
+		assert(args.front().type == Value::Type::Block, "Only blocks can be measure");
+		if (args.front().blk.body.type != Ast::Type::Sequence) {
+			return Value::number(Number(1));
+		} else {
+			return Value::number(Number(args.front().blk.body.arguments.size()));
+		}
+	});
+
 	operators["+"] = binary_operator<std::plus<>>();
 	operators["-"] = binary_operator<std::minus<>>();
 	operators["*"] = binary_operator<std::multiplies<>>();
@@ -107,6 +117,13 @@ Interpreter::Interpreter(std::ostream& out)
 
 	operators["=="] = equality_operator<std::equal_to<>>();
 	operators["!="] = equality_operator<std::not_equal_to<>>();
+
+	operators["."] = +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
+		assert(args.size() == 2, "Operator . requires two arguments"); // TODO(assert)
+		assert(args.front().type == Value::Type::Block, "Only blocks can be indexed"); // TODO(assert)
+		assert(args.back().type == Value::Type::Number, "Only numbers can be used for indexing"); // TODO(assert)
+		return std::move(args.front()).blk.index(i, std::move(args.back()).n.as_int());
+	};
 }
 
 Result<Value> Interpreter::eval(Ast &&ast)

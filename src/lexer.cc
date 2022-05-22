@@ -5,8 +5,9 @@
 constexpr std::string_view Notes_Symbols = "abcedefgh";
 constexpr std::string_view Valid_Operator_Chars =
 	"+-*/:%" // arithmetic
-	"|&^"  // logic & bit operations
-	"<>=!" // comparisons
+	"|&^"    // logic & bit operations
+	"<>=!"   // comparisons
+	"."      // indexing
 	;
 
 constexpr auto Keywords = std::array {
@@ -82,14 +83,6 @@ auto Lexer::next_token() -> Result<Token>
 		// Additionally we explicitly allow for `|foo|=0` here
 		if (Valid_Operator_Chars.find(peek()) == std::string_view::npos || peek() == '=')
 			return { Token::Type::Parameter_Separator, finish(), token_location };
-	}
-
-	// Number literals like .75
-	if (peek() == '.') {
-		consume();
-		while (consume_if(unicode::is_digit)) {}
-		if (token_length != 1)
-			return { Token::Type::Numeric, finish(), token_location };
 	}
 
 	if (consume_if(unicode::is_digit)) {
