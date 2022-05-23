@@ -466,7 +466,11 @@ struct Note
 
 	/// Extract midi note number, but when octave is not present use provided default
 	u8 into_midi_note(i8 default_octave) const;
+
+	bool operator==(Note const&) const;
 };
+
+std::ostream& operator<<(std::ostream& os, Note const& note);
 
 template<typename T, typename ...XS>
 constexpr auto is_one_of = (std::is_same_v<T, XS> || ...);
@@ -479,6 +483,7 @@ struct Value
 	static Value number(Number n);
 	static Value symbol(std::string s);
 	static Value block(Block &&l);
+	static Value music(Note n);
 
 	enum class Type
 	{

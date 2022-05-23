@@ -38,6 +38,26 @@ constexpr u8 note_index(Indexable<usize, char> auto const& note)
 	return -1;
 }
 
+constexpr std::string_view note_index_to_string(u8 note_index)
+{
+	switch (note_index) {
+	case  0:	return "c";
+	case  1:	return "c#";
+	case  2:	return "d";
+	case  3:	return "d#";
+	case  4:	return "e";
+	case  5:	return "f";
+	case  6:	return "f#";
+	case  7:	return "g";
+	case  8:	return "g#";
+	case  9:	return "a";
+	case 10:	return "a#";
+	case 11:	return "b";
+	case 12:	return "b#";
+	}
+	unreachable();
+}
+
 Result<Value> Value::from(Token t)
 {
 	switch (t.type) {
@@ -55,7 +75,9 @@ Result<Value> Value::from(Token t)
 
 	case Token::Type::Chord:
 		if (t.source.size() == 1 || (t.source.size() == 2 && t.source.back() == '#')) {
-			unimplemented();
+			auto maybe_note = Note::from(t.source);
+			assert(maybe_note.has_value(), "Somehow parser passed invalid note literal");
+			return Value::music(*maybe_note);
 		}
 
 		unimplemented("only simple note values (like c or e#) are supported now");
@@ -94,6 +116,14 @@ Value Value::block(Block &&block)
 	Value v;
 	v.type = Type::Block;
 	v.blk = std::move(block);
+	return v;
+}
+
+Value Value::music(Note n)
+{
+	Value v;
+	v.type = Type::Music;
+	v.note = n;
 	return v;
 }
 
@@ -139,7 +169,7 @@ bool Value::operator==(Value const& other) const
 	case Type::Intrinsic: return intr == other.intr;
 	case Type::Block:     return false; // TODO Reconsider if functions are comparable
 	case Type::Bool:      return b == other.b;
-	case Type::Music:     unimplemented();
+	case Type::Music:     return note == other.note;
 	}
 
 	unreachable();
@@ -167,7 +197,7 @@ std::ostream& operator<<(std::ostream& os, Value const& v)
 		return os << "<block>";
 
 	case Value::Type::Music:
-		unimplemented();
+		return os << v.note;
 	}
 	unreachable();
 }
@@ -235,4 +265,27 @@ u8 Note::into_midi_note(i8 default_octave) const
 	auto const octave = this->octave.has_value() ? *this->octave : default_octave;
 	// octave is in range [-1, 9] where Note { .base = 0, .octave = -1 } is midi note 0
 	return (octave + 1) * 12 + base;
+}
+
+std::ostream& operator<<(std::ostream& os, Note const& note)
+{
+	os << note_index_to_string(note.base);
+	os << ":oct=";
+	if (note.octave) {
+		os << int(*note.octave);
+	} else {
+		os << '_';
+	}
+	os << ":len=";
+	if (note.length) {
+		os << *note.length;
+	} else {
+		os << '_';
+	}
+	return os;
+}
+
+bool Note::operator==(Note const& other) const
+{
+	return octave == other.octave && base == other.base && length == other.length;
 }
