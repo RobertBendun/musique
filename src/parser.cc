@@ -94,12 +94,16 @@ Result<Ast> Parser::parse_atomic_expression()
 {
 	switch (Try(peek_type())) {
 	case Token::Type::Keyword:
+		// Not all keywords are literals. Keywords like `true` can be part of atomic expression (essentialy single value like)
+		// but keywords like `var` announce variable declaration which is higher up in expression parsing.
+		// So we need to explicitly allow only keywords that are also literals
 		if (std::find(Literal_Keywords.begin(), Literal_Keywords.end(), peek()->source) == Literal_Keywords.end()) {
 			return errors::unexpected_token(*peek());
 		}
 		[[fallthrough]];
-	case Token::Type::Symbol:
+	case Token::Type::Chord:
 	case Token::Type::Numeric:
+	case Token::Type::Symbol:
 		return Ast::literal(consume());
 
 	case Token::Type::Open_Block:
@@ -233,6 +237,8 @@ Result<void> Parser::ensure(Token::Type type) const
 		: Result<void>{};
 }
 
+// Don't know if it's a good idea to defer parsing of literal values up to value creation, which is current approach.
+// This may create unexpected performance degradation during program evaluation.
 Ast Ast::literal(Token token)
 {
 	Ast ast;

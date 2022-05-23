@@ -46,9 +46,13 @@ void assert(bool condition, std::string message, Location loc)
 	std::exit(1);
 }
 
-[[noreturn]] void unimplemented(Location loc)
+[[noreturn]] void unimplemented(std::string_view message, Location loc)
 {
-	error_heading(std::cerr, loc, Error_Level::Bug) << "this part was not implemented yet" << std::endl;
+	if (message.empty()) {
+		error_heading(std::cerr, loc, Error_Level::Bug) << "this part was not implemented yet" << std::endl;
+	} else {
+		error_heading(std::cerr, loc, Error_Level::Bug) << message << std::endl;
+	}
 	std::exit(1);
 }
 

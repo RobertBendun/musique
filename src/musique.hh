@@ -100,7 +100,7 @@ std::ostream& operator<<(std::ostream& os, Location const& location);
 void assert(bool condition, std::string message, Location loc = Location::caller());
 
 // Marks part of code that was not implemented yet
-[[noreturn]] void unimplemented(Location loc = Location::caller());
+[[noreturn]] void unimplemented(std::string_view message = {}, Location loc = Location::caller());
 
 // Marks location that should not be reached
 [[noreturn]] void unreachable(Location loc = Location::caller());

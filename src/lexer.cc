@@ -70,11 +70,11 @@ auto Lexer::next_token() -> Result<Token>
 	}
 
 	switch (peek()) {
-	case '(': consume(); return { Token::Type::Open_Paren,           finish(), token_location };
-	case ')': consume(); return { Token::Type::Close_Paren,          finish(), token_location };
-	case '[': consume(); return { Token::Type::Open_Block,           finish(), token_location };
-	case ']': consume(); return { Token::Type::Close_Block,          finish(), token_location };
-	case ';': consume(); return { Token::Type::Expression_Separator, finish(), token_location };
+	case '(': consume(); return Token { Token::Type::Open_Paren,           finish(), token_location };
+	case ')': consume(); return Token { Token::Type::Close_Paren,          finish(), token_location };
+	case '[': consume(); return Token { Token::Type::Open_Block,           finish(), token_location };
+	case ']': consume(); return Token { Token::Type::Close_Block,          finish(), token_location };
+	case ';': consume(); return Token { Token::Type::Expression_Separator, finish(), token_location };
 
 	case '|':
 		consume();
@@ -82,7 +82,7 @@ auto Lexer::next_token() -> Result<Token>
 		// is operator, then this character is part of operator sequence.
 		// Additionally we explicitly allow for `|foo|=0` here
 		if (Valid_Operator_Chars.find(peek()) == std::string_view::npos || peek() == '=')
-			return { Token::Type::Parameter_Separator, finish(), token_location };
+			return Token { Token::Type::Parameter_Separator, finish(), token_location };
 	}
 
 	if (consume_if(unicode::is_digit)) {
@@ -97,52 +97,28 @@ auto Lexer::next_token() -> Result<Token>
 				rewind();
 			}
 		}
-		return { Token::Type::Numeric, finish(), token_location };
+		return Token { Token::Type::Numeric, finish(), token_location };
 	}
 
+	// lex chord declaration
 	if (consume_if(Notes_Symbols)) {
-		// chord declaration
-		constexpr u8 Expect_Number         = 0b01;
-		constexpr u8 Expect_Move           = 0b10;
-		constexpr u8 Expect_Number_Or_Move = 0b11;
-
-		auto current = Expect_Number;
-		std::string_view accepted_digits = "12357";
-		usize digit_cursor = 0;
-
+		// Allow `c#`
 		consume_if('#');
 
-		for (;;) {
-			if ((current & Expect_Move) == Expect_Move && consume_if(",'")) {
-				current = Expect_Number;
-				continue;
-			}
+		// Any of the following sequences are allowed
+		// c,,,,,,,,,,,,,,,,
+		// c1,,,,2,3212
+		// c1234'''''
+		// during lexing
+		while (consume_if(",'") || consume_if(unicode::is_digit)) {}
 
-			if ((current & Expect_Number) == Expect_Number) {
-				bool found = false;
-				for (; digit_cursor < accepted_digits.size(); ++digit_cursor) {
-					if (consume_if(accepted_digits[digit_cursor])) {
-						found = true;
-						break;
-					}
-				}
-
-				if (found) {
-					current = digit_cursor < accepted_digits.size()
-						? Expect_Number_Or_Move
-						: Expect_Move;
-					continue;
-				}
-			}
-
-			break;
-		}
-
+		// If we encounter any letter that is not part of chord declaration,
+		// then we have symbol, not chord declaration
 		if (unicode::is_identifier(peek(), unicode::First_Character::No)) {
 			goto symbol_lexing;
 		}
 
-		return { Token::Type::Chord, finish(), token_location };
+		return Token { Token::Type::Chord, finish(), token_location };
 	}
 
 	using namespace std::placeholders;
@@ -164,7 +140,7 @@ auto Lexer::next_token() -> Result<Token>
 
 	if (consume_if(Valid_Operator_Chars)) {
 		while (consume_if(Valid_Operator_Chars)) {}
-		return { Token::Type::Operator, finish(), token_location };
+		return Token { Token::Type::Operator, finish(), token_location };
 	}
 
 	return errors::unrecognized_character(peek(), token_location);

@@ -1,10 +1,48 @@
 #include <musique.hh>
 
+template<typename T, typename Index, typename Expected>
+concept Indexable = requires(T t, Index i) {
+	{ t[i] } -> std::convertible_to<Expected>;
+};
+
+/// Create hash out of note literal like `c` or `e#`
+constexpr u16 hash_note(Indexable<usize, char> auto const& note)
+{
+	return u8(note[0]) | (note[1] << 8);
+}
+
+constexpr u8 note_index(Indexable<usize, char> auto const& note)
+{
+	switch (hash_note(note)) {
+	case hash_note("c"):  return  0;
+	case hash_note("c#"): return  1;
+	case hash_note("d"):  return  2;
+	case hash_note("d#"): return  3;
+	case hash_note("e"):  return  4;
+	case hash_note("e#"): return  4;
+	case hash_note("f"):  return  5;
+	case hash_note("f#"): return  6;
+	case hash_note("g"):  return  7;
+	case hash_note("g#"): return  8;
+	case hash_note("a"):  return  9;
+	case hash_note("a#"): return 10;
+	case hash_note("h"):  return 11;
+	case hash_note("b"):  return 11;
+	case hash_note("h#"): return 12;
+	case hash_note("b#"): return 12;
+	}
+	// This should be unreachable since parser limits what character can pass as notes
+	unreachable();
+}
+
 Result<Value> Value::from(Token t)
 {
 	switch (t.type) {
 	case Token::Type::Numeric:
 		return Value::number(Try(Number::from(std::move(t))));
+
+	case Token::Type::Symbol:
+		return Value::symbol(std::string(t.source));
 
 	case Token::Type::Keyword:
 		if (t.source == "false") return Value::boolean(false);
@@ -12,8 +50,12 @@ Result<Value> Value::from(Token t)
 		if (t.source == "true")  return Value::boolean(true);
 		unreachable();
 
-	case Token::Type::Symbol:
-		return Value::symbol(std::string(t.source));
+	case Token::Type::Chord:
+		if (t.source.size() == 1 || (t.source.size() == 2 && t.source.back() == '#')) {
+			unimplemented();
+		}
+
+		unimplemented("only simple note values (like c or e#) are supported now");
 
 	default:
 		unimplemented();
