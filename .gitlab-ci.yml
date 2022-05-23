@@ -4,14 +4,19 @@ stages:
   - build
   - test
 
+packages:
+  stage: build
+  script:
+    - dpkg-query -Wf'${db:Status-abbrev}' libasound2-dev
+
 build:
   stage: build
   script:
+    - (cd lib/midi; make) 
     - make
   artifacts:
     paths:
       - bin/musique
-  stage: test
 
 unit-testing:
   stage: test
