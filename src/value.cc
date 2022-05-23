@@ -11,6 +11,8 @@ constexpr u16 hash_note(Indexable<usize, char> auto const& note)
 	return u8(note[0]) | (note[1] << 8);
 }
 
+/// Finds numeric value of note. This form is later used as in
+/// note to midi resolution in formula octave * 12 + note_index
 constexpr u8 note_index(Indexable<usize, char> auto const& note)
 {
 	switch (hash_note(note)) {
@@ -19,7 +21,7 @@ constexpr u8 note_index(Indexable<usize, char> auto const& note)
 	case hash_note("d"):  return  2;
 	case hash_note("d#"): return  3;
 	case hash_note("e"):  return  4;
-	case hash_note("e#"): return  4;
+	case hash_note("e#"): return  5;
 	case hash_note("f"):  return  5;
 	case hash_note("f#"): return  6;
 	case hash_note("g"):  return  7;
@@ -32,7 +34,8 @@ constexpr u8 note_index(Indexable<usize, char> auto const& note)
 	case hash_note("b#"): return 12;
 	}
 	// This should be unreachable since parser limits what character can pass as notes
-	unreachable();
+	// but just to be sure return special value
+	return -1;
 }
 
 Result<Value> Value::from(Token t)
@@ -113,6 +116,7 @@ bool Value::truthy() const
 	case Type::Number: return n != Number(0);
 	case Type::Block:
 	case Type::Intrinsic:
+	case Type::Music:
 	case Type::Symbol: return true;
 	}
 	unreachable();
@@ -135,6 +139,7 @@ bool Value::operator==(Value const& other) const
 	case Type::Intrinsic: return intr == other.intr;
 	case Type::Block:     return false; // TODO Reconsider if functions are comparable
 	case Type::Bool:      return b == other.b;
+	case Type::Music:     unimplemented();
 	}
 
 	unreachable();
@@ -160,6 +165,9 @@ std::ostream& operator<<(std::ostream& os, Value const& v)
 
 	case Value::Type::Block:
 		return os << "<block>";
+
+	case Value::Type::Music:
+		unimplemented();
 	}
 	unreachable();
 }
@@ -167,9 +175,10 @@ std::ostream& operator<<(std::ostream& os, Value const& v)
 std::string_view type_name(Value::Type t)
 {
 	switch (t) {
+	case Value::Type::Block:     return "block";
 	case Value::Type::Bool:      return "bool";
 	case Value::Type::Intrinsic: return "intrinsic";
-	case Value::Type::Block:     return "block";
+	case Value::Type::Music:     return "music";
 	case Value::Type::Nil:       return "nil";
 	case Value::Type::Number:    return "number";
 	case Value::Type::Symbol:    return "symbol";
@@ -206,4 +215,24 @@ Result<Value> Block::index(Interpreter &i, unsigned position)
 
 	assert(position < body.arguments.size(), "Out of range"); // TODO(assert)
 	return i.eval((Ast)body.arguments[position]);
+}
+
+std::optional<Note> Note::from(std::string_view literal)
+{
+	if (auto note = note_index(literal); note != u8(-1)) {
+		return Note { .base = note };
+	}
+	return std::nullopt;
+}
+
+std::optional<u8> Note::into_midi_note() const
+{
+	return octave ? std::optional(into_midi_note(0)) : std::nullopt;
+}
+
+u8 Note::into_midi_note(i8 default_octave) const
+{
+	auto const octave = this->octave.has_value() ? *this->octave : default_octave;
+	// octave is in range [-1, 9] where Note { .base = 0, .octave = -1 } is midi note 0
+	return (octave + 1) * 12 + base;
 }

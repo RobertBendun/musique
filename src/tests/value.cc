@@ -34,6 +34,23 @@ static void either_truthy_or_falsy(
 	}
 }
 
+static void test_note_resolution(
+	std::string_view name,
+	i8 octave,
+	u8 expected,
+	reflection::source_location sl = reflection::source_location::current())
+{
+	auto const maybe_note = Note::from(name);
+	expect(maybe_note.has_value(), sl) << "Note::from didn't recognized " << name << " as a note";
+	if (maybe_note) {
+		auto note = *maybe_note;
+		note.octave = octave;
+		auto const midi_note = note.into_midi_note();
+		expect(midi_note.has_value(), sl) << "Note::into_midi_note returned nullopt, but should not";
+		expect(eq(int(*midi_note), int(expected)), sl) << "Note::into_midi_note returned wrong value";
+	}
+}
+
 suite value_test = [] {
 	"Value"_test = [] {
 		should("be properly created using Value::from") = [] {
@@ -73,5 +90,25 @@ suite value_test = [] {
 		expect(eq("foo"sv, str(Value::symbol("foo"))));
 
 		expect(eq("<intrinsic>"sv, str(Value(Intrinsic(nullptr)))));
+	};
+
+	"Note"_test = [] {
+		should("properly resolve notes") = [] {
+			for (i8 i = 0; i < 9; ++i) {
+				test_note_resolution("c",  i + -1, i * 12 +  0);
+				test_note_resolution("c#", i + -1, i * 12 +  1);
+				test_note_resolution("d",  i + -1, i * 12 +  2);
+				test_note_resolution("d#", i + -1, i * 12 +  3);
+				test_note_resolution("e",  i + -1, i * 12 +  4);
+				test_note_resolution("e#", i + -1, i * 12 +  5);
+				test_note_resolution("f",  i + -1, i * 12 +  5);
+				test_note_resolution("f#", i + -1, i * 12 +  6);
+				test_note_resolution("g",  i + -1, i * 12 +  7);
+				test_note_resolution("g#", i + -1, i * 12 +  8);
+				test_note_resolution("a",  i + -1, i * 12 +  9);
+				test_note_resolution("a#", i + -1, i * 12 + 10);
+				test_note_resolution("b",  i + -1, i * 12 + 11);
+			}
+		};
 	};
 };

@@ -447,6 +447,27 @@ struct Block
 	Result<Value> index(Interpreter &i, unsigned position);
 };
 
+struct Note
+{
+	/// Base of a note, like `c` (=0), `c#` (=1) `d` (=2)
+	u8 base;
+
+	/// Octave in MIDI acceptable range (from -1 to 9 inclusive)
+	std::optional<i8> octave = std::nullopt;
+
+	/// Length of playing note
+	std::optional<Number> length = std::nullopt;
+
+	/// Create Note from string
+	static std::optional<Note> from(std::string_view note);
+
+	/// Extract midi note number
+	std::optional<u8> into_midi_note() const;
+
+	/// Extract midi note number, but when octave is not present use provided default
+	u8 into_midi_note(i8 default_octave) const;
+};
+
 template<typename T, typename ...XS>
 constexpr auto is_one_of = (std::is_same_v<T, XS> || ...);
 
@@ -466,7 +487,8 @@ struct Value
 		Number,
 		Symbol,
 		Intrinsic,
-		Block
+		Block,
+		Music
 	};
 
 	Value() = default;
@@ -480,10 +502,11 @@ struct Value
 	}
 
 	Type type = Type::Nil;
-	bool b{};
-	Number n{};
-	Intrinsic intr{};
+	bool b;
+	Number n;
+	Intrinsic intr;
 	Block blk;
+	Note note;
 
 	// TODO Most strings should not be allocated by Value, but reference to string allocated previously
 	// Wrapper for std::string is needed that will allocate only when needed, middle ground between:
