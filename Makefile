@@ -1,8 +1,11 @@
 MAKEFLAGS="-j $(grep -c ^processor /proc/cpuinfo)"
 CXXFLAGS:=$(CXXFLAGS) -std=c++20 -Wall -Wextra -Werror=switch -Werror=return-type -Werror=unused-result
-CPPFLAGS:=$(CPPFLAGS) -Ilib/expected/ -Ilib/ut/ -Isrc/
+CPPFLAGS:=$(CPPFLAGS) -Ilib/expected/ -Ilib/ut/ -Ilib/midi/include -Isrc/
 RELEASE_FLAGS=-O3
 DEBUG_FLAGS=-O0 -ggdb
+
+LDFLAGS=-L./lib/midi/
+LDLIBS=-lmidi-alsa -lasound
 
 Obj=                 \
 		environment.o    \
@@ -29,8 +32,8 @@ debug: bin/debug/musique
 bin/%.o: src/%.cc src/*.hh
 	g++ $(CXXFLAGS) $(RELEASE_FLAGS) $(CPPFLAGS) -o $@ $< -c
 
-bin/musique: $(Release_Obj) bin/main.o src/*.hh
-	g++ $(CXXFLAGS) $(RELEASE_FLAGS) $(CPPFLAGS) -o $@ $(Release_Obj) bin/main.o
+bin/musique: $(Release_Obj) bin/main.o src/*.hh lib/midi/libmidi-alsa.a
+	g++ $(CXXFLAGS) $(RELEASE_FLAGS) $(CPPFLAGS) -o $@ $(Release_Obj) bin/main.o $(LDFLAGS) $(LDLIBS)
 
 bin/debug/musique: $(Debug_Obj) bin/debug/main.o src/*.hh
 	g++ $(CXXFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) -o $@ $(Debug_Obj) bin/debug/main.o

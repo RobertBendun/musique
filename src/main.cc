@@ -1,9 +1,11 @@
-#include <iostream>
-#include <musique.hh>
-
 #include <filesystem>
-#include <span>
 #include <fstream>
+#include <iostream>
+#include <span>
+
+#include <musique.hh>
+#define MIDI_ENABLE_ALSA_SUPPORT
+#include <midi.hh>
 
 namespace fs = std::filesystem;
 
@@ -23,12 +25,12 @@ void usage()
 		"usage: musique <options> [filename]\n"
 		"  where filename is path to file with Musique code that will be executed\n"
 		"  where options are:\n"
-		"    -c CODE\n"
-		"    --run CODE\n"
+		"    -c,--run CODE\n"
 		"      executes given code\n"
-		"\n"
 		"    --ast\n"
-		"      prints ast for given code\n";
+		"      prints ast for given code\n"
+		"    -l,--list\n"
+		"      lists all available MIDI ports and quit\n";
 	std::exit(1);
 }
 
@@ -63,6 +65,13 @@ static Result<void> Main(std::span<char const*> args)
 		if (arg == "-" || !arg.starts_with('-')) {
 			files.push_back(std::move(arg));
 			continue;
+		}
+
+		if (arg == "-l" || arg == "--list") {
+			midi::ALSA alsa("musique");
+			alsa.init_sequencer();
+			alsa.list_ports(std::cout);
+			return {};
 		}
 
 		if (arg == "-c" || arg == "--run") {

@@ -5,6 +5,22 @@ Interpreter języka Musique. Możliwy do wykorzystywania jako:
 - biblioteka interpretera języka dołączana do innego projektu (podobnie jak Lua);
 - REPL działający w systemie GNU/Linux + ALSA wykonujący język Musique.
 
+## Budowanie interpretera
+
+Jeśli nie posiadasz zależności `lib/midi` to:
+
+```console
+$ git submodule init
+$ git submodule update
+$ (cd lib/midi; make)
+```
+
+A następnie zbuduj interpreter:
+
+```console
+$ make bin/musique
+```
+
 ## Dostępne komendy
 
 - `make` - Buduje interpreter `bin/musique` (tryb release)
