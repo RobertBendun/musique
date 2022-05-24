@@ -1,0 +1,79 @@
+---------------------------------------------------------------------------
+Składnia
+---------------------------------------------------------------------------
+
+Zapis nut (dostępna notacja zachodnia)
+	c
+	d
+
+Arytmetyka
+	(aktualnie brak wsparcia dla precedensji operatorów)
+	3 * (4 * 12 - 8)
+
+Wywołanie funkcji
+	foo 1 2 3
+
+Kilka wywołań obok siebie
+	foo 1; bar 2
+
+Stworzenie zmiennej
+	var variable = 20
+
+Blok
+	Jako tablica
+		[1;2;3]
+
+	Jako odroczona ewaluacja
+		[say 42]
+
+	Jako funkcja anonimowa jednoparametrowa
+		[i | i * i ]
+
+	Poniższe zapisy są równoważne
+		[ say 42 ]
+		[| say 42 ]
+
+---------------------------------------------------------------------------
+Dostępne stałe
+---------------------------------------------------------------------------
+
+fn  	1
+dfn 	3/2
+hn   	1/2
+dhn 	3/4
+ddhn 	7/8
+qn 	  1/4
+dqn 	3/8
+ddqn 	7/16
+en 	  1/8
+den 	3/16
+dden 	7/32
+sn 	  1/16
+dsn 	3/32
+tn 	  1/32
+dtn 	3/64
+
+---------------------------------------------------------------------------
+Dostępne funkcje
+---------------------------------------------------------------------------
+
+if : condition: bool, block: block -> (eval block)
+	wywołuje block jeśli condition jest:
+		dla b: bool   jest b == true
+		dla n: number jest n != 0
+		dla nil       jest false
+		dla typu music, block, intrinsic, symbol zawsze prawdziwe
+
+if : condition: Bool, then: Block, else: Block -> (eval then or eval else)
+	jeśli condition jest prawdziwe wg zasad wyżej wywołaj then
+	w innym przypadku wywołaj else
+
+len : block -> number
+	zwraca ilość elementów (liczbę indeksowalnych pozycji) wewnątrz bloku
+	Przykład:
+		len [1;2;3]   == 3
+		len [foo;bar] == 2
+		len [foo bar] == 1
+
+play : music... -> nil
+	odtwarza sekwencyjnie otrzymane wartości muzyczne

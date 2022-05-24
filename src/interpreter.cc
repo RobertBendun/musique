@@ -53,6 +53,27 @@ constexpr auto comparison_operator()
 	};
 }
 
+/// Registers constants like `fn = full note = 1/1`
+static inline void register_note_length_constants()
+{
+	auto &global = *Env::global;
+	global.force_define("fn",   Value::number(Number(1,  1)));
+	global.force_define("dfn",  Value::number(Number(3,  2)));
+	global.force_define("hn",   Value::number(Number(1,  2)));
+	global.force_define("dhn",  Value::number(Number(3,  4)));
+	global.force_define("ddhn", Value::number(Number(7,  8)));
+	global.force_define("qn",   Value::number(Number(1,  4)));
+	global.force_define("dqn",  Value::number(Number(3,  8)));
+	global.force_define("ddqn", Value::number(Number(7, 16)));
+	global.force_define("en",   Value::number(Number(1,  8)));
+	global.force_define("den",  Value::number(Number(3, 16)));
+	global.force_define("dden", Value::number(Number(7, 32)));
+	global.force_define("sn",   Value::number(Number(1, 16)));
+	global.force_define("dsn",  Value::number(Number(3, 32)));
+	global.force_define("tn",   Value::number(Number(1, 32)));
+	global.force_define("dtn",  Value::number(Number(3, 64)));
+}
+
 Interpreter::Interpreter()
 {
 	{ // Context initialization
@@ -64,6 +85,9 @@ Interpreter::Interpreter()
 	}
 	{ // Global default functions initialization
 		auto &global = *Env::global;
+
+		register_note_length_constants();
+
 		global.force_define("typeof", +[](Interpreter&, std::vector<Value> args) -> Result<Value> {
 			assert(args.size() == 1, "typeof expects only one argument");
 			return Value::symbol(std::string(type_name(args.front().type)));
@@ -79,7 +103,6 @@ Interpreter::Interpreter()
 				return Value{};
 			}
 		});
-
 
 		global.force_define("len", +[](Interpreter &, std::vector<Value> args) -> Result<Value> {
 			assert(args.size() == 1, "len only accepts one argument");
