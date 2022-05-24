@@ -494,6 +494,17 @@ struct Note
 
 std::ostream& operator<<(std::ostream& os, Note const& note);
 
+struct Chord
+{
+	std::vector<Note> notes;
+
+	static Chord from(std::string_view source);
+
+	bool operator==(Chord const&) const = default;
+};
+
+std::ostream& operator<<(std::ostream& os, Chord const& chord);
+
 /// Eager Array
 struct Array
 {
@@ -523,6 +534,7 @@ struct Value
 	static Value from(Block &&l);
 	static Value from(Array &&array);
 	static Value from(Note n);
+	static Value from(Chord chord);
 
 	enum class Type
 	{
@@ -533,7 +545,7 @@ struct Value
 		Intrinsic,
 		Block,
 		Array,
-		Music
+		Music,
 	};
 
 	Value() = default;
@@ -551,7 +563,7 @@ struct Value
 	Number n;
 	Intrinsic intr;
 	Block blk;
-	Note note;
+	Chord chord;
 	Array array;
 
 	// TODO Most strings should not be allocated by Value, but reference to string allocated previously
@@ -647,7 +659,7 @@ struct Interpreter
 	void leave_scope();
 
 	/// Play note resolving any missing parameters with context via `midi_connection` member.
-	void play(Note n);
+	void play(Chord);
 };
 
 namespace errors

@@ -105,12 +105,7 @@ auto Lexer::next_token() -> Result<Token>
 		// Allow `c#`
 		consume_if('#');
 
-		// Any of the following sequences are allowed
-		// c,,,,,,,,,,,,,,,,
-		// c1,,,,2,3212
-		// c1234'''''
-		// during lexing
-		while (consume_if(",'") || consume_if(unicode::is_digit)) {}
+		while (consume_if('_') || consume_if(unicode::is_digit)) {}
 
 		// If we encounter any letter that is not part of chord declaration,
 		// then we have symbol, not chord declaration
@@ -125,9 +120,7 @@ auto Lexer::next_token() -> Result<Token>
 	if (consume_if(std::bind(unicode::is_identifier, _1, unicode::First_Character::Yes))) {
 	symbol_lexing:
 		for (auto predicate = std::bind(unicode::is_identifier, _1, unicode::First_Character::No);
-				consume_if(predicate);
-		) {
-		}
+				consume_if(predicate);) {}
 
 		Token t = { Token::Type::Symbol, finish(), token_location };
 		if (std::find(Keywords.begin(), Keywords.end(), t.source) != Keywords.end()) {

@@ -83,7 +83,7 @@ Result<Value> Value::from(Token t)
 			return Value::from(*maybe_note);
 		}
 
-		unimplemented("only simple note values (like c or e#) are supported now");
+		return Value::from(Chord::from(t.source));
 
 	default:
 		unimplemented();
@@ -150,7 +150,15 @@ Value Value::from(Note n)
 {
 	Value v;
 	v.type = Type::Music;
-	v.note = n;
+	v.chord = { .notes = { n } };
+	return v;
+}
+
+Value Value::from(Chord chord)
+{
+	Value v;
+	v.type = Type::Music;
+	v.chord = std::move(chord);
 	return v;
 }
 
@@ -164,11 +172,12 @@ Result<Value> Value::operator()(Interpreter &i, std::vector<Value> args)
 			assert(args.size() == 1 || args.size() == 2, "music value can be called only in form note <octave> [<length>]"); // TODO(assert)
 			assert(args[0].type == Type::Number, "expected octave to be a number"); // TODO(assert)
 
-			note.octave = args[0].n.as_int();
-
-			if (args.size() == 2) {
-				assert(args[1].type == Type::Number, "expected length to be a number"); // TODO(assert)
-				note.length = args[1].n;
+			assert(args.size() == 2 ? args[1].type == Type::Number : true, "expected length to be a number"); // TODO(assert)
+			for (auto &note : chord.notes) {
+				note.octave = args[0].n.as_int();
+				if (args.size() == 2) {
+					note.length = args[1].n;
+				}
 			}
 
 			return *this;
@@ -224,7 +233,7 @@ bool Value::operator==(Value const& other) const
 	case Type::Intrinsic: return intr == other.intr;
 	case Type::Block:     return false; // TODO Reconsider if functions are comparable
 	case Type::Bool:      return b == other.b;
-	case Type::Music:     return note == other.note;
+	case Type::Music:     return chord == other.chord;
 	case Type::Array:     return array == other.array;
 	}
 
@@ -272,7 +281,7 @@ std::ostream& operator<<(std::ostream& os, Value const& v)
 		return os << v.array;
 
 	case Value::Type::Music:
-		return os << v.note;
+		return os << v.chord;
 	}
 	unreachable();
 }
@@ -374,22 +383,46 @@ u8 Note::into_midi_note(i8 default_octave) const
 std::ostream& operator<<(std::ostream& os, Note const& note)
 {
 	os << note_index_to_string(note.base);
-	os << ":oct=";
 	if (note.octave) {
-		os << int(*note.octave);
-	} else {
-		os << '_';
+		os << ":oct=" << int(*note.octave);
 	}
-	os << ":len=";
 	if (note.length) {
-		os << *note.length;
-	} else {
-		os << '_';
+		os << ":len=" << *note.length;
 	}
+
 	return os;
 }
 
 bool Note::operator==(Note const& other) const
 {
 	return octave == other.octave && base == other.base && length == other.length;
+}
+
+Chord Chord::from(std::string_view source)
+{
+	auto note = Note::from(source);
+	assert(note.has_value(), "don't know how this could happen");
+
+	Chord chord;
+	source.remove_prefix(1 + (source[1] == '#'));
+	chord.notes.push_back(*std::move(note));
+
+	for (char digit : source) {
+		chord.notes.push_back(Note { .base = u8(digit - '0') });
+	}
+
+	return chord;
+}
+
+std::ostream& operator<<(std::ostream& os, Chord const& chord)
+{
+	os << "chord[";
+
+	for (auto it = chord.notes.begin(); it != chord.notes.end(); ++it) {
+		os << *it;
+		if (std::next(it) != chord.notes.end())
+			os << "; ";
+	}
+
+	return os << ']';
 }

@@ -113,7 +113,7 @@ Interpreter::Interpreter()
 		global.force_define("play", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
 			for (auto &arg : args) {
 				assert(arg.type == Value::Type::Music, "Only music values can be played"); // TODO(assert)
-				i.play(arg.note);
+				i.play(arg.chord);
 			}
 			return Value{};
 		});
@@ -264,16 +264,31 @@ void Interpreter::leave_scope()
 	env = env->leave();
 }
 
-void Interpreter::play(Note note)
+void Interpreter::play(Chord chord)
 {
 	assert(midi_connection, "To play midi Interpreter requires instance of MIDI connection");
 
 	auto &ctx = context_stack.back();
-	note = ctx.fill(std::move(note));
 
-	auto dur = ctx.length_to_duration(note.length);
+	// Fill all notes that don't have octave or length with defaults
+	std::transform(chord.notes.begin(), chord.notes.end(), chord.notes.begin(), [&](Note note) { return ctx.fill(note); });
 
-	midi_connection->send_note_on(0, *note.into_midi_note(), 127);
-	std::this_thread::sleep_for(dur);
-	midi_connection->send_note_off(0, *note.into_midi_note(), 127);
+	// Sort that we have smaller times first
+	std::sort(chord.notes.begin(), chord.notes.end(), [](Note const& lhs, Note const& rhs) { return lhs.length < rhs.length; });
+
+	Number max_time = *chord.notes.back().length;
+
+	// Turn all notes on
+	for (auto const& note : chord.notes) {
+		midi_connection->send_note_on(0, *note.into_midi_note(), 127);
+	}
+
+	// Turn off each note at right time
+	for (auto const& note : chord.notes) {
+		if (max_time != Number(0)) {
+			max_time -= *note.length;
+			std::this_thread::sleep_for(ctx.length_to_duration(*note.length));
+		}
+		midi_connection->send_note_off(0, *note.into_midi_note(), 127);
+	}
 }
