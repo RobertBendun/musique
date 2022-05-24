@@ -1,0 +1,39 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Musique",
+	"patterns": [
+		{
+			"include": "#keywords"
+		},
+		{
+			"include": "#strings"
+		}
+	],
+	"repository": {
+		"keywords": {
+			"patterns": [{
+				"name": "keyword.control.musique",
+				"match": "\\b(var|true|false|nil)\\b"
+			}]
+		},
+		"operators": {
+			"patterns": [{
+				"name": "keyword.operator.arithmetic.musique",
+				"match": "(\\*|\\+|\\-|/)"
+			}]
+		},
+		"builtins": {
+			"patterns": [{
+				"name": "keyword.control.musique",
+				"match": "(if|play|len)"
+			}]
+		},
+		"multiline-comments": {
+			"patterns": [{
+				"name": "comment.block",
+				"match": "---+.*----+"
+			}]
+		}
+	},
+	"scopeName": "source.musique"
+}
