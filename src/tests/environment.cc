@@ -27,22 +27,22 @@ suite environment_test = [] {
 		should("nested scoping preserve outer scope") = [] {
 			Interpreter i;
 
-			i.env->force_define("x", Value::number(Number(10)));
-			i.env->force_define("y", Value::number(Number(20)));
+			i.env->force_define("x", Value::from(Number(10)));
+			i.env->force_define("y", Value::from(Number(20)));
 
-			equals(i.env->find("x"), Value::number(Number(10)));
-			equals(i.env->find("y"), Value::number(Number(20)));
+			equals(i.env->find("x"), Value::from(Number(10)));
+			equals(i.env->find("y"), Value::from(Number(20)));
 
 			i.enter_scope();
 			{
-				i.env->force_define("x", Value::number(Number(30)));
-				equals(i.env->find("x"), Value::number(Number(30)));
-				equals(i.env->find("y"), Value::number(Number(20)));
+				i.env->force_define("x", Value::from(Number(30)));
+				equals(i.env->find("x"), Value::from(Number(30)));
+				equals(i.env->find("y"), Value::from(Number(20)));
 			}
 			i.leave_scope();
 
-			equals(i.env->find("x"), Value::number(Number(10)));
-			equals(i.env->find("y"), Value::number(Number(20)));
+			equals(i.env->find("x"), Value::from(Number(10)));
+			equals(i.env->find("y"), Value::from(Number(20)));
 		};
 
 		should("nested variables missing from outer scope") = [] {
@@ -50,8 +50,8 @@ suite environment_test = [] {
 
 			i.enter_scope();
 			{
-				i.env->force_define("x", Value::number(Number(30)));
-				equals(i.env->find("x"), Value::number(Number(30)));
+				i.env->force_define("x", Value::from(Number(30)));
+				equals(i.env->find("x"), Value::from(Number(30)));
 			}
 			i.leave_scope();
 

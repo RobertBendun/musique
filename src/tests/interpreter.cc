@@ -27,26 +27,26 @@ void evaluates_to(Value value, std::string_view source_code, reflection::source_
 suite intepreter_test = [] {
 	"Interpreter"_test = [] {
 		should("evaluate literals") = [] {
-			evaluates_to(Value::boolean(false),     "false");
-			evaluates_to(Value::boolean(true),      "true");
-			evaluates_to(Value::number(Number(10)), "10");
+			evaluates_to(Value::from(false),     "false");
+			evaluates_to(Value::from(true),      "true");
+			evaluates_to(Value::from(Number(10)), "10");
 			evaluates_to(Value{},                   "nil");
 		};
 
 		should("evaluate arithmetic") = [] {
-			evaluates_to(Value::number(Number(10)), "5 + 3 + 2");
-			evaluates_to(Value::number(Number(25)), "5 * (3 + 2)");
-			evaluates_to(Value::number(Number(1, 2)), "1 / 2");
-			evaluates_to(Value::number(Number(-10)), "10 - 20");
+			evaluates_to(Value::from(Number(10)), "5 + 3 + 2");
+			evaluates_to(Value::from(Number(25)), "5 * (3 + 2)");
+			evaluates_to(Value::from(Number(1, 2)), "1 / 2");
+			evaluates_to(Value::from(Number(-10)), "10 - 20");
 		};
 
 		should("call builtin functions") = [] {
-			evaluates_to(Value::symbol("nil"),     "typeof nil");
-			evaluates_to(Value::symbol("number"),  "typeof 100");
+			evaluates_to(Value::from("nil"),     "typeof nil");
+			evaluates_to(Value::from("number"),  "typeof 100");
 		};
 
 		should("allows only for calling which is callable") = [] {
-			evaluates_to(Value::number(Number(0)), "[i|i] 0");
+			evaluates_to(Value::from(Number(0)), "[i|i] 0");
 			{
 				Interpreter i;
 				{
@@ -55,7 +55,7 @@ suite intepreter_test = [] {
 					expect(eq(result.error().type, errors::Not_Callable));
 				}
 				{
-					i.env->force_define("call_me", Value::number(Number(10)));
+					i.env->force_define("call_me", Value::from(Number(10)));
 					auto result = Parser::parse("call_me 20", "test").and_then([&](Ast &&ast) { return i.eval(std::move(ast)); });
 					expect(!result.has_value()) << "Expected code to have failed";
 					expect(eq(result.error().type, errors::Not_Callable));
@@ -64,36 +64,36 @@ suite intepreter_test = [] {
 		};
 
 		should("allow for value (in)equality comparisons") = [] {
-			evaluates_to(Value::boolean(true),  "nil == nil");
-			evaluates_to(Value::boolean(false), "nil != nil");
+			evaluates_to(Value::from(true),  "nil == nil");
+			evaluates_to(Value::from(false), "nil != nil");
 
-			evaluates_to(Value::boolean(true),  "true == true");
-			evaluates_to(Value::boolean(false), "true != true");
-			evaluates_to(Value::boolean(false), "true == false");
-			evaluates_to(Value::boolean(true),  "true != false");
+			evaluates_to(Value::from(true),  "true == true");
+			evaluates_to(Value::from(false), "true != true");
+			evaluates_to(Value::from(false), "true == false");
+			evaluates_to(Value::from(true),  "true != false");
 
-			evaluates_to(Value::boolean(true),  "0 == 0");
-			evaluates_to(Value::boolean(false), "0 != 0");
-			evaluates_to(Value::boolean(true),  "1 != 0");
-			evaluates_to(Value::boolean(false), "1 == 0");
+			evaluates_to(Value::from(true),  "0 == 0");
+			evaluates_to(Value::from(false), "0 != 0");
+			evaluates_to(Value::from(true),  "1 != 0");
+			evaluates_to(Value::from(false), "1 == 0");
 		};
 
 		should("allow for value ordering comparisons") = [] {
-			evaluates_to(Value::boolean(false), "true <  true");
-			evaluates_to(Value::boolean(true),  "true <= true");
-			evaluates_to(Value::boolean(true),  "false < true");
-			evaluates_to(Value::boolean(false), "false > true");
+			evaluates_to(Value::from(false), "true <  true");
+			evaluates_to(Value::from(true),  "true <= true");
+			evaluates_to(Value::from(true),  "false < true");
+			evaluates_to(Value::from(false), "false > true");
 
-			evaluates_to(Value::boolean(false), "0 <  0");
-			evaluates_to(Value::boolean(true),  "0 <= 0");
-			evaluates_to(Value::boolean(true),  "1 <  2");
-			evaluates_to(Value::boolean(false), "1 >  2");
+			evaluates_to(Value::from(false), "0 <  0");
+			evaluates_to(Value::from(true),  "0 <= 0");
+			evaluates_to(Value::from(true),  "1 <  2");
+			evaluates_to(Value::from(false), "1 >  2");
 		};
 
 		// Added to explicitly test against bug that was in old implementation of enviroments.
 		// Previously this test would segfault
 		should("allow assigning result of function calls to a variable") = [] {
-			evaluates_to(Value::number(Number(42)), "var x = [i|i] 42; x");
+			evaluates_to(Value::from(Number(42)), "var x = [i|i] 42; x");
 		};
 	};
 };

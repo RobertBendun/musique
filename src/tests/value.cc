@@ -54,40 +54,40 @@ static void test_note_resolution(
 suite value_test = [] {
 	"Value"_test = [] {
 		should("be properly created using Value::from") = [] {
-			expect_value(Value::from({ Token::Type::Numeric, "10", {} }),     Value::number(Number(10)));
+			expect_value(Value::from({ Token::Type::Numeric, "10", {} }),     Value::from(Number(10)));
 			expect_value(Value::from({ Token::Type::Keyword, "nil", {} }),    Value{});
-			expect_value(Value::from({ Token::Type::Keyword, "true", {} }),   Value::boolean(true));
-			expect_value(Value::from({ Token::Type::Keyword, "false", {} }),  Value::boolean(false));
-			expect_value(Value::from({ Token::Type::Symbol,  "foobar", {} }), Value::symbol("foobar"));
+			expect_value(Value::from({ Token::Type::Keyword, "true", {} }),   Value::from(true));
+			expect_value(Value::from({ Token::Type::Keyword, "false", {} }),  Value::from(false));
+			expect_value(Value::from({ Token::Type::Symbol,  "foobar", {} }), Value::from("foobar"));
 		};
 
 		should("have be considered truthy or falsy") = [] {
-			either_truthy_or_falsy(&Value::truthy, Value::boolean(true));
-			either_truthy_or_falsy(&Value::truthy, Value::number(Number(1)));
-			either_truthy_or_falsy(&Value::truthy, Value::symbol("foo"));
+			either_truthy_or_falsy(&Value::truthy, Value::from(true));
+			either_truthy_or_falsy(&Value::truthy, Value::from(Number(1)));
+			either_truthy_or_falsy(&Value::truthy, Value::from("foo"));
 			either_truthy_or_falsy(&Value::truthy, Value(Intrinsic(nullptr)));
 
 			either_truthy_or_falsy(&Value::falsy, Value{});
-			either_truthy_or_falsy(&Value::falsy, Value::boolean(false));
-			either_truthy_or_falsy(&Value::falsy, Value::number(Number(0)));
+			either_truthy_or_falsy(&Value::falsy, Value::from(false));
+			either_truthy_or_falsy(&Value::falsy, Value::from(Number(0)));
 		};
 	};
 
 	"Value comparisons"_test = [] {
 		should("are always not equal when types differ") = [] {
-			expect(neq(Value::symbol("0"), Value::number(Number(0))));
+			expect(neq(Value::from("0"), Value::from(Number(0))));
 		};
 	};
 
 	"Value printing"_test = [] {
 		expect(eq("nil"sv, str(Value{})));
-		expect(eq("true"sv, str(Value::boolean(true))));
-		expect(eq("false"sv, str(Value::boolean(false))));
+		expect(eq("true"sv, str(Value::from(true))));
+		expect(eq("false"sv, str(Value::from(false))));
 
-		expect(eq("10"sv, str(Value::number(Number(10)))));
-		expect(eq("1/2"sv, str(Value::number(Number(2, 4)))));
+		expect(eq("10"sv, str(Value::from(Number(10)))));
+		expect(eq("1/2"sv, str(Value::from(Number(2, 4)))));
 
-		expect(eq("foo"sv, str(Value::symbol("foo"))));
+		expect(eq("foo"sv, str(Value::from("foo"))));
 
 		expect(eq("<intrinsic>"sv, str(Value(Intrinsic(nullptr)))));
 	};

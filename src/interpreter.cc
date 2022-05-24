@@ -28,7 +28,7 @@ constexpr auto equality_operator()
 {
 	return [](Interpreter&, std::vector<Value> args) -> Result<Value> {
 		assert(args.size() == 2, "(in)Equality only allows for 2 operands"); // TODO(assert)
-		return Value::boolean(Binary_Predicate{}(std::move(args.front()), std::move(args.back())));
+		return Value::from(Binary_Predicate{}(std::move(args.front()), std::move(args.back())));
 	};
 }
 
@@ -41,10 +41,10 @@ constexpr auto comparison_operator()
 
 		switch (args.front().type) {
 		case Value::Type::Number:
-			return Value::boolean(Binary_Predicate{}(std::move(args.front()).n, std::move(args.back()).n));
+			return Value::from(Binary_Predicate{}(std::move(args.front()).n, std::move(args.back()).n));
 
 		case Value::Type::Bool:
-			return Value::boolean(Binary_Predicate{}(std::move(args.front()).b, std::move(args.back()).b));
+			return Value::from(Binary_Predicate{}(std::move(args.front()).b, std::move(args.back()).b));
 
 		default:
 			assert(false, "Cannot compare value of given types"); // TODO(assert)
@@ -57,21 +57,21 @@ constexpr auto comparison_operator()
 static inline void register_note_length_constants()
 {
 	auto &global = *Env::global;
-	global.force_define("fn",   Value::number(Number(1,  1)));
-	global.force_define("dfn",  Value::number(Number(3,  2)));
-	global.force_define("hn",   Value::number(Number(1,  2)));
-	global.force_define("dhn",  Value::number(Number(3,  4)));
-	global.force_define("ddhn", Value::number(Number(7,  8)));
-	global.force_define("qn",   Value::number(Number(1,  4)));
-	global.force_define("dqn",  Value::number(Number(3,  8)));
-	global.force_define("ddqn", Value::number(Number(7, 16)));
-	global.force_define("en",   Value::number(Number(1,  8)));
-	global.force_define("den",  Value::number(Number(3, 16)));
-	global.force_define("dden", Value::number(Number(7, 32)));
-	global.force_define("sn",   Value::number(Number(1, 16)));
-	global.force_define("dsn",  Value::number(Number(3, 32)));
-	global.force_define("tn",   Value::number(Number(1, 32)));
-	global.force_define("dtn",  Value::number(Number(3, 64)));
+	global.force_define("fn",   Value::from(Number(1,  1)));
+	global.force_define("dfn",  Value::from(Number(3,  2)));
+	global.force_define("hn",   Value::from(Number(1,  2)));
+	global.force_define("dhn",  Value::from(Number(3,  4)));
+	global.force_define("ddhn", Value::from(Number(7,  8)));
+	global.force_define("qn",   Value::from(Number(1,  4)));
+	global.force_define("dqn",  Value::from(Number(3,  8)));
+	global.force_define("ddqn", Value::from(Number(7, 16)));
+	global.force_define("en",   Value::from(Number(1,  8)));
+	global.force_define("den",  Value::from(Number(3, 16)));
+	global.force_define("dden", Value::from(Number(7, 32)));
+	global.force_define("sn",   Value::from(Number(1, 16)));
+	global.force_define("dsn",  Value::from(Number(3, 32)));
+	global.force_define("tn",   Value::from(Number(1, 32)));
+	global.force_define("dtn",  Value::from(Number(3, 64)));
 }
 
 Interpreter::Interpreter()
@@ -90,7 +90,7 @@ Interpreter::Interpreter()
 
 		global.force_define("typeof", +[](Interpreter&, std::vector<Value> args) -> Result<Value> {
 			assert(args.size() == 1, "typeof expects only one argument");
-			return Value::symbol(std::string(type_name(args.front().type)));
+			return Value::from(std::string(type_name(args.front().type)));
 		});
 
 		global.force_define("if", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
@@ -108,9 +108,9 @@ Interpreter::Interpreter()
 			assert(args.size() == 1, "len only accepts one argument");
 			assert(args.front().type == Value::Type::Block, "Only blocks can be measure");
 			if (args.front().blk.body.type != Ast::Type::Sequence) {
-				return Value::number(Number(1));
+				return Value::from(Number(1));
 			} else {
-				return Value::number(Number(args.front().blk.body.arguments.size()));
+				return Value::from(Number(args.front().blk.body.arguments.size()));
 			}
 		});
 
@@ -228,7 +228,7 @@ Result<Value> Interpreter::eval(Ast &&ast)
 
 			block.context = env;
 			block.body = std::move(ast.arguments.back());
-			return Value::block(std::move(block));
+			return Value::from(std::move(block));
 		}
 
 	default:

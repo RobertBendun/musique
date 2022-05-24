@@ -65,22 +65,22 @@ Result<Value> Value::from(Token t)
 {
 	switch (t.type) {
 	case Token::Type::Numeric:
-		return Value::number(Try(Number::from(std::move(t))));
+		return Value::from(Try(Number::from(std::move(t))));
 
 	case Token::Type::Symbol:
-		return Value::symbol(std::string(t.source));
+		return Value::from(std::string(t.source));
 
 	case Token::Type::Keyword:
-		if (t.source == "false") return Value::boolean(false);
+		if (t.source == "false") return Value::from(false);
 		if (t.source == "nil")   return Value{};
-		if (t.source == "true")  return Value::boolean(true);
+		if (t.source == "true")  return Value::from(true);
 		unreachable();
 
 	case Token::Type::Chord:
 		if (t.source.size() == 1 || (t.source.size() == 2 && t.source.back() == '#')) {
 			auto maybe_note = Note::from(t.source);
 			assert(maybe_note.has_value(), "Somehow parser passed invalid note literal");
-			return Value::music(*maybe_note);
+			return Value::from(*maybe_note);
 		}
 
 		unimplemented("only simple note values (like c or e#) are supported now");
@@ -90,7 +90,7 @@ Result<Value> Value::from(Token t)
 	}
 }
 
-Value Value::boolean(bool b)
+Value Value::from(Explicit_Bool b)
 {
 	Value v;
 	v.type = Value::Type::Bool;
@@ -98,7 +98,7 @@ Value Value::boolean(bool b)
 	return v;
 }
 
-Value Value::number(Number n)
+Value Value::from(Number n)
 {
 	Value v;
 	v.type = Type::Number;
@@ -106,7 +106,7 @@ Value Value::number(Number n)
 	return v;
 }
 
-Value Value::symbol(std::string s)
+Value Value::from(std::string s)
 {
 	Value v;
 	v.type = Type::Symbol;
@@ -114,7 +114,23 @@ Value Value::symbol(std::string s)
 	return v;
 }
 
-Value Value::block(Block &&block)
+Value Value::from(std::string_view s)
+{
+	Value v;
+	v.type = Type::Symbol;
+	v.s = std::move(s);
+	return v;
+}
+
+Value Value::from(char const* s)
+{
+	Value v;
+	v.type = Type::Symbol;
+	v.s = std::move(s);
+	return v;
+}
+
+Value Value::from(Block &&block)
 {
 	Value v;
 	v.type = Type::Block;
@@ -122,7 +138,7 @@ Value Value::block(Block &&block)
 	return v;
 }
 
-Value Value::music(Note n)
+Value Value::from(Note n)
 {
 	Value v;
 	v.type = Type::Music;
@@ -174,7 +190,8 @@ bool Value::truthy() const
 	case Type::Bool:   return b;
 	case Type::Nil:    return false;
 	case Type::Number: return n != Number(0);
-	case Type::Block:
+	case Type::Array: // for array and block maybe test emptyness?
+	case Type::Block: //
 	case Type::Intrinsic:
 	case Type::Music:
 	case Type::Symbol: return true;
@@ -200,6 +217,7 @@ bool Value::operator==(Value const& other) const
 	case Type::Block:     return false; // TODO Reconsider if functions are comparable
 	case Type::Bool:      return b == other.b;
 	case Type::Music:     return note == other.note;
+	case Type::Array:     unimplemented();
 	}
 
 	unreachable();
@@ -226,6 +244,9 @@ std::ostream& operator<<(std::ostream& os, Value const& v)
 	case Value::Type::Block:
 		return os << "<block>";
 
+	case Value::Type::Array:
+		unimplemented();
+
 	case Value::Type::Music:
 		return os << v.note;
 	}
@@ -235,6 +256,7 @@ std::ostream& operator<<(std::ostream& os, Value const& v)
 std::string_view type_name(Value::Type t)
 {
 	switch (t) {
+	case Value::Type::Array:     return "array";
 	case Value::Type::Block:     return "block";
 	case Value::Type::Bool:      return "bool";
 	case Value::Type::Intrinsic: return "intrinsic";

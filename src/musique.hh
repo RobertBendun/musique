@@ -201,6 +201,23 @@ struct [[nodiscard("This value may contain critical error, so it should NOT be i
 		std::move(try_value).value();                \
 	})
 
+/// Drop in replacement for bool when C++ implcit conversions stand in your way
+struct Explicit_Bool
+{
+	bool value;
+
+	constexpr Explicit_Bool(bool b) : value(b)
+	{
+	}
+
+	constexpr Explicit_Bool(auto &&) = delete;
+
+	constexpr operator bool() const
+	{
+		return value;
+	}
+};
+
 namespace unicode
 {
 	inline namespace special_runes
@@ -439,6 +456,7 @@ struct Value;
 
 using Intrinsic = Result<Value>(*)(Interpreter &i, std::vector<Value>);
 
+/// Lazy Array / Continuation / Closure type thingy
 struct Block
 {
 	Location location;
@@ -475,18 +493,30 @@ struct Note
 
 std::ostream& operator<<(std::ostream& os, Note const& note);
 
-template<typename T, typename ...XS>
-constexpr auto is_one_of = (std::is_same_v<T, XS> || ...);
+/// Eager Array
+struct Array
+{
+	/// Elements that are stored in array
+	std::vector<Value> elements;
+
+	Result<Value> index(Interpreter &i, unsigned position);
+};
 
 // TODO Add location
 struct Value
 {
 	static Result<Value> from(Token t);
-	static Value boolean(bool b);
-	static Value number(Number n);
-	static Value symbol(std::string s);
-	static Value block(Block &&l);
-	static Value music(Note n);
+	static Value from(Explicit_Bool b);
+	static Value from(Number n);
+
+	// Symbol creating functions
+	static Value from(std::string s);
+	static Value from(std::string_view s);
+	static Value from(char const* s);
+
+	static Value from(Block &&l);
+	static Value from(Array &&array);
+	static Value from(Note n);
 
 	enum class Type
 	{
@@ -496,6 +526,7 @@ struct Value
 		Symbol,
 		Intrinsic,
 		Block,
+		Array,
 		Music
 	};
 
