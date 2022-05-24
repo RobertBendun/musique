@@ -466,6 +466,7 @@ struct Block
 
 	Result<Value> operator()(Interpreter &i, std::vector<Value> params);
 	Result<Value> index(Interpreter &i, unsigned position);
+	usize size() const;
 };
 
 struct Note
@@ -500,7 +501,12 @@ struct Array
 	std::vector<Value> elements;
 
 	Result<Value> index(Interpreter &i, unsigned position);
+	usize size() const;
+
+	bool operator==(Array const&) const = default;
 };
+
+std::ostream& operator<<(std::ostream& os, Array const& v);
 
 // TODO Add location
 struct Value
@@ -546,6 +552,7 @@ struct Value
 	Intrinsic intr;
 	Block blk;
 	Note note;
+	Array array;
 
 	// TODO Most strings should not be allocated by Value, but reference to string allocated previously
 	// Wrapper for std::string is needed that will allocate only when needed, middle ground between:
@@ -557,6 +564,7 @@ struct Value
 	bool falsy() const;
 	Result<Value> operator()(Interpreter &i, std::vector<Value> args);
 	Result<Value> index(Interpreter &i, unsigned position);
+	usize size() const;
 
 	bool operator==(Value const& other) const;
 };

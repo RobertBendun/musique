@@ -67,6 +67,14 @@ dtn 	3/64
 Dostępne funkcje
 ---------------------------------------------------------------------------
 
+flat : ...items : any -> array
+	tworzy tablicę z dostarczonych elementów, rozsypując elementy indeksowalne
+	przykład:
+		flat 1 2 3              tworzy tablicę 1, 2, 3
+		flat [1;2] 2 3          tworzy tablicę 1, 2, 2, 3
+		flat [[1;2]; [3;4]] 5 6 tworzy tablicę [1;2], [3;4], 5, 6
+
+
 if : condition: bool, block: block -> (eval block)
 	wywołuje block jeśli condition jest:
 		dla b: bool   jest b == true
@@ -77,6 +85,11 @@ if : condition: bool, block: block -> (eval block)
 if : condition: Bool, then: Block, else: Block -> (eval then or eval else)
 	jeśli condition jest prawdziwe wg zasad wyżej wywołaj then
 	w innym przypadku wywołaj else
+
+len : array -> number
+	zwraca ilość elementów w tablicy
+	Przykład:
+		len (flat 5 6 7) == 3
 
 len : block -> number
 	zwraca ilość elementów (liczbę indeksowalnych pozycji) wewnątrz bloku

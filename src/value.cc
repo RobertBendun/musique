@@ -138,6 +138,14 @@ Value Value::from(Block &&block)
 	return v;
 }
 
+Value Value::from(Array &&array)
+{
+	Value v;
+	v.type = Type::Array;
+	v.array = std::move(array);
+	return v;
+}
+
 Value Value::from(Note n)
 {
 	Value v;
@@ -217,7 +225,23 @@ bool Value::operator==(Value const& other) const
 	case Type::Block:     return false; // TODO Reconsider if functions are comparable
 	case Type::Bool:      return b == other.b;
 	case Type::Music:     return note == other.note;
-	case Type::Array:     unimplemented();
+	case Type::Array:     return array == other.array;
+	}
+
+	unreachable();
+}
+
+usize Value::size() const
+{
+	switch (type) {
+	case Type::Array:
+		return array.size();
+
+	case Type::Block:
+		return blk.size();
+
+	default:
+		assert(false, "This type does not support Value::size()"); // TODO(assert)
 	}
 
 	unreachable();
@@ -245,7 +269,7 @@ std::ostream& operator<<(std::ostream& os, Value const& v)
 		return os << "<block>";
 
 	case Value::Type::Array:
-		unimplemented();
+		return os << v.array;
 
 	case Value::Type::Music:
 		return os << v.note;
@@ -297,6 +321,34 @@ Result<Value> Block::index(Interpreter &i, unsigned position)
 
 	assert(position < body.arguments.size(), "Out of range"); // TODO(assert)
 	return i.eval((Ast)body.arguments[position]);
+}
+
+usize Block::size() const
+{
+	return body.type == Ast::Type::Sequence ? body.arguments.size() : 1;
+}
+
+Result<Value> Array::index(Interpreter &, unsigned position)
+{
+	assert(position < elements.size(), "Out of range"); // TODO(assert)
+	return elements[position];
+}
+
+usize Array::size() const
+{
+	return elements.size();
+}
+
+std::ostream& operator<<(std::ostream& os, Array const& v)
+{
+	os << '[';
+	for (auto it = v.elements.begin(); it != v.elements.end(); ++it) {
+		os << *it;
+		if (std::next(it) != v.elements.end()) {
+			os << "; ";
+		}
+	}
+	return os << ']';
 }
 
 std::optional<Note> Note::from(std::string_view literal)

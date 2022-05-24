@@ -106,12 +106,8 @@ Interpreter::Interpreter()
 
 		global.force_define("len", +[](Interpreter &, std::vector<Value> args) -> Result<Value> {
 			assert(args.size() == 1, "len only accepts one argument");
-			assert(args.front().type == Value::Type::Block, "Only blocks can be measure");
-			if (args.front().blk.body.type != Ast::Type::Sequence) {
-				return Value::from(Number(1));
-			} else {
-				return Value::from(Number(args.front().blk.body.arguments.size()));
-			}
+			assert(args.front().type == Value::Type::Block || args.front().type == Value::Type::Array, "Only blocks and arrays can have length");
+			return Value::from(Number(args.front().size()));
 		});
 
 		global.force_define("play", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
@@ -120,6 +116,27 @@ Interpreter::Interpreter()
 				i.play(arg.note);
 			}
 			return Value{};
+		});
+
+		global.force_define("flat", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
+			Array array;
+			for (auto &arg : args) {
+				switch (arg.type) {
+				case Value::Type::Array:
+					std::move(arg.array.elements.begin(), arg.array.elements.end(), std::back_inserter(array.elements));
+					break;
+
+				case Value::Type::Block:
+					for (auto j = 0u; j < arg.blk.size(); ++j) {
+						array.elements.push_back(Try(arg.blk.index(i, j)));
+					}
+					break;
+
+				default:
+					array.elements.push_back(std::move(arg));
+				}
+			}
+			return Value::from(std::move(array));
 		});
 
 		operators["+"] = binary_operator<std::plus<>>();
