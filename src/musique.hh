@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <concepts>
 #include <cstdint>
 #include <cstring>
@@ -557,6 +558,25 @@ private:
 	Env() = default;
 };
 
+/// Context holds default values for music related actions
+struct Context
+{
+	/// Default note octave
+	i8 octave = 4;
+
+	/// Default note length
+	Number length = Number(1, 4);
+
+	/// Default BPM
+	unsigned bpm = 120;
+
+	/// Fills empty places in Note like octave and length with default values from context
+	Note fill(Note) const;
+
+	/// Converts length to seconds with current bpm
+	std::chrono::duration<float> length_to_duration(std::optional<Number> length) const;
+};
+
 struct Interpreter
 {
 	/// Output of IO builtins like `say`
@@ -567,6 +587,10 @@ struct Interpreter
 
 	/// Current environment (current scope)
 	std::shared_ptr<Env> env;
+
+	/// Context stack. `constext_stack.back()` is a current context.
+	/// There is always at least one context
+	std::vector<Context> context_stack;
 
 	Interpreter();
 	~Interpreter();

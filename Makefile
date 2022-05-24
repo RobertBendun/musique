@@ -8,6 +8,7 @@ LDFLAGS=-L./lib/midi/
 LDLIBS=-lmidi-alsa -lasound
 
 Obj=                 \
+		context.o        \
 		environment.o    \
 		errors.o         \
 		interpreter.o    \

@@ -64,66 +64,72 @@ Interpreter::~Interpreter()
 Interpreter::Interpreter(std::ostream& out)
 	: out(out)
 {
-	assert(!bool(Env::global), "Only one instance of interpreter can be at one time");
+	{ // Context initialization
+		context_stack.emplace_back();
+	}
+	{ // Environment initlialization
+		assert(!bool(Env::global), "Only one instance of interpreter can be at one time");
+		env = Env::global = Env::make();
+	}
+	{ // Global default functions initialization
+		// TODO move `say` to `src/main.cc` since it's platform depdendent
+		auto &global = *Env::global;
+		global.force_define("typeof", +[](Interpreter&, std::vector<Value> args) -> Result<Value> {
+			assert(args.size() == 1, "typeof expects only one argument");
+			return Value::symbol(std::string(type_name(args.front().type)));
+		});
 
-	env = Env::global = Env::make();
-	auto &global = *Env::global;
+		global.force_define("if", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
+			assert(args.size() == 2 || args.size() == 3, "argument count does not add up - expected: if <condition> <then> [<else>]");
+			if (args.front().truthy()) {
+				return args[1](i, {});
+			} else if (args.size() == 3) {
+				return args[2](i, {});
+			} else {
+				return Value{};
+			}
+		});
 
-	global.force_define("typeof", +[](Interpreter&, std::vector<Value> args) -> Result<Value> {
-		assert(args.size() == 1, "typeof expects only one argument");
-		return Value::symbol(std::string(type_name(args.front().type)));
-	});
+		global.force_define("say", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
+			for (auto it = args.begin(); it != args.end(); ++it) {
+				i.out << *it;
+				if (std::next(it) != args.end())
+					i.out << ' ';
+			}
+			i.out << '\n';
+			return {};
+		});
 
-	global.force_define("if", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
-		assert(args.size() == 2 || args.size() == 3, "argument count does not add up - expected: if <condition> <then> [<else>]");
-		if (args.front().truthy()) {
-			return args[1](i, {});
-		} else if (args.size() == 3) {
-			return args[2](i, {});
-		} else {
-			return Value{};
-		}
-	});
+		global.force_define("len", +[](Interpreter &, std::vector<Value> args) -> Result<Value> {
+			assert(args.size() == 1, "len only accepts one argument");
+			assert(args.front().type == Value::Type::Block, "Only blocks can be measure");
+			if (args.front().blk.body.type != Ast::Type::Sequence) {
+				return Value::number(Number(1));
+			} else {
+				return Value::number(Number(args.front().blk.body.arguments.size()));
+			}
+		});
 
-	global.force_define("say", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
-		for (auto it = args.begin(); it != args.end(); ++it) {
-			i.out << *it;
-			if (std::next(it) != args.end())
-				i.out << ' ';
-		}
-		i.out << '\n';
-		return {};
-	});
+		operators["+"] = binary_operator<std::plus<>>();
+		operators["-"] = binary_operator<std::minus<>>();
+		operators["*"] = binary_operator<std::multiplies<>>();
+		operators["/"] = binary_operator<std::divides<>>();
 
-	global.force_define("len", +[](Interpreter &, std::vector<Value> args) -> Result<Value> {
-		assert(args.size() == 1, "len only accepts one argument");
-		assert(args.front().type == Value::Type::Block, "Only blocks can be measure");
-		if (args.front().blk.body.type != Ast::Type::Sequence) {
-			return Value::number(Number(1));
-		} else {
-			return Value::number(Number(args.front().blk.body.arguments.size()));
-		}
-	});
+		operators["<"]  = comparison_operator<std::less<>>();
+		operators[">"]  = comparison_operator<std::greater<>>();
+		operators["<="] = comparison_operator<std::less_equal<>>();
+		operators[">="] = comparison_operator<std::greater_equal<>>();
 
-	operators["+"] = binary_operator<std::plus<>>();
-	operators["-"] = binary_operator<std::minus<>>();
-	operators["*"] = binary_operator<std::multiplies<>>();
-	operators["/"] = binary_operator<std::divides<>>();
+		operators["=="] = equality_operator<std::equal_to<>>();
+		operators["!="] = equality_operator<std::not_equal_to<>>();
 
-	operators["<"]  = comparison_operator<std::less<>>();
-	operators[">"]  = comparison_operator<std::greater<>>();
-	operators["<="] = comparison_operator<std::less_equal<>>();
-	operators[">="] = comparison_operator<std::greater_equal<>>();
-
-	operators["=="] = equality_operator<std::equal_to<>>();
-	operators["!="] = equality_operator<std::not_equal_to<>>();
-
-	operators["."] = +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
-		assert(args.size() == 2, "Operator . requires two arguments"); // TODO(assert)
-		assert(args.front().type == Value::Type::Block, "Only blocks can be indexed"); // TODO(assert)
-		assert(args.back().type == Value::Type::Number, "Only numbers can be used for indexing"); // TODO(assert)
-		return std::move(args.front()).blk.index(i, std::move(args.back()).n.as_int());
-	};
+		operators["."] = +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
+			assert(args.size() == 2, "Operator . requires two arguments"); // TODO(assert)
+			assert(args.front().type == Value::Type::Block, "Only blocks can be indexed"); // TODO(assert)
+			assert(args.back().type == Value::Type::Number, "Only numbers can be used for indexing"); // TODO(assert)
+			return std::move(args.front()).blk.index(i, std::move(args.back()).n.as_int());
+		};
+	}
 }
 
 Result<Value> Interpreter::eval(Ast &&ast)
