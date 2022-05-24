@@ -135,6 +135,20 @@ Result<Value> Value::operator()(Interpreter &i, std::vector<Value> args)
 	switch (type) {
 	case Type::Intrinsic: return intr(i, std::move(args));
 	case Type::Block:     return blk(i, std::move(args));
+	case Type::Music:
+		{
+			assert(args.size() == 1 || args.size() == 2, "music value can be called only in form note <octave> [<length>]"); // TODO(assert)
+			assert(args[0].type == Type::Number, "expected octave to be a number"); // TODO(assert)
+
+			note.octave = args[0].n.as_int();
+
+			if (args.size() == 2) {
+				assert(args[1].type == Type::Number, "expected length to be a number"); // TODO(assert)
+				note.length = args[1].n;
+			}
+
+			return *this;
+		}
 	default:
 		// TODO Fill location
 		return errors::not_callable(std::nullopt, type);
