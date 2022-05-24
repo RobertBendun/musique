@@ -155,6 +155,19 @@ Result<Value> Value::operator()(Interpreter &i, std::vector<Value> args)
 	}
 }
 
+Result<Value> Value::index(Interpreter &i, unsigned position)
+{
+	switch (type) {
+	case Type::Block:
+		return blk.index(i, position);
+
+	default:
+		assert(false, "Block indexing is not supported for this type"); // TODO(assert)
+	}
+
+	unreachable();
+}
+
 bool Value::truthy() const
 {
 	switch (type) {

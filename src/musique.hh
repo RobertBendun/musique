@@ -525,6 +525,7 @@ struct Value
 	bool truthy() const;
 	bool falsy() const;
 	Result<Value> operator()(Interpreter &i, std::vector<Value> args);
+	Result<Value> index(Interpreter &i, unsigned position);
 
 	bool operator==(Value const& other) const;
 };

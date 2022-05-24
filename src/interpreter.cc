@@ -137,9 +137,8 @@ Interpreter::Interpreter()
 
 		operators["."] = +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
 			assert(args.size() == 2, "Operator . requires two arguments"); // TODO(assert)
-			assert(args.front().type == Value::Type::Block, "Only blocks can be indexed"); // TODO(assert)
 			assert(args.back().type == Value::Type::Number, "Only numbers can be used for indexing"); // TODO(assert)
-			return std::move(args.front()).blk.index(i, std::move(args.back()).n.as_int());
+			return std::move(args.front()).index(i, std::move(args.back()).n.as_int());
 		};
 	}
 }
