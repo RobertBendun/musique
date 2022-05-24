@@ -20,8 +20,20 @@ Obj=                 \
 		unicode_tables.o \
 		value.o
 
+Tests=          \
+	context.o     \
+	environment.o \
+	interpreter.o \
+	lex.o         \
+	main.o        \
+	number.o      \
+	parser.o      \
+	unicode.o     \
+	value.o
+
 Release_Obj=$(addprefix bin/,$(Obj))
 Debug_Obj=$(addprefix bin/debug/,$(Obj))
+Test_Obj=$(addprefix bin/debug/tests/,$(Tests))
 
 all: bin/musique
 
@@ -63,7 +75,7 @@ doc: Doxyfile src/*.cc src/*.hh
 doc-open: doc
 	xdg-open ./doc/build/html/index.html
 
-bin/unit-tests: src/tests/*.cc $(Debug_Obj)
+bin/unit-tests: $(Test_Obj) $(Debug_Obj)
 	g++ $(CXXFLAGS) $(CPPFLAGS) $(DEBUG_FLAGS) -o $@ $^
 
 clean:
@@ -71,4 +83,4 @@ clean:
 
 .PHONY: clean doc doc-open all test unit-tests
 
-$(shell mkdir -p bin/debug)
+$(shell mkdir -p bin/debug/tests)
