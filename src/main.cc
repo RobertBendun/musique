@@ -1,10 +1,11 @@
+#define MIDI_ENABLE_ALSA_SUPPORT
+
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <span>
 
 #include <musique.hh>
-#define MIDI_ENABLE_ALSA_SUPPORT
 #include <midi.hh>
 
 namespace fs = std::filesystem;
@@ -34,21 +35,40 @@ void usage()
 	std::exit(1);
 }
 
-static Result<void> run(std::string_view source, std::string_view filename)
+struct Runner
 {
-	auto ast = Try(Parser::parse(source, filename));
+	midi::ALSA alsa;
+	Interpreter interpreter;
 
-	if (ast_only_mode) {
-		dump(ast);
+	Runner(std::string port)
+		: alsa("musique"), interpreter(std::cout)
+	{
+		alsa.init_sequencer();
+		alsa.connect(port);
+		interpreter.midi_connection = &alsa;
+	}
+
+	Result<void> run(std::string_view source, std::string_view filename)
+	{
+		auto ast = Try(Parser::parse(source, filename));
+
+		if (ast_only_mode) {
+			dump(ast);
+			return {};
+		}
+		std::cout << Try(interpreter.eval(std::move(ast))) << std::endl;
 		return {};
 	}
-	Interpreter interpreter;
-	std::cout << Try(interpreter.eval(std::move(ast))) << std::endl;
-	return {};
-}
+};
 
 // We make sure that through life of interpreter source code is allways allocated
 std::vector<std::string> eternal_sources;
+
+struct Run
+{
+	bool is_file = true;
+	std::string_view argument;
+};
 
 static Result<void> Main(std::span<char const*> args)
 {
@@ -56,14 +76,13 @@ static Result<void> Main(std::span<char const*> args)
 		usage();
 	}
 
-	bool runned_something = false;
-	std::vector<std::string_view> files;
+	std::vector<Run> runnables;
 
 	while (not args.empty()) {
 		std::string_view arg = pop(args);
 
 		if (arg == "-" || !arg.starts_with('-')) {
-			files.push_back(std::move(arg));
+			runnables.push_back({ .is_file = true, .argument = std::move(arg) });
 			continue;
 		}
 
@@ -79,10 +98,7 @@ static Result<void> Main(std::span<char const*> args)
 				std::cerr << "musique: error: option " << arg << " requires an argument" << std::endl;
 				std::exit(1);
 			}
-
-			auto const source = pop(args);
-			Try(run(source, "arguments"));
-			runned_something = true;
+			runnables.push_back({ .is_file = false, .argument = pop(args) });
 			continue;
 		}
 
@@ -95,11 +111,18 @@ static Result<void> Main(std::span<char const*> args)
 		std::exit(1);
 	}
 
-	if (!runned_something && files.empty()) {
+	if (runnables.empty()) {
 		usage();
 	}
 
-	for (auto const& path : files) {
+	Runner runner("14");
+
+	for (auto const& [is_file, argument] : runnables) {
+		if (!is_file) {
+			Try(runner.run(argument, "<arguments>"));
+			continue;
+		}
+		auto const path = argument;
 		if (path == "-") {
 			eternal_sources.emplace_back(std::istreambuf_iterator<char>(std::cin), std::istreambuf_iterator<char>());
 		} else {
@@ -111,7 +134,7 @@ static Result<void> Main(std::span<char const*> args)
 			eternal_sources.emplace_back(std::istreambuf_iterator<char>(source_file), std::istreambuf_iterator<char>());
 		}
 
-		Try(run(eternal_sources.back(), path));
+		Try(runner.run(eternal_sources.back(), path));
 	}
 
 	return {};

@@ -9,8 +9,10 @@
 #include <ostream>
 #include <span>
 #include <string_view>
-#include <tl/expected.hpp>
 #include <variant>
+
+#include <midi.hh>
+#include <tl/expected.hpp>
 
 #if defined(__cpp_lib_source_location)
 #include <source_location>
@@ -579,6 +581,10 @@ struct Context
 
 struct Interpreter
 {
+	/// MIDI connection that is used to play music.
+	/// It's optional for simple interpreter testing.
+	midi::Connection *midi_connection = nullptr;
+
 	/// Output of IO builtins like `say`
 	std::ostream &out;
 
@@ -603,6 +609,9 @@ struct Interpreter
 	// Scope managment
 	void enter_scope();
 	void leave_scope();
+
+	/// Play note resolving any missing parameters with context via `midi_connection` member.
+	void play(Note n);
 };
 
 namespace errors

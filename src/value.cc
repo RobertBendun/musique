@@ -8,7 +8,10 @@ concept Indexable = requires(T t, Index i) {
 /// Create hash out of note literal like `c` or `e#`
 constexpr u16 hash_note(Indexable<usize, char> auto const& note)
 {
-	return u8(note[0]) | (note[1] << 8);
+	/// TODO Some assertion that we have snd character
+	u8 snd = note[1];
+	if (snd != '#') snd = 0;
+	return u8(note[0]) | (snd << 8);
 }
 
 /// Finds numeric value of note. This form is later used as in

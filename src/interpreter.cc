@@ -1,6 +1,8 @@
 #include <musique.hh>
 
+#include <chrono>
 #include <iostream>
+#include <thread>
 
 template<typename Binary_Operation>
 constexpr auto binary_operator()
@@ -108,6 +110,14 @@ Interpreter::Interpreter(std::ostream& out)
 			} else {
 				return Value::number(Number(args.front().blk.body.arguments.size()));
 			}
+		});
+
+		global.force_define("play", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
+			for (auto &arg : args) {
+				assert(arg.type == Value::Type::Music, "Only music values can be played"); // TODO(assert)
+				i.play(arg.note);
+			}
+			return Value{};
 		});
 
 		operators["+"] = binary_operator<std::plus<>>();
@@ -229,4 +239,18 @@ void Interpreter::leave_scope()
 {
 	assert(env != Env::global, "Cannot leave global scope");
 	env = env->leave();
+}
+
+void Interpreter::play(Note note)
+{
+	assert(midi_connection, "To play midi Interpreter requires instance of MIDI connection");
+
+	auto &ctx = context_stack.back();
+	note = ctx.fill(std::move(note));
+
+	auto dur = ctx.length_to_duration(note.length);
+
+	midi_connection->send_note_on(0, *note.into_midi_note(), 127);
+	std::this_thread::sleep_for(dur);
+	midi_connection->send_note_off(0, *note.into_midi_note(), 127);
 }
