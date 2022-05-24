@@ -24,17 +24,6 @@ void evaluates_to(Value value, std::string_view source_code, reflection::source_
 	}, sl)();
 }
 
-void produces_output(std::string_view source_code, std::string_view expected_output, reflection::source_location sl = reflection::source_location::current())
-{
-	capture_errors([=]() -> Result<void> {
-		std::stringstream ss;
-		Interpreter interpreter(ss);
-		Try(interpreter.eval(Try(Parser::parse(source_code, "test"))));
-		expect(eq(ss.str(), expected_output)) << "different evaluation output";
-		return {};
-	}, sl)();
-}
-
 suite intepreter_test = [] {
 	"Interpreter"_test = [] {
 		should("evaluate literals") = [] {
@@ -54,10 +43,6 @@ suite intepreter_test = [] {
 		should("call builtin functions") = [] {
 			evaluates_to(Value::symbol("nil"),     "typeof nil");
 			evaluates_to(Value::symbol("number"),  "typeof 100");
-
-			produces_output("say 5", "5\n");
-			produces_output("say 1; say 2; say 3", "1\n2\n3\n");
-			produces_output("say 1 2 3", "1 2 3\n");
 		};
 
 		should("allows only for calling which is callable") = [] {

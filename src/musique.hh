@@ -585,9 +585,6 @@ struct Interpreter
 	/// It's optional for simple interpreter testing.
 	midi::Connection *midi_connection = nullptr;
 
-	/// Output of IO builtins like `say`
-	std::ostream &out;
-
 	/// Operators defined for language
 	std::unordered_map<std::string, Intrinsic> operators;
 
@@ -600,7 +597,6 @@ struct Interpreter
 
 	Interpreter();
 	~Interpreter();
-	explicit Interpreter(std::ostream& out);
 	Interpreter(Interpreter const&) = delete;
 	Interpreter(Interpreter &&) = default;
 

@@ -54,17 +54,6 @@ constexpr auto comparison_operator()
 }
 
 Interpreter::Interpreter()
-	: Interpreter(std::cout)
-{
-}
-
-Interpreter::~Interpreter()
-{
-	Env::global.reset();
-}
-
-Interpreter::Interpreter(std::ostream& out)
-	: out(out)
 {
 	{ // Context initialization
 		context_stack.emplace_back();
@@ -74,7 +63,6 @@ Interpreter::Interpreter(std::ostream& out)
 		env = Env::global = Env::make();
 	}
 	{ // Global default functions initialization
-		// TODO move `say` to `src/main.cc` since it's platform depdendent
 		auto &global = *Env::global;
 		global.force_define("typeof", +[](Interpreter&, std::vector<Value> args) -> Result<Value> {
 			assert(args.size() == 1, "typeof expects only one argument");
@@ -92,15 +80,6 @@ Interpreter::Interpreter(std::ostream& out)
 			}
 		});
 
-		global.force_define("say", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
-			for (auto it = args.begin(); it != args.end(); ++it) {
-				i.out << *it;
-				if (std::next(it) != args.end())
-					i.out << ' ';
-			}
-			i.out << '\n';
-			return {};
-		});
 
 		global.force_define("len", +[](Interpreter &, std::vector<Value> args) -> Result<Value> {
 			assert(args.size() == 1, "len only accepts one argument");
@@ -140,6 +119,11 @@ Interpreter::Interpreter(std::ostream& out)
 			return std::move(args.front()).blk.index(i, std::move(args.back()).n.as_int());
 		};
 	}
+}
+
+Interpreter::~Interpreter()
+{
+	Env::global.reset();
 }
 
 Result<Value> Interpreter::eval(Ast &&ast)

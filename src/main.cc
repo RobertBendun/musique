@@ -41,11 +41,21 @@ struct Runner
 	Interpreter interpreter;
 
 	Runner(std::string port)
-		: alsa("musique"), interpreter(std::cout)
+		: alsa("musique")
 	{
 		alsa.init_sequencer();
 		alsa.connect(port);
 		interpreter.midi_connection = &alsa;
+
+		Env::global->force_define("say", +[](Interpreter&, std::vector<Value> args) -> Result<Value> {
+			for (auto it = args.begin(); it != args.end(); ++it) {
+			std::cout << *it;
+				if (std::next(it) != args.end())
+					std::cout << ' ';
+			}
+			std::cout << '\n';
+			return {};
+		});
 	}
 
 	Result<void> run(std::string_view source, std::string_view filename)
