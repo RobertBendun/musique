@@ -6,6 +6,16 @@ Zapis nut (dostępna notacja zachodnia)
 	c
 	d
 
+Ustawianie oktawy
+	c 8
+
+Ustawianie oktawy i długości
+	c 8 (1/4)      c w oktawie 8 grane przez 1/4 długości pełnej nuty
+
+Ustawianie oktawy i długości, a następnie modyfikacja
+	(c 8 fn) 4     zmienia oktawę na 4
+	(c 8 fn) 4 qn  zmienia oktawę na 4 i długość na 1/4
+
 Arytmetyka
 	(aktualnie brak wsparcia dla precedensji operatorów)
 	3 * (4 * 12 - 8)
