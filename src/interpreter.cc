@@ -201,6 +201,28 @@ static Result<Value> plus_minus_operator(Interpreter &interpreter, std::vector<V
 	unreachable();
 }
 
+template<auto Mem_Ptr>
+Result<Value> ctx_read_write_property(Interpreter &interpreter, std::vector<Value> args)
+{
+	assert(args.size() <= 1, "Ctx get or set is only supported (wrong number of arguments)"); // TODO(assert)
+
+	using Member_Type = std::remove_cvref_t<decltype(std::declval<Context>().*(Mem_Ptr))>;
+
+	if (args.size() == 0) {
+		return Value::from(Number(interpreter.context_stack.back().*(Mem_Ptr)));
+	}
+
+	assert(args.front().type == Value::Type::Number, "Ctx only holds numeric values");
+
+	if constexpr (std::is_same_v<Member_Type, Number>) {
+		interpreter.context_stack.back().*(Mem_Ptr) = args.front().n;
+	} else {
+		interpreter.context_stack.back().*(Mem_Ptr) = static_cast<Member_Type>(args.front().n.as_int());
+	}
+
+	return Value{};
+}
+
 Interpreter::Interpreter()
 {
 	{ // Context initialization
@@ -231,7 +253,10 @@ Interpreter::Interpreter()
 			}
 		});
 
-		global.force_define("len", +[](Interpreter &, std::vector<Value> args) -> Result<Value> {
+		global.force_define("len", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
+			if (args.size() != 1 || !is_indexable(args.front().type)) {
+				return ctx_read_write_property<&Context::length>(i, std::move(args));
+			}
 			assert(args.size() == 1, "len only accepts one argument");
 			assert(args.front().type == Value::Type::Block || args.front().type == Value::Type::Array, "Only blocks and arrays can have length");
 			return Value::from(Number(args.front().size()));
@@ -267,6 +292,35 @@ Interpreter::Interpreter()
 			Chord chord;
 			Try(create_chord(chord.notes, i, std::move(args)));
 			return Value::from(std::move(chord));
+		});
+
+		global.force_define("bpm", &ctx_read_write_property<&Context::bpm>);
+		global.force_define("oct", &ctx_read_write_property<&Context::octave>);
+
+		global.force_define("par", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
+			assert(args.size() >= 1, "par only makes sense for at least one argument"); // TODO(assert)
+			if (args.size() == 1) {
+				i.play(std::move(args.front()).chord);
+				return Value{};
+			}
+
+			auto &ctx = i.context_stack.back();
+			auto chord = std::move(args.front()).chord;
+			std::transform(chord.notes.begin(), chord.notes.end(), chord.notes.begin(), [&](Note note) { return ctx.fill(note); });
+
+			for (auto const& note : chord.notes) {
+				i.midi_connection->send_note_on(0, *note.into_midi_note(), 127);
+			}
+
+			for (auto it = std::next(args.begin()); it != args.end(); ++it) {
+				i.play(std::move(*it).chord);
+			}
+
+			for (auto const& note : chord.notes) {
+				i.midi_connection->send_note_off(0, *note.into_midi_note(), 127);
+			}
+
+			return Value{};
 		});
 
 		operators["+"] = plus_minus_operator<std::plus<>>;

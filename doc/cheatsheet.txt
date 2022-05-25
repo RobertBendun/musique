@@ -111,3 +111,6 @@ play : music... -> nil
 
 chord : (collection | music)... -> music
 	tworzy akord z przekazanych wartości muzycznych
+
+par : x: music -> xs: playable... -> nil
+	odtwarza dźwięk x równolegle z wszystkimi dźwiękami xs

@@ -1,0 +1,15 @@
+var C = c47;
+var E = e47;
+var G = g47;
+var A = a37;
+
+oct 5;
+par (C 4) e e f g;
+par (G 4) g f e d;
+par (C 4) c c d e;
+par (G 4) e d d;
+par (C 4) e e f g;
+par (G 4) g f e d;
+par (C 4) c c d e;
+par (G 4) d c;
+par (C 4) c
