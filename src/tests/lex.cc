@@ -133,10 +133,8 @@ suite lexer_test = [] {
 		expect_token_type_and_value(Token::Type::Chord, "c#");
 		expect_token_type_and_value(Token::Type::Chord, "c1");
 		expect_token_type_and_value(Token::Type::Chord, "d1257");
-		expect_token_type_and_value(Token::Type::Chord, "e#5'");
+		expect_token_type_and_value(Token::Type::Chord, "e#5");
 		expect_token_type_and_value(Token::Type::Chord, "g127");
-		expect_token_type_and_value(Token::Type::Chord, "f1'2'3'5'7'");
-		expect_token_type_and_value(Token::Type::Chord, "b1,2,5,7,");
 	};
 
 	"Symbol literals"_test = [] {
