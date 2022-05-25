@@ -66,7 +66,9 @@ struct Runner
 			dump(ast);
 			return {};
 		}
-		std::cout << Try(interpreter.eval(std::move(ast))) << std::endl;
+		if (auto result = Try(interpreter.eval(std::move(ast))); result.type != Value::Type::Nil) {
+			std::cout << result << std::endl;
+		}
 		return {};
 	}
 };
