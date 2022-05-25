@@ -3,6 +3,7 @@ CXXFLAGS:=$(CXXFLAGS) -std=c++20 -Wall -Wextra -Werror=switch -Werror=return-typ
 CPPFLAGS:=$(CPPFLAGS) -Ilib/expected/ -Ilib/ut/ -Ilib/midi/include -Isrc/
 RELEASE_FLAGS=-O3
 DEBUG_FLAGS=-O0 -ggdb
+CXX=g++
 
 LDFLAGS=-L./lib/midi/
 LDLIBS=-lmidi-alsa -lasound
@@ -43,16 +44,20 @@ test: unit-tests
 debug: bin/debug/musique
 
 bin/%.o: src/%.cc src/*.hh
-	g++ $(CXXFLAGS) $(RELEASE_FLAGS) $(CPPFLAGS) -o $@ $< -c
+	@echo "CXX $@"
+	@$(CXX) $(CXXFLAGS) $(RELEASE_FLAGS) $(CPPFLAGS) -o $@ $< -c
 
 bin/musique: $(Release_Obj) bin/main.o src/*.hh lib/midi/libmidi-alsa.a
-	g++ $(CXXFLAGS) $(RELEASE_FLAGS) $(CPPFLAGS) -o $@ $(Release_Obj) bin/main.o $(LDFLAGS) $(LDLIBS)
+	@echo "CXX $@"
+	@$(CXX) $(CXXFLAGS) $(RELEASE_FLAGS) $(CPPFLAGS) -o $@ $(Release_Obj) bin/main.o $(LDFLAGS) $(LDLIBS)
 
 bin/debug/musique: $(Debug_Obj) bin/debug/main.o src/*.hh
-	g++ $(CXXFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) -o $@ $(Debug_Obj) bin/debug/main.o
+	@echo "CXX $@"
+	@$(CXX) $(CXXFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) -o $@ $(Debug_Obj) bin/debug/main.o
 
 bin/debug/%.o: src/%.cc src/*.hh
-	g++ $(CXXFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) -o $@ $< -c
+	@echo "CXX $@"
+	@$(CXX) $(CXXFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) -o $@ $< -c
 
 unit-tests: bin/unit-tests
 	./$<
@@ -76,7 +81,8 @@ doc-open: doc
 	xdg-open ./doc/build/html/index.html
 
 bin/unit-tests: $(Test_Obj) $(Debug_Obj)
-	g++ $(CXXFLAGS) $(CPPFLAGS) $(DEBUG_FLAGS) -o $@ $^
+	@echo "CXX $@"
+	@$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(DEBUG_FLAGS) -o $@ $^
 
 clean:
 	rm -rf bin coverage
