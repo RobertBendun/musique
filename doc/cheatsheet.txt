@@ -16,6 +16,9 @@ Ustawianie oktawy i długości, a następnie modyfikacja
 	(c 8 fn) 4     zmienia oktawę na 4
 	(c 8 fn) 4 qn  zmienia oktawę na 4 i długość na 1/4
 
+Stworzenie akordu
+	c123 == chord[c; c#; d; d#]
+
 Arytmetyka
 	(aktualnie brak wsparcia dla precedensji operatorów)
 	3 * (4 * 12 - 8)
@@ -100,3 +103,6 @@ len : block -> number
 
 play : music... -> nil
 	odtwarza sekwencyjnie otrzymane wartości muzyczne
+
+chord : (collection | music)... -> music
+	tworzy akord z przekazanych wartości muzycznych

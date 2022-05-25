@@ -74,6 +74,50 @@ static inline void register_note_length_constants()
 	global.force_define("dtn",  Value::from(Number(3, 64)));
 }
 
+template<typename T>
+concept With_Index_Method = requires (T t, Interpreter interpreter, usize position) {
+	{ t.index(interpreter, position) } -> std::convertible_to<Result<Value>>;
+};
+
+template<typename T>
+concept With_Index_Operator = requires (T t, unsigned i) {
+	{ t[i] } -> std::convertible_to<Value>;
+};
+
+template<typename T>
+concept Iterable = (With_Index_Method<T> || With_Index_Operator<T>) && requires (T const t) {
+	{ t.size() } -> std::convertible_to<usize>;
+};
+
+template<Iterable T>
+static inline Result<void> create_chord(std::vector<Note> &chord, Interpreter &interpreter, T args)
+{
+	for (auto i = 0u; i < args.size(); ++i) {
+		Value arg;
+		if constexpr (With_Index_Method<T>) {
+			arg = Try(args.index(interpreter, i));
+		} else {
+			arg = std::move(args[i]);
+		}
+
+		switch (arg.type) {
+		case Value::Type::Array:
+		case Value::Type::Block:
+			Try(create_chord(chord, interpreter, std::move(arg)));
+			break;
+
+		case Value::Type::Music:
+			std::move(arg.chord.notes.begin(), arg.chord.notes.end(), std::back_inserter(chord));
+			break;
+
+		default:
+			assert(false, "this type is not supported inside chord");
+		}
+	}
+
+	return {};
+}
+
 Interpreter::Interpreter()
 {
 	{ // Context initialization
@@ -137,6 +181,12 @@ Interpreter::Interpreter()
 				}
 			}
 			return Value::from(std::move(array));
+		});
+
+		global.force_define("chord", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
+			Chord chord;
+			Try(create_chord(chord.notes, i, std::move(args)));
+			return Value::from(std::move(chord));
 		});
 
 		operators["+"] = binary_operator<std::plus<>>();
