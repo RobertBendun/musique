@@ -10,8 +10,8 @@ constexpr auto binary_operator()
 	return [](Interpreter&, std::vector<Value> args) -> Result<Value> {
 		auto result = std::move(args.front());
 		for (auto &v : std::span(args).subspan(1)) {
-			assert(result.type == Value::Type::Number, "LHS should be a number");
-			assert(v.type == Value::Type::Number,      "RHS should be a number");
+			assert(result.type == Value::Type::Number, "LHS should be a number"); // TODO(assert)
+			assert(v.type == Value::Type::Number,      "RHS should be a number"); // TODO(assert)
 			if constexpr (std::is_same_v<Number, std::invoke_result_t<Binary_Operation, Number, Number>>) {
 				result.n = Binary_Operation{}(std::move(result.n), std::move(v).n);
 			} else {
@@ -36,7 +36,7 @@ template<typename Binary_Predicate>
 constexpr auto comparison_operator()
 {
 	return [](Interpreter&, std::vector<Value> args) -> Result<Value> {
-		assert(args.size() == 2, "(in)Equality only allows for 2 operands"); // TODO(assert)
+		assert(args.size() == 2, "Ordering only allows for 2 operands"); // TODO(assert)
 		assert(args.front().type == args.back().type, "Only values of the same type can be ordered"); // TODO(assert)
 
 		switch (args.front().type) {
@@ -118,6 +118,42 @@ static inline Result<void> create_chord(std::vector<Note> &chord, Interpreter &i
 	return {};
 }
 
+/// Creates implementation of plus/minus operator that support following operations:
+///   number, number -> number (standard math operations)
+///   n: number, m: music  -> music
+///   m: music,  n: number -> music  moves m by n semitones (+ goes up, - goes down)
+template<typename Binary_Operation>
+[[gnu::always_inline]]
+static inline auto plus_minus_operator()
+{
+	return [](Interpreter&, std::vector<Value> args) -> Result<Value> {
+		assert(args.size() == 2, "Binary operator only accepts 2 arguments");
+		auto lhs = std::move(args.front());
+		auto rhs = std::move(args.back());
+
+		if (lhs.type == rhs.type && lhs.type == Value::Type::Number) {
+			return Value::from(Binary_Operation{}(std::move(lhs).n, std::move(rhs).n));
+		}
+
+		if (lhs.type == Value::Type::Music && rhs.type == Value::Type::Number) {
+music_number_operation:
+			for (auto &note : lhs.chord.notes) {
+				note.base = Binary_Operation{}(note.base, rhs.n.as_int());
+				note.simplify_inplace();
+			}
+			return lhs;
+		}
+
+		if (lhs.type == Value::Type::Number && rhs.type == Value::Type::Music) {
+			std::swap(lhs, rhs);
+			goto music_number_operation;
+		}
+
+		assert(false, "Unsupported types for this operation"); // TODO(assert)
+		unreachable();
+	};
+}
+
 Interpreter::Interpreter()
 {
 	{ // Context initialization
@@ -189,8 +225,8 @@ Interpreter::Interpreter()
 			return Value::from(std::move(chord));
 		});
 
-		operators["+"] = binary_operator<std::plus<>>();
-		operators["-"] = binary_operator<std::minus<>>();
+		operators["+"] = plus_minus_operator<std::plus<>>();
+		operators["-"] = plus_minus_operator<std::minus<>>();
 		operators["*"] = binary_operator<std::multiplies<>>();
 		operators["/"] = binary_operator<std::divides<>>();
 

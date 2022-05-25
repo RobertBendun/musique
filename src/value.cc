@@ -41,8 +41,15 @@ constexpr u8 note_index(Indexable<usize, char> auto const& note)
 	return -1;
 }
 
-constexpr std::string_view note_index_to_string(u8 note_index)
+#include <iostream>
+
+constexpr std::string_view note_index_to_string(auto note_index)
 {
+	note_index %= 12;
+	if (note_index < 0) {
+		note_index = 12 + note_index;
+	}
+
 	switch (note_index) {
 	case  0:	return "c";
 	case  1:	return "c#";
@@ -178,6 +185,7 @@ Result<Value> Value::operator()(Interpreter &i, std::vector<Value> args)
 				if (args.size() == 2) {
 					note.length = args[1].n;
 				}
+				note.simplify_inplace();
 			}
 
 			return *this;
@@ -380,8 +388,19 @@ u8 Note::into_midi_note(i8 default_octave) const
 	return (octave + 1) * 12 + base;
 }
 
-std::ostream& operator<<(std::ostream& os, Note const& note)
+void Note::simplify_inplace()
 {
+	if (octave) {
+		octave = std::clamp(*octave + int(base / 12), -1, 9);
+		if ((base %= 12) < 0) {
+			base = 12 + base;
+		}
+	}
+}
+
+std::ostream& operator<<(std::ostream& os, Note note)
+{
+	note.simplify_inplace();
 	os << note_index_to_string(note.base);
 	if (note.octave) {
 		os << ":oct=" << int(*note.octave);
@@ -416,13 +435,15 @@ Chord Chord::from(std::string_view source)
 
 std::ostream& operator<<(std::ostream& os, Chord const& chord)
 {
-	os << "chord[";
+	if (chord.notes.size() == 1) {
+		return os << chord.notes.front();
+	}
 
+	os << "chord[";
 	for (auto it = chord.notes.begin(); it != chord.notes.end(); ++it) {
 		os << *it;
 		if (std::next(it) != chord.notes.end())
 			os << "; ";
 	}
-
 	return os << ']';
 }

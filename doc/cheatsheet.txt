@@ -23,6 +23,11 @@ Arytmetyka
 	(aktualnie brak wsparcia dla precedensji operatorów)
 	3 * (4 * 12 - 8)
 
+Przesuwanie dźwięków o półtony
+	c + 1 == c#
+	c - 1 == b
+	c12 + 1 == d12
+
 Wywołanie funkcji
 	foo 1 2 3
 

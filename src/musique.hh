@@ -472,7 +472,7 @@ struct Block
 struct Note
 {
 	/// Base of a note, like `c` (=0), `c#` (=1) `d` (=2)
-	u8 base;
+	i32 base;
 
 	/// Octave in MIDI acceptable range (from -1 to 9 inclusive)
 	std::optional<i8> octave = std::nullopt;
@@ -490,9 +490,11 @@ struct Note
 	u8 into_midi_note(i8 default_octave) const;
 
 	bool operator==(Note const&) const;
+
+	void simplify_inplace();
 };
 
-std::ostream& operator<<(std::ostream& os, Note const& note);
+std::ostream& operator<<(std::ostream& os, Note note);
 
 struct Chord
 {
