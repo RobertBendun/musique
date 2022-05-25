@@ -202,6 +202,9 @@ Result<Value> Value::index(Interpreter &i, unsigned position)
 	case Type::Block:
 		return blk.index(i, position);
 
+	case Type::Array:
+		return array.index(i, position);
+
 	default:
 		assert(false, "Block indexing is not supported for this type"); // TODO(assert)
 	}

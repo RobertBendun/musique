@@ -53,7 +53,7 @@ bin/musique: $(Release_Obj) bin/main.o src/*.hh lib/midi/libmidi-alsa.a
 
 bin/debug/musique: $(Debug_Obj) bin/debug/main.o src/*.hh
 	@echo "CXX $@"
-	@$(CXX) $(CXXFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) -o $@ $(Debug_Obj) bin/debug/main.o
+	@$(CXX) $(CXXFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) -o $@ $(Debug_Obj) bin/debug/main.o $(LDFLAGS) $(LDLIBS)
 
 bin/debug/%.o: src/%.cc src/*.hh
 	@echo "CXX $@"

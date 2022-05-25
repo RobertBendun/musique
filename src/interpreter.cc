@@ -5,52 +5,46 @@
 #include <thread>
 
 template<typename Binary_Operation>
-constexpr auto binary_operator()
+static Result<Value> binary_operator(Interpreter&, std::vector<Value> args)
 {
-	return [](Interpreter&, std::vector<Value> args) -> Result<Value> {
-		auto result = std::move(args.front());
-		for (auto &v : std::span(args).subspan(1)) {
-			assert(result.type == Value::Type::Number, "LHS should be a number"); // TODO(assert)
-			assert(v.type == Value::Type::Number,      "RHS should be a number"); // TODO(assert)
-			if constexpr (std::is_same_v<Number, std::invoke_result_t<Binary_Operation, Number, Number>>) {
-				result.n = Binary_Operation{}(std::move(result.n), std::move(v).n);
-			} else {
-				result.type = Value::Type::Bool;
-				result.b = Binary_Operation{}(std::move(result.n), std::move(v).n);
-			}
+	auto result = std::move(args.front());
+	for (auto &v : std::span(args).subspan(1)) {
+		assert(result.type == Value::Type::Number, "LHS should be a number"); // TODO(assert)
+		assert(v.type == Value::Type::Number,      "RHS should be a number"); // TODO(assert)
+		if constexpr (std::is_same_v<Number, std::invoke_result_t<Binary_Operation, Number, Number>>) {
+			result.n = Binary_Operation{}(std::move(result.n), std::move(v).n);
+		} else {
+			result.type = Value::Type::Bool;
+			result.b = Binary_Operation{}(std::move(result.n), std::move(v).n);
 		}
-		return result;
-	};
+	}
+	return result;
 }
 
 template<typename Binary_Predicate>
-constexpr auto equality_operator()
+static Result<Value> equality_operator(Interpreter&, std::vector<Value> args)
 {
-	return [](Interpreter&, std::vector<Value> args) -> Result<Value> {
-		assert(args.size() == 2, "(in)Equality only allows for 2 operands"); // TODO(assert)
-		return Value::from(Binary_Predicate{}(std::move(args.front()), std::move(args.back())));
-	};
+	assert(args.size() == 2, "(in)Equality only allows for 2 operands"); // TODO(assert)
+	return Value::from(Binary_Predicate{}(std::move(args.front()), std::move(args.back())));
 }
 
 template<typename Binary_Predicate>
-constexpr auto comparison_operator()
+static Result<Value> comparison_operator(Interpreter&, std::vector<Value> args)
 {
-	return [](Interpreter&, std::vector<Value> args) -> Result<Value> {
-		assert(args.size() == 2, "Ordering only allows for 2 operands"); // TODO(assert)
-		assert(args.front().type == args.back().type, "Only values of the same type can be ordered"); // TODO(assert)
+	assert(args.size() == 2, "Ordering only allows for 2 operands"); // TODO(assert)
+	assert(args.front().type == args.back().type, "Only values of the same type can be ordered"); // TODO(assert)
 
-		switch (args.front().type) {
-		case Value::Type::Number:
-			return Value::from(Binary_Predicate{}(std::move(args.front()).n, std::move(args.back()).n));
+	switch (args.front().type) {
+	case Value::Type::Number:
+		return Value::from(Binary_Predicate{}(std::move(args.front()).n, std::move(args.back()).n));
 
-		case Value::Type::Bool:
-			return Value::from(Binary_Predicate{}(std::move(args.front()).b, std::move(args.back()).b));
+	case Value::Type::Bool:
+		return Value::from(Binary_Predicate{}(std::move(args.front()).b, std::move(args.back()).b));
 
-		default:
-			assert(false, "Cannot compare value of given types"); // TODO(assert)
-		}
-		unreachable();
-	};
+	default:
+		assert(false, "Cannot compare value of given types"); // TODO(assert)
+	}
+	unreachable();
 }
 
 /// Registers constants like `fn = full note = 1/1`
@@ -118,40 +112,93 @@ static inline Result<void> create_chord(std::vector<Note> &chord, Interpreter &i
 	return {};
 }
 
+template<Iterable T>
+static inline Result<void> play_notes(Interpreter &interpreter, T args)
+{
+	for (auto i = 0u; i < args.size(); ++i) {
+		Value arg;
+		if constexpr (With_Index_Method<T>) {
+			arg = Try(args.index(interpreter, i));
+		} else {
+			arg = std::move(args[i]);
+		}
+
+		switch (arg.type) {
+		case Value::Type::Array:
+		case Value::Type::Block:
+			Try(play_notes(interpreter, std::move(arg)));
+			break;
+
+		case Value::Type::Music:
+			interpreter.play(arg.chord);
+			break;
+
+		default:
+			assert(false, "this type does not support playing");
+		}
+	}
+
+	return {};
+}
+
+constexpr bool is_indexable(Value::Type type)
+{
+	return type == Value::Type::Array || type == Value::Type::Block;
+}
+
 /// Creates implementation of plus/minus operator that support following operations:
 ///   number, number -> number (standard math operations)
 ///   n: number, m: music  -> music
 ///   m: music,  n: number -> music  moves m by n semitones (+ goes up, - goes down)
 template<typename Binary_Operation>
-[[gnu::always_inline]]
-static inline auto plus_minus_operator()
+static Result<Value> plus_minus_operator(Interpreter &interpreter, std::vector<Value> args)
 {
-	return [](Interpreter&, std::vector<Value> args) -> Result<Value> {
-		assert(args.size() == 2, "Binary operator only accepts 2 arguments");
-		auto lhs = std::move(args.front());
-		auto rhs = std::move(args.back());
+	assert(args.size() == 2, "Binary operator only accepts 2 arguments");
+	auto lhs = std::move(args.front());
+	auto rhs = std::move(args.back());
 
-		if (lhs.type == rhs.type && lhs.type == Value::Type::Number) {
-			return Value::from(Binary_Operation{}(std::move(lhs).n, std::move(rhs).n));
+	if (lhs.type == rhs.type && lhs.type == Value::Type::Number) {
+		return Value::from(Binary_Operation{}(std::move(lhs).n, std::move(rhs).n));
+	}
+
+	if (lhs.type == Value::Type::Music && rhs.type == Value::Type::Number) {
+		for (auto &note : lhs.chord.notes) {
+			note.base = Binary_Operation{}(note.base, rhs.n.as_int());
+			note.simplify_inplace();
 		}
+		return lhs;
+	}
 
-		if (lhs.type == Value::Type::Music && rhs.type == Value::Type::Number) {
-music_number_operation:
-			for (auto &note : lhs.chord.notes) {
-				note.base = Binary_Operation{}(note.base, rhs.n.as_int());
-				note.simplify_inplace();
-			}
-			return lhs;
+	if (lhs.type == Value::Type::Number && rhs.type == Value::Type::Music) {
+		for (auto &note : rhs.chord.notes) {
+			note.base = Binary_Operation{}(lhs.n.as_int(), note.base);
+			note.simplify_inplace();
 		}
+		return rhs;
+	}
 
-		if (lhs.type == Value::Type::Number && rhs.type == Value::Type::Music) {
-			std::swap(lhs, rhs);
-			goto music_number_operation;
+	if (is_indexable(lhs.type) && !is_indexable(rhs.type)) {
+		Array array;
+		for (auto i = 0u; i < lhs.size(); ++i) {
+			array.elements.push_back(Try(
+				plus_minus_operator<Binary_Operation>(
+					interpreter, { Try(lhs.index(interpreter, i)), rhs })));
 		}
+		return Value::from(std::move(array));
+	}
 
-		assert(false, "Unsupported types for this operation"); // TODO(assert)
-		unreachable();
-	};
+	if (!is_indexable(lhs.type) && is_indexable(rhs.type)) {
+		Array array;
+		for (auto i = 0u; i < rhs.size(); ++i) {
+			array.elements.push_back(Try(
+				plus_minus_operator<Binary_Operation>(
+					interpreter, { lhs, Try(rhs.index(interpreter, i)) })));
+		}
+		return Value::from(std::move(array));
+	}
+
+	assert(false, "Unsupported types for this operation"); // TODO(assert)
+	unreachable();
 }
 
 Interpreter::Interpreter()
@@ -191,10 +238,7 @@ Interpreter::Interpreter()
 		});
 
 		global.force_define("play", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
-			for (auto &arg : args) {
-				assert(arg.type == Value::Type::Music, "Only music values can be played"); // TODO(assert)
-				i.play(arg.chord);
-			}
+			Try(play_notes(i, std::move(args)));
 			return Value{};
 		});
 
@@ -225,18 +269,18 @@ Interpreter::Interpreter()
 			return Value::from(std::move(chord));
 		});
 
-		operators["+"] = plus_minus_operator<std::plus<>>();
-		operators["-"] = plus_minus_operator<std::minus<>>();
-		operators["*"] = binary_operator<std::multiplies<>>();
-		operators["/"] = binary_operator<std::divides<>>();
+		operators["+"] = plus_minus_operator<std::plus<>>;
+		operators["-"] = plus_minus_operator<std::minus<>>;
+		operators["*"] = binary_operator<std::multiplies<>>;
+		operators["/"] = binary_operator<std::divides<>>;
 
-		operators["<"]  = comparison_operator<std::less<>>();
-		operators[">"]  = comparison_operator<std::greater<>>();
-		operators["<="] = comparison_operator<std::less_equal<>>();
-		operators[">="] = comparison_operator<std::greater_equal<>>();
+		operators["<"]  = comparison_operator<std::less<>>;
+		operators[">"]  = comparison_operator<std::greater<>>;
+		operators["<="] = comparison_operator<std::less_equal<>>;
+		operators[">="] = comparison_operator<std::greater_equal<>>;
 
-		operators["=="] = equality_operator<std::equal_to<>>();
-		operators["!="] = equality_operator<std::not_equal_to<>>();
+		operators["=="] = equality_operator<std::equal_to<>>;
+		operators["!="] = equality_operator<std::not_equal_to<>>;
 
 		operators["."] = +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
 			assert(args.size() == 2, "Operator . requires two arguments"); // TODO(assert)
