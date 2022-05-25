@@ -7,10 +7,15 @@
 
 #include <musique.hh>
 #include <midi.hh>
+#include <readline/readline.h>
+#include <readline/history.h>
 
 namespace fs = std::filesystem;
 
 static bool ast_only_mode = false;
+static bool enable_repl = false;
+
+#define Ignore(Call) do { auto const ignore_ ## __LINE__ = (Call); (void) ignore_ ## __LINE__; } while(0)
 
 static std::string_view pop(std::span<char const*> &span)
 {
@@ -28,11 +33,32 @@ void usage()
 		"  where options are:\n"
 		"    -c,--run CODE\n"
 		"      executes given code\n"
+		"    -i,--interactive,--repl\n"
+		"      enables interactive mode even when another code was passed\n"
 		"    --ast\n"
 		"      prints ast for given code\n"
 		"    -l,--list\n"
 		"      lists all available MIDI ports and quit\n";
 	std::exit(1);
+}
+
+static void trim(std::string_view &s)
+{
+	// left trim
+	if (auto const i = std::find_if_not(s.begin(), s.end(), unicode::is_space); i != s.begin()) {
+		// std::string_view::remove_prefix has UB when we wan't to remove more characters then str has
+		// src: https://en.cppreference.com/w/cpp/string/basic_string_view/remove_prefix
+		if (i != s.end()) {
+			s.remove_prefix(std::distance(s.begin(), i));
+		} else {
+			s = {};
+		}
+	}
+
+	// right trim
+	if (auto const ws_end = std::find_if_not(s.rbegin(), s.rend(), unicode::is_space); ws_end != s.rbegin()) {
+		s.remove_suffix(std::distance(ws_end.base(), s.end()));
+	}
 }
 
 struct Runner
@@ -84,10 +110,6 @@ struct Run
 
 static Result<void> Main(std::span<char const*> args)
 {
-	if (args.empty()) {
-		usage();
-	}
-
 	std::vector<Run> runnables;
 
 	while (not args.empty()) {
@@ -119,12 +141,13 @@ static Result<void> Main(std::span<char const*> args)
 			continue;
 		}
 
+		if (arg == "--repl" || arg == "-i" || arg == "--interactive")  {
+			enable_repl = true;
+			continue;
+		}
+
 		std::cerr << "musique: error: unrecognized command line option: " << arg << std::endl;
 		std::exit(1);
-	}
-
-	if (runnables.empty()) {
-		usage();
 	}
 
 	Runner runner("14");
@@ -149,11 +172,51 @@ static Result<void> Main(std::span<char const*> args)
 		Try(runner.run(eternal_sources.back(), path));
 	}
 
+	if (runnables.empty() || enable_repl) {
+		for (;;) {
+			char *input_buffer = readline("> ");
+			if (input_buffer == nullptr) {
+				break;
+			}
+
+			// Raw input line used for execution in language
+			std::string_view raw = input_buffer;
+
+			// Used to recognize REPL commands
+			std::string_view command = raw;
+			trim(command);
+
+			if (command.empty()) {
+				// Line is empty so there is no need to execute it or parse it
+				free(input_buffer);
+				continue;
+			}
+
+			add_history(input_buffer);
+
+			if (command.starts_with(':')) {
+				command.remove_prefix(1);
+				if (command == "exit") { break; }
+				if (command == "clear") { std::cout << "\x1b[1;1H\x1b[2J" << std::flush; continue; }
+				if (command.starts_with('!')) { Ignore(system(command.data() + 1)); continue; }
+				std::cerr << "musique: error: unrecognized REPL command '" << command << '\'' << std::endl;
+				continue;
+			}
+
+			Try(runner.run(raw, "<repl>"));
+			// We don't free input line since there could be values that still relay on it
+		}
+	}
+
 	return {};
 }
 
 int main(int argc, char const** argv)
 {
+	rl_readline_name = *argv;
+	// Set editing mode to Vim-like
+	rl_editing_mode = 0;
+
 	auto const args = std::span(argv, argc).subspan(1);
 	auto const result = Main(args);
 	if (not result.has_value()) {
