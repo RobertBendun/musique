@@ -12,4 +12,11 @@ var map = [array fun|
 	iter 0 (len array)
 ];
 
+var each = [array fun|
+	var iter = [start stop |
+		if (start >= stop) [nil] [fun (array.start); iter (start+1) stop]
+	];
+	iter 0 (len array)
+];
+
 var cdur = c47;
