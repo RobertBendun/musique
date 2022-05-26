@@ -26,7 +26,7 @@ Arytmetyka
 Przesuwanie dźwięków o półtony
 	c + 1 == c#
 	c - 1 == b
-	c12 + 1 == d12
+	c12 + 1 == c#12
 
 Wywołanie funkcji
 	foo 1 2 3
