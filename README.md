@@ -50,8 +50,7 @@ $ make bin/musique
 ├── bin            Miejsce produkcji plików wykonywalnych
 ├── coverage
 ├── doc            Dokumentacja języka, interpretera
-│   ├── build      Miejsce produkcji dokumentacji
-│   └── source     Źródła dokumentacji Sphinx
+│   └── build      Miejsce produkcji dokumentacji
 ├── etc/tools      Dodatkowe narzędzia
 ├── lib            Zewnętrzne zależności projektu
 │   ├── expected

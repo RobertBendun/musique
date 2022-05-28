@@ -75,7 +75,6 @@ unit-test-coverage:
 
 doc: Doxyfile src/*.cc src/*.hh
 	doxygen
-	cd doc; $(MAKE) html
 
 doc-open: doc
 	xdg-open ./doc/build/html/index.html
