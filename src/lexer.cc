@@ -240,3 +240,21 @@ std::ostream& operator<<(std::ostream& os, Token::Type type)
 	}
 	unreachable();
 }
+
+std::string_view type_name(Token::Type type)
+{
+	switch (type) {
+	case Token::Type::Chord:                 return "chord";
+	case Token::Type::Close_Block:           return "]";
+	case Token::Type::Close_Paren:           return ")";
+	case Token::Type::Expression_Separator:  return "|";
+	case Token::Type::Keyword:               return "keyword";
+	case Token::Type::Numeric:               return "numeric";
+	case Token::Type::Open_Block:            return "[";
+	case Token::Type::Open_Paren:            return "(";
+	case Token::Type::Operator:              return "operator";
+	case Token::Type::Parameter_Separator:   return "parameter separator";
+	case Token::Type::Symbol:                return "symbol";
+	}
+	unreachable();
+}

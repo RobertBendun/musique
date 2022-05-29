@@ -350,6 +350,8 @@ struct Token
 	Location location;
 };
 
+std::string_view type_name(Token::Type type);
+
 /// Token debug printing
 std::ostream& operator<<(std::ostream& os, Token const& tok);
 

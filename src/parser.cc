@@ -66,7 +66,7 @@ Result<Ast> Parser::parse_variable_declaration()
 		Error error;
 		errors::Expected_Keyword kw { .keyword = "var" };
 		if (token_id >= tokens.size()) {
-			kw.received_type = ""; // TODO Token type
+			kw.received_type = type_name(peek()->type);
 			error.location = peek()->location;
 		}
 		error.details = std::move(kw);
@@ -170,7 +170,7 @@ Result<Ast> Parser::parse_atomic_expression()
 	default:
 		return Error {
 			.details = errors::internal::Unexpected_Token {
-				.type = "", // TODO fill type
+				.type = type_name(peek()->type),
 				.source = peek()->source,
 				.when = "atomic expression parsing"
 			},
