@@ -19,6 +19,9 @@ Ustawianie oktawy i długości, a następnie modyfikacja
 Stworzenie akordu
 	c123 == chord[c; c#; d; d#]
 
+Nutę możemy modifikować poprzez podwyższanie o półton (# lub s), lub obniżanie o półton (b lub f)
+	c## == css == d == dff == dbb
+
 Arytmetyka
 	(aktualnie brak wsparcia dla precedensji operatorów)
 	3 * (4 * 12 - 8)
