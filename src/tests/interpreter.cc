@@ -24,6 +24,15 @@ void evaluates_to(Value value, std::string_view source_code, reflection::source_
 	}, sl)();
 }
 
+template<typename T>
+void expect_alternative(
+	auto const& variant,
+	boost::ut::reflection::source_location sl = boost::ut::reflection::source_location::current())
+{
+	using namespace boost::ut;
+	expect(std::holds_alternative<T>(variant), sl) << "Expected to hold alternative but failed";
+}
+
 suite intepreter_test = [] {
 	"Interpreter"_test = [] {
 		should("evaluate literals") = [] {
@@ -47,22 +56,20 @@ suite intepreter_test = [] {
 
 		should("allows only for calling which is callable") = [] {
 			evaluates_to(Value::from(Number(0)), "[i|i] 0");
-#if 0
 			{
 				Interpreter i;
 				{
 					auto result = Parser::parse("10 20", "test").and_then([&](Ast &&ast) { return i.eval(std::move(ast)); });
 					expect(!result.has_value()) << "Expected code to have failed";
-					expect(eq(result.error().type, errors::Not_Callable));
+					expect_alternative<errors::Not_Callable>(result.error().details);
 				}
 				{
 					i.env->force_define("call_me", Value::from(Number(10)));
 					auto result = Parser::parse("call_me 20", "test").and_then([&](Ast &&ast) { return i.eval(std::move(ast)); });
 					expect(!result.has_value()) << "Expected code to have failed";
-					expect(eq(result.error().type, errors::Not_Callable));
+					expect_alternative<errors::Not_Callable>(result.error().details);
 				}
 			}
-#endif
 		};
 
 		should("allow for value (in)equality comparisons") = [] {
