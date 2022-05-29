@@ -122,6 +122,18 @@ namespace errors
 	>;
 }
 
+/// All code related to pretty printing
+namespace pretty
+{
+	std::ostream& begin_error(std::ostream&);
+	std::ostream& begin_path(std::ostream&);
+	std::ostream& begin_comment(std::ostream&);
+	std::ostream& end(std::ostream&);
+
+	void terminal_mode();
+	void no_color_mode();
+}
+
 template<typename ...Lambdas>
 struct Overloaded : Lambdas... { using Lambdas::operator()...; };
 

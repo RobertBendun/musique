@@ -111,6 +111,10 @@ std::vector<std::string> eternal_sources;
 /// Fancy main that supports Result forwarding on error (Try macro)
 static Result<void> Main(std::span<char const*> args)
 {
+	if (isatty(STDOUT_FILENO) && getenv("NO_COLOR") == nullptr) {
+		pretty::terminal_mode();
+	}
+
 	/// Describes all arguments that will be run
 	struct Run
 	{
@@ -211,7 +215,11 @@ static Result<void> Main(std::span<char const*> args)
 				continue;
 			}
 
-			Try(runner.run(raw, "<repl>"));
+			auto result = runner.run(raw, "<repl>");
+			if (not result.has_value()) {
+				std::cout << std::flush;
+				std::cerr << result.error() << std::flush;
+			}
 			// We don't free input line since there could be values that still relay on it
 		}
 	}

@@ -37,30 +37,37 @@ static std::ostream& error_heading(
 		Error_Level lvl,
 		std::string_view short_description)
 {
+	std::stringstream ss;
+
 	switch (lvl) {
 	case Error_Level::Error:
-		os << "ERROR " << short_description << ' ';
+		ss << pretty::begin_error << "ERROR " << pretty::end << short_description;
 		break;
 
 	// This branch should be reached if we have Error_Level::Bug
 	// or definetely where error level is outside of enum Error_Level
 	default:
-		os << "IMPLEMENTATION BUG " << short_description << ' ';
+		ss << pretty::begin_error << "IMPLEMENTATION BUG " << pretty::end << short_description;
 	}
 
 	if (location) {
-		os << " at " << *location;
+		ss << " at " << pretty::begin_path << *location << pretty::end;
 	}
 
+	auto heading = std::move(ss).str();
+	os << heading << '\n';
+
+	auto const line_length = heading.size();
+	std::fill_n(std::ostreambuf_iterator<char>(os), line_length, '-');
 	return os << '\n';
 }
 
 static void encourage_contact(std::ostream &os)
 {
-	os <<
+	os << pretty::begin_comment << "\n"
 		"Interpreter got in state that was not expected by it's developers.\n"
 		"Contact them providing code that coused it and error message above to resolve this trouble\n"
-		<< std::flush;
+		<< pretty::end << std::flush;
 }
 
 void assert(bool condition, std::string message, Location loc)
@@ -69,7 +76,7 @@ void assert(bool condition, std::string message, Location loc)
 	error_heading(std::cerr, loc, Error_Level::Bug, "Assertion in interpreter");
 
 	if (not message.empty())
-		std::cerr << "with message: " << message << std::endl;
+		std::cerr << message  << std::endl;
 
 	encourage_contact(std::cerr);
 
@@ -91,7 +98,6 @@ void assert(bool condition, std::string message, Location loc)
 
 [[noreturn]] void unreachable(Location loc)
 {
-
 	error_heading(std::cerr, loc, Error_Level::Bug, "Reached unreachable state");
 	encourage_contact(std::cerr);
 	std::exit(1);
@@ -117,7 +123,7 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 	visit(Overloaded {
 		[&os](errors::Unrecognized_Character const& err) {
 			os << "I encountered character in the source code that was not supposed to be here.\n";
-			os << "  Character Unicode code: " << std::hex << err.invalid_character << '\n';
+			os << "  Character Unicode code: U+" << std::hex << err.invalid_character << '\n';
 			os << "  Character printed: '" << utf8::Print{err.invalid_character} << "'\n";
 			os << "\n";
 			os << "Musique only accepts characters that are unicode letters or ascii numbers and punctuation\n";
@@ -138,7 +144,7 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 			os << "  Token type: " << ut.type << '\n';
 			os << "  Token source: " << ut.source << '\n';
 
-			os << "\nThis error is considered an internal one. It should not be displayed to the end user.\n";
+			os << pretty::begin_comment << "\nThis error is considered an internal one. It should not be displayed to the end user.\n" << pretty::end;
 			encourage_contact(os);
 		},
 

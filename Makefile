@@ -17,6 +17,7 @@ Obj=                 \
 		location.o       \
 		number.o         \
 		parser.o         \
+		pretty.o         \
 		unicode.o        \
 		unicode_tables.o \
 		value.o
