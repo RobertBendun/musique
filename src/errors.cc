@@ -106,16 +106,17 @@ void assert(bool condition, std::string message, Location loc)
 std::ostream& operator<<(std::ostream& os, Error const& err)
 {
 	std::string_view short_description = visit(Overloaded {
-		[](errors::Expected_Keyword const&)                 { return "Expected keyword"; },
-		[](errors::Failed_Numeric_Parsing const&)           { return "Failed to parse a number"; },
-		[](errors::Music_Literal_Used_As_Identifier const&) { return "Music literal in place of identifier"; },
-		[](errors::Not_Callable const&)                     { return "Value not callable"; },
-		[](errors::Undefined_Identifier const&)             { return "Undefined identifier"; },
-		[](errors::Undefined_Operator const&)               { return "Undefined operator"; },
-		[](errors::Unexpected_Empty_Source const&)          { return "Unexpected end of file"; },
-		[](errors::Unexpected_Keyword const&)               { return "Unexpected keyword"; },
-		[](errors::Unrecognized_Character const&)           { return "Unrecognized character"; },
-		[](errors::internal::Unexpected_Token const&)       { return "Unexpected token"; }
+		[](errors::Expected_Keyword const&)                     { return "Expected keyword"; },
+		[](errors::Failed_Numeric_Parsing const&)               { return "Failed to parse a number"; },
+		[](errors::Music_Literal_Used_As_Identifier const&)     { return "Music literal in place of identifier"; },
+		[](errors::Not_Callable const&)                         { return "Value not callable"; },
+		[](errors::Undefined_Identifier const&)                 { return "Undefined identifier"; },
+		[](errors::Undefined_Operator const&)                   { return "Undefined operator"; },
+		[](errors::Unexpected_Empty_Source const&)              { return "Unexpected end of file"; },
+		[](errors::Unexpected_Keyword const&)                   { return "Unexpected keyword"; },
+		[](errors::Unrecognized_Character const&)               { return "Unrecognized character"; },
+		[](errors::internal::Unexpected_Token const&)           { return "Unexpected token"; },
+		[](errors::Expected_Expression_Separator_Before const&) { return "Missing semicolon"; }
 	}, err.details);
 
 	error_heading(os, err.location, Error_Level::Error, short_description);
@@ -148,13 +149,22 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 			encourage_contact(os);
 		},
 
-		[&os](errors::Expected_Keyword const&)                 {},
-		[&os](errors::Music_Literal_Used_As_Identifier const&) {},
-		[&os](errors::Not_Callable const&)                     {},
-		[&os](errors::Undefined_Identifier const&)             {},
-		[&os](errors::Undefined_Operator const&)               {},
-		[&os](errors::Unexpected_Keyword const&)               {},
-		[&os](errors::Unexpected_Empty_Source const&)          {}
+		[&os](errors::Expected_Expression_Separator_Before const& err) {
+			os << "I failed to parse following code, due to missing semicolon before it!\n";
+
+			if (err.what == "var") {
+				os << "\nIf you want to create variable inside expression try wrapping them inside parentheses like this:\n";
+				os << "    10 + (var i = 20)\n";
+			}
+		},
+
+		[&os](errors::Expected_Keyword const&)                 { unimplemented(); },
+		[&os](errors::Music_Literal_Used_As_Identifier const&) { unimplemented(); },
+		[&os](errors::Not_Callable const&)                     { unimplemented(); },
+		[&os](errors::Undefined_Identifier const&)             { unimplemented(); },
+		[&os](errors::Undefined_Operator const&)               { unimplemented(); },
+		[&os](errors::Unexpected_Keyword const&)               { unimplemented(); },
+		[&os](errors::Unexpected_Empty_Source const&)          { unimplemented(); }
 	}, err.details);
 
 	return os;

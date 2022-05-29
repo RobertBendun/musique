@@ -40,6 +40,12 @@ Result<Ast> Parser::parse(std::string_view source, std::string_view filename)
 	auto const result = parser.parse_sequence();
 
 	if (parser.token_id < parser.tokens.size()) {
+		if (parser.expect(Token::Type::Keyword, "var")) {
+			return Error {
+				.details = errors::Expected_Expression_Separator_Before { .what = "var" },
+				.location = parser.peek()->location
+			};
+		}
 		errors::all_tokens_were_not_parsed(std::span(parser.tokens).subspan(parser.token_id));
 	}
 
@@ -54,10 +60,10 @@ Result<Ast> Parser::parse_sequence()
 
 Result<Ast> Parser::parse_expression()
 {
-	auto var = parse_variable_declaration();
-	if (!var.has_value())
-		return parse_infix_expression();
-	return var;
+	if (expect(Token::Type::Keyword, "var")) {
+		return parse_variable_declaration();
+	}
+	return parse_infix_expression();
 }
 
 Result<Ast> Parser::parse_variable_declaration()

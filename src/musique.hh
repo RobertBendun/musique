@@ -69,6 +69,11 @@ namespace errors
 		std::string_view received_type = {};
 	};
 
+	struct Expected_Expression_Separator_Before
+	{
+		std::string_view what;
+	};
+
 	struct Unexpected_Keyword
 	{
 		std::string_view keyword;
@@ -109,6 +114,7 @@ namespace errors
 	}
 
 	using Details = std::variant<
+		Expected_Expression_Separator_Before,
 		Expected_Keyword,
 		Failed_Numeric_Parsing,
 		Music_Literal_Used_As_Identifier,
