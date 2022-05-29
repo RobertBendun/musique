@@ -1,6 +1,6 @@
 {
     "returncode": 0,
-    "stdout": "4\n30\n42\n",
+    "stdout": "1\n2\n3\n4\n5\n",
     "stderr": "",
     "flags": []
 }

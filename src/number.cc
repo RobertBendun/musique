@@ -165,7 +165,10 @@ Result<Number> Number::from(Token token)
 			num_end = begin;
 			goto parse_fractional;
 		}
-		return errors::failed_numeric_parsing(std::move(token.location), ec, token.source);
+		return Error {
+			.details = errors::Failed_Numeric_Parsing { .reason = ec },
+			.location = std::move(token.location)
+		};
 	}
 	parsed_numerator = true;
 
@@ -177,7 +180,10 @@ parse_fractional:
 		if (ec != std::errc{}) {
 			if (parsed_numerator && ec == std::errc::invalid_argument && token.source != ".")
 				return result;
-			return errors::failed_numeric_parsing(std::move(token.location), ec, token.source);
+			return Error {
+				.details = errors::Failed_Numeric_Parsing { .reason = ec },
+				.location = std::move(token.location)
+			};
 		}
 		result += Number{ frac, pow10(frac_end - num_end) };
 	}

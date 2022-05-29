@@ -45,21 +45,85 @@ using isize = std::ptrdiff_t;
 /// as first class feature in Zig programming language.
 namespace errors
 {
-	enum Type
+	struct Unrecognized_Character
 	{
-		End_Of_File,
-		Unrecognized_Character,
-
-		Unexpected_Token_Type,
-		Unexpected_Empty_Source,
-		Failed_Numeric_Parsing,
-
-		Function_Not_Defined,
-		Unresolved_Operator,
-		Expected_Keyword,
-		Not_Callable
+		u32 invalid_character;
 	};
+
+	struct Unexpected_Empty_Source
+	{
+	};
+
+	struct Failed_Numeric_Parsing
+	{
+		std::errc reason;
+	};
+
+	struct Undefined_Identifier
+	{
+	};
+
+	struct Expected_Keyword
+	{
+		std::string_view keyword;
+		std::string_view received_type = {};
+	};
+
+	struct Unexpected_Keyword
+	{
+		std::string_view keyword;
+	};
+
+	struct Undefined_Operator
+	{
+		std::string_view op;
+	};
+
+	struct Not_Callable
+	{
+		std::string_view type;
+	};
+
+	struct Music_Literal_Used_As_Identifier
+	{
+		std::string_view source;
+
+		/// Why only identifier can be used?
+		std::string_view identifier_context;
+	};
+
+	/// Collection of messages that are considered internal and should not be printed to the end user.
+	namespace internal
+	{
+		struct Unexpected_Token
+		{
+			/// Type of the token
+			std::string_view type;
+
+			/// Source of the token
+			std::string_view source;
+
+			/// Where this token was encountered that was unexpected?
+			std::string_view when;
+		};
+	}
+
+	using Details = std::variant<
+		Expected_Keyword,
+		Failed_Numeric_Parsing,
+		Music_Literal_Used_As_Identifier,
+		Not_Callable,
+		Undefined_Identifier,
+		Undefined_Operator,
+		Unexpected_Empty_Source,
+		Unexpected_Keyword,
+		Unrecognized_Character,
+		internal::Unexpected_Token
+	>;
 }
+
+template<typename ...Lambdas>
+struct Overloaded : Lambdas... { using Lambdas::operator()...; };
 
 /// \brief Location describes code position in `file line column` format.
 ///        It's used both to represent position in source files provided
@@ -113,12 +177,9 @@ void assert(bool condition, std::string message, Location loc = Location::caller
 
 struct Error
 {
-	errors::Type type;
+	errors::Details details;
 	std::optional<Location> location = std::nullopt;
-	std::string message{};
-	std::errc error_code{};
 
-	bool operator==(errors::Type);
 	Error with(Location) &&;
 };
 
@@ -149,11 +210,6 @@ struct [[nodiscard("This value may contain critical error, so it should NOT be i
 	template<typename Arg> requires std::is_constructible_v<Storage, Arg>
 	constexpr Result(Arg &&arg)
 		: Storage(std::forward<Arg>(arg))
-	{
-	}
-
-	constexpr Result(errors::Type error)
-		: Storage(tl::unexpect, Error { error } )
 	{
 	}
 
@@ -300,6 +356,9 @@ std::ostream& operator<<(std::ostream& os, Token const& tok);
 /// Token type debug printing
 std::ostream& operator<<(std::ostream& os, Token::Type type);
 
+/// Explicit marker of the end of file
+struct End_Of_File {};
+
 /// Lexer takes source code and turns it into list of tokens
 ///
 /// It allows for creating sequence of tokens by using next_token() method.
@@ -332,8 +391,8 @@ struct Lexer
 	/// Used only for rewinding
 	Location prev_location{};
 
-	/// Try to tokenize next token
-	auto next_token() -> Result<Token>;
+	/// Try to tokenize next token.
+	auto next_token() -> Result<std::variant<Token, End_Of_File>>;
 
 	/// Skip whitespace and comments from the beggining of the source
 	///
@@ -475,9 +534,6 @@ struct Parser
 
 	/// Tests if current token has given type and source
 	bool expect(Token::Type type, std::string_view lexeme) const;
-
-	/// Ensures that current token has one of types given, otherwise returns error
-	Result<void> ensure(Token::Type type) const;
 };
 
 /// Number type supporting integer and fractional constants
@@ -787,21 +843,6 @@ struct Interpreter
 
 namespace errors
 {
-	Error unrecognized_character(u32 invalid_character);
-	Error unrecognized_character(u32 invalid_character, Location location);
-
-	Error unexpected_token(Token::Type expected, Token const& unexpected);
-	Error unexpected_token(Token const& unexpected);
-	Error unexpected_end_of_source(Location location);
-
-	Error failed_numeric_parsing(Location location, std::errc errc, std::string_view source);
-
-	Error function_not_defined(Value const& v);
-	Error unresolved_operator(Token const& op);
-	Error expected_keyword(Token const& unexpected, std::string_view keyword);
-
-	Error not_callable(std::optional<Location> location, Value::Type value_type);
-
 	[[noreturn]]
 	void all_tokens_were_not_parsed(std::span<Token>);
 }

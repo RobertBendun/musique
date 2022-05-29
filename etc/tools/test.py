@@ -79,7 +79,10 @@ def run_tests(file_paths: list):
     return_code = 0
     for program_file in file_paths:
         test_case_file = find_path_for_test_case(program_file)
-        tc = Test_Case.from_file(test_case_file) if os.path.exists(test_case_file) else Test_Case()
+        if os.path.exists(test_case_file):
+            tc = Test_Case.from_file(test_case_file)
+        else:
+            continue
 
         flags_list = [Interpreter]
         if hasattr(tc, "flags"):

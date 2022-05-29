@@ -3,9 +3,20 @@
 #include <iostream>
 #include <sstream>
 
-bool Error::operator==(errors::Type type)
+template<typename T, typename ...Params>
+concept Callable = requires(T t, Params ...params) { t(params...); };
+
+template<typename Lambda, typename ...T>
+concept Visitor = (Callable<Lambda, T> && ...);
+
+/// Custom visit function for better C++ compilation error messages
+template<typename V, typename ...T>
+static auto visit(V &&visitor, std::variant<T...> const& variant)
 {
-	return this->type == type;
+	static_assert(Visitor<V, T...>, "visitor must cover all types");
+	if constexpr (Visitor<V, T...>) {
+		return std::visit(std::forward<V>(visitor), variant);
+	}
 }
 
 Error Error::with(Location loc) &&
@@ -17,183 +28,138 @@ Error Error::with(Location loc) &&
 enum class Error_Level
 {
 	Error,
-	Notice,
 	Bug
 };
 
-static std::ostream& error_heading(std::ostream &os, std::optional<Location> location, Error_Level lvl)
+static std::ostream& error_heading(
+		std::ostream &os,
+		std::optional<Location> location,
+		Error_Level lvl,
+		std::string_view short_description)
 {
-	if (location) {
-		os << *location;
-	} else {
-		os << "musique";
-	}
-
 	switch (lvl) {
-	case Error_Level::Error:  return os << ": error: ";
-	case Error_Level::Notice: return os << ": notice: ";
+	case Error_Level::Error:
+		os << "ERROR " << short_description << ' ';
+		break;
 
 	// This branch should be reached if we have Error_Level::Bug
 	// or definetely where error level is outside of enum Error_Level
-	default:                  return os << ": implementation bug: ";
+	default:
+		os << "IMPLEMENTATION BUG " << short_description << ' ';
 	}
+
+	if (location) {
+		os << " at " << *location;
+	}
+
+	return os << '\n';
+}
+
+static void encourage_contact(std::ostream &os)
+{
+	os <<
+		"Interpreter got in state that was not expected by it's developers.\n"
+		"Contact them providing code that coused it and error message above to resolve this trouble\n"
+		<< std::flush;
 }
 
 void assert(bool condition, std::string message, Location loc)
 {
 	if (condition) return;
-	error_heading(std::cerr, loc, Error_Level::Bug) << message << std::endl;
+	error_heading(std::cerr, loc, Error_Level::Bug, "Assertion in interpreter");
+
+	if (not message.empty())
+		std::cerr << "with message: " << message << std::endl;
+
+	encourage_contact(std::cerr);
+
 	std::exit(1);
 }
 
 [[noreturn]] void unimplemented(std::string_view message, Location loc)
 {
-	if (message.empty()) {
-		error_heading(std::cerr, loc, Error_Level::Bug) << "this part was not implemented yet" << std::endl;
-	} else {
-		error_heading(std::cerr, loc, Error_Level::Bug) << message << std::endl;
+	error_heading(std::cerr, loc, Error_Level::Bug, "This part of interpreter was not implemented yet");
+
+	if (not message.empty()) {
+		std::cerr << message << std::endl;
 	}
+
+	encourage_contact(std::cerr);
+
 	std::exit(1);
 }
 
 [[noreturn]] void unreachable(Location loc)
 {
-	error_heading(std::cerr, loc, Error_Level::Bug) << "this place should not be reached" << std::endl;
+
+	error_heading(std::cerr, loc, Error_Level::Bug, "Reached unreachable state");
+	encourage_contact(std::cerr);
 	std::exit(1);
 }
 
 std::ostream& operator<<(std::ostream& os, Error const& err)
 {
-	error_heading(os, err.location, Error_Level::Error);
+	std::string_view short_description = visit(Overloaded {
+		[](errors::Expected_Keyword const&)                 { return "Expected keyword"; },
+		[](errors::Failed_Numeric_Parsing const&)           { return "Failed to parse a number"; },
+		[](errors::Music_Literal_Used_As_Identifier const&) { return "Music literal in place of identifier"; },
+		[](errors::Not_Callable const&)                     { return "Value not callable"; },
+		[](errors::Undefined_Identifier const&)             { return "Undefined identifier"; },
+		[](errors::Undefined_Operator const&)               { return "Undefined operator"; },
+		[](errors::Unexpected_Empty_Source const&)          { return "Unexpected end of file"; },
+		[](errors::Unexpected_Keyword const&)               { return "Unexpected keyword"; },
+		[](errors::Unrecognized_Character const&)           { return "Unrecognized character"; },
+		[](errors::internal::Unexpected_Token const&)       { return "Unexpected token"; }
+	}, err.details);
 
-	switch (err.type) {
-	case errors::End_Of_File:
-		return os << "end of file\n";
+	error_heading(os, err.location, Error_Level::Error, short_description);
 
-	case errors::Unrecognized_Character:
-		return err.message.empty() ? os << "unrecognized character\n" : os << err.message;
+	visit(Overloaded {
+		[&os](errors::Unrecognized_Character const& err) {
+			os << "I encountered character in the source code that was not supposed to be here.\n";
+			os << "  Character Unicode code: " << std::hex << err.invalid_character << '\n';
+			os << "  Character printed: '" << utf8::Print{err.invalid_character} << "'\n";
+			os << "\n";
+			os << "Musique only accepts characters that are unicode letters or ascii numbers and punctuation\n";
+		},
 
-	case errors::Expected_Keyword:
-	case errors::Function_Not_Defined:
-	case errors::Not_Callable:
-	case errors::Unexpected_Token_Type:
-	case errors::Unresolved_Operator:
-		return os << err.message << '\n';
+		[&os](errors::Failed_Numeric_Parsing const& err) {
+			constexpr auto Max = std::numeric_limits<decltype(Number::num)>::max();
+			constexpr auto Min = std::numeric_limits<decltype(Number::num)>::min();
+			os << "I tried to parse numeric literal, but I failed.";
+			if (err.reason == std::errc::result_out_of_range) {
+				os << " Declared number is outside of valid range of numbers that can be represented.\n";
+				os << "  Only numbers in range [" << Min << ", " << Max << "] are supported\n";
+			}
+		},
 
-	case errors::Unexpected_Empty_Source:
-		return os << "unexpected end of input\n";
+		[&os](errors::internal::Unexpected_Token const& ut) {
+			os << "I encountered unexpected token during " << ut.when << '\n';
+			os << "  Token type: " << ut.type << '\n';
+			os << "  Token source: " << ut.source << '\n';
 
-	case errors::Failed_Numeric_Parsing:
-		return err.error_code == std::errc::result_out_of_range
-			? os << "number " << err.message << " cannot be represented with " << (sizeof(Number::num)*8) << " bit number\n"
-			: os << "couldn't parse number " << err.message << '\n';
-	}
+			os << "\nThis error is considered an internal one. It should not be displayed to the end user.\n";
+			encourage_contact(os);
+		},
 
-	return os << "unrecognized error type\n";
-}
+		[&os](errors::Expected_Keyword const&)                 {},
+		[&os](errors::Music_Literal_Used_As_Identifier const&) {},
+		[&os](errors::Not_Callable const&)                     {},
+		[&os](errors::Undefined_Identifier const&)             {},
+		[&os](errors::Undefined_Operator const&)               {},
+		[&os](errors::Unexpected_Keyword const&)               {},
+		[&os](errors::Unexpected_Empty_Source const&)          {}
+	}, err.details);
 
-static std::string format(auto const& ...args)
-{
-	std::stringstream ss;
-	(void) (ss << ... << args);
-	return ss.str();
-}
-
-Error errors::unrecognized_character(u32 invalid_character)
-{
-	Error err;
-	err.type = errors::Unrecognized_Character;
-	err.message = format(
-		"unrecognized charater U+",
-		std::hex, invalid_character,
-		" (char: '", utf8::Print{invalid_character}, "')");
-
-	return err;
-}
-
-Error errors::unrecognized_character(u32 invalid_character, Location location)
-{
-	return unrecognized_character(invalid_character).with(std::move(location));
-}
-
-Error errors::unexpected_token(Token const& unexpected)
-{
-	Error err;
-	err.type = errors::Unexpected_Token_Type;
-	err.location = unexpected.location;
-	err.message = format("unexpected ", unexpected.type);
-	return err;
-}
-
-Error errors::unexpected_token(Token::Type expected, Token const& unexpected)
-{
-	Error err;
-	err.type = errors::Unexpected_Token_Type;
-	err.location = unexpected.location;
-	err.message = format("expected ", expected, ", but got ", unexpected.type);
-	return err;
-}
-
-Error errors::unexpected_end_of_source(Location location)
-{
-	Error err;
-	err.type = errors::Unexpected_Empty_Source;
-	err.location = location;
-	return err;
-}
-
-Error errors::failed_numeric_parsing(Location location, std::errc errc, std::string_view source)
-{
-	Error err;
-	err.type = errors::Failed_Numeric_Parsing;
-	err.location = location;
-	err.error_code = errc;
-	err.message = source;
-	return err;
-}
-
-Error errors::function_not_defined(Value const& value)
-{
-	Error err;
-	err.type = Function_Not_Defined;
-	err.message = "Function '" + value.s + "' has not been defined yet";
-	return err;
-}
-
-Error errors::unresolved_operator(Token const& op)
-{
-	Error err;
-	err.type = errors::Unresolved_Operator;
-	err.location = op.location;
-	err.message = format("Unresolved operator '", op.source, "'");
-	return err;
-}
-
-Error errors::expected_keyword(Token const& unexpected, std::string_view keyword)
-{
-	Error err;
-	err.type = errors::Expected_Keyword;
-	err.location = unexpected.location;
-	err.message = format("Expected keyword '", keyword, "', but found ", unexpected);
-	return err;
-}
-
-Error errors::not_callable(std::optional<Location> location, Value::Type value_type)
-{
-	Error err;
-	err.type = errors::Not_Callable;
-	err.location = std::move(location);
-	err.message = format("Couldn't call value of type ", type_name(value_type));
-	return err;
+	return os;
 }
 
 void errors::all_tokens_were_not_parsed(std::span<Token> tokens)
 {
-	error_heading(std::cerr, std::nullopt, Error_Level::Bug);
+	error_heading(std::cerr, std::nullopt, Error_Level::Bug, "Remaining tokens");
 	std::cerr << "remaining tokens after parsing. Listing remaining tokens:\n";
 
 	for (auto const& token : tokens) {
-		error_heading(std::cerr, token.location, Error_Level::Notice);
 		std::cerr << token << '\n';
 	}
 

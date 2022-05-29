@@ -3,6 +3,25 @@
 
 using namespace boost::ut;
 
+enum class EOF_Status : bool
+{
+	Reject = false,
+	Accept = true,
+};
+
+template<EOF_Status Expect_End_Of_File = EOF_Status::Reject>
+static auto handle_end_of_file(
+	std::variant<Token, End_Of_File> token_or_eof,
+	reflection::source_location const& sl)
+{
+	if constexpr (Expect_End_Of_File == EOF_Status::Accept) {
+		expect(std::holds_alternative<End_Of_File>(token_or_eof), sl) << "Expected to encounter end of file";
+	} else {
+		expect(std::holds_alternative<Token>(token_or_eof), sl) << "Expected to NOT encounter end of file";
+		return std::get<Token>(std::move(token_or_eof));
+	}
+}
+
 static void expect_token_type(
 		Token::Type expected_type,
 		std::string source,
@@ -11,7 +30,8 @@ static void expect_token_type(
 	Lexer lexer{source};
 	auto result = lexer.next_token();
 	expect(result.has_value() >> fatal, sl) << "have not parsed any tokens";
-	expect(eq(result->type, expected_type), sl) << "different token type then expected";
+	auto token = handle_end_of_file(*std::move(result), sl);
+	expect(eq(token.type, expected_type), sl) << "different token type then expected";
 }
 
 static void expect_token_type_and_value(
@@ -25,8 +45,9 @@ static void expect_token_type_and_value(
 	expect(result.has_value(), sl) << "have not parsed any tokens";
 
 	if (result.has_value()) {
-		expect(eq(result->type, expected_type), sl) << "different token type then expected";
-		expect(eq(result->source, expected), sl) << "tokenized source is not equal to original";
+		auto token = handle_end_of_file(*std::move(result), sl);
+		expect(eq(token.type, expected_type), sl) << "different token type then expected";
+		expect(eq(token.source, expected), sl) << "tokenized source is not equal to original";
 	}
 }
 
@@ -47,20 +68,20 @@ static void expect_token_type_and_location(
 	Lexer lexer{source};
 	auto result = lexer.next_token();
 	expect(result.has_value() >> fatal, sl) << "have not parsed any tokens";
-	expect(eq(result->type, expected_type), sl) << "different token type then expected";
-	expect(eq(result->location, location), sl) << "tokenized source is at different place then expected";
+
+	auto token = handle_end_of_file(*std::move(result), sl);
+	expect(eq(token.type, expected_type), sl) << "different token type then expected";
+	expect(eq(token.location, location), sl) << "tokenized source is at different place then expected";
 }
 
 static void expect_empty_file(
 		std::string_view source,
 		reflection::source_location const& sl = reflection::source_location::current())
 {
-		Lexer lexer{source};
-		auto result = lexer.next_token();
-		expect(!result.has_value(), sl) << "could not produce any tokens from empty file";
-		if (not result.has_value()) {
-			expect(result.error() == errors::End_Of_File, sl) << "could not produce any tokens from empty file";
-		}
+	Lexer lexer{source};
+	auto result = lexer.next_token();
+	expect(result.has_value(), sl) << "Encountered error when expecting end of file";
+	handle_end_of_file<EOF_Status::Accept>(*std::move(result), sl);
 }
 
 template<auto N>
@@ -76,14 +97,18 @@ static void expect_token_sequence(
 		expect(result.has_value(), sl)                  << "expected token, received nothing";
 
 		if (result.has_value()) {
-			expect(eq(result->type, expected.type))         << "different token type then expected";
-			expect(eq(result->source, expected.source))     << "different token source then expected";
-			expect(eq(result->location, expected.location)) << "different token location then expected";
+			auto token = handle_end_of_file(*std::move(result), sl);
+			expect(eq(token.type, expected.type))         << "different token type then expected";
+			expect(eq(token.source, expected.source))     << "different token source then expected";
+			expect(eq(token.location, expected.location)) << "different token location then expected";
 		}
 	}
 
 	auto const result = lexer.next_token();
-	expect(not result.has_value(), sl) << "more tokens then expected";
+	expect(result.has_value(), sl) << "expected end of file after sequence of tokens";
+	if (result.has_value()) {
+		expect(std::holds_alternative<End_Of_File>(*result), sl) << "expected end of file after sequence of tokens";
+	}
 }
 
 suite lexer_test = [] {

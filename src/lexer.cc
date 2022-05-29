@@ -60,13 +60,13 @@ void Lexer::skip_whitespace_and_comments()
 	}
 }
 
-auto Lexer::next_token() -> Result<Token>
+auto Lexer::next_token() -> Result<std::variant<Token, End_Of_File>>
 {
 	skip_whitespace_and_comments();
 	start();
 
 	if (peek() == 0) {
-		return errors::End_Of_File;
+		return End_Of_File{};
 	}
 
 	switch (peek()) {
@@ -135,7 +135,10 @@ auto Lexer::next_token() -> Result<Token>
 		return Token { Token::Type::Operator, finish(), token_location };
 	}
 
-	return errors::unrecognized_character(peek(), token_location);
+	return Error {
+		.details = errors::Unrecognized_Character { .invalid_character = peek() },
+		.location = token_location
+	};
 }
 
 auto Lexer::peek() const -> u32

@@ -27,12 +27,14 @@ Result<Ast> Parser::parse(std::string_view source, std::string_view filename)
 	lexer.location.filename = filename;
 	Parser parser;
 
-	for (;;) if (auto maybe_token = lexer.next_token(); maybe_token.has_value()) {
-		parser.tokens.emplace_back(*std::move(maybe_token));
-	} else if (maybe_token.error().type == errors::End_Of_File) {
-		break;
-	} else {
-		return std::move(maybe_token).error();
+	for (;;) {
+		auto token_or_eof = Try(lexer.next_token());
+		if (auto maybe_token = std::get_if<Token>(&token_or_eof); maybe_token) {
+			parser.tokens.emplace_back(std::move(*maybe_token));
+		} else {
+			// We encountered end of file so no more tokens, break the loop
+			break;
+		}
 	}
 
 	auto const result = parser.parse_sequence();
@@ -61,7 +63,14 @@ Result<Ast> Parser::parse_expression()
 Result<Ast> Parser::parse_variable_declaration()
 {
 	if (!expect(Token::Type::Keyword, "var")) {
-		return errors::expected_keyword(Try(peek()), "var");
+		Error error;
+		errors::Expected_Keyword kw { .keyword = "var" };
+		if (token_id >= tokens.size()) {
+			kw.received_type = ""; // TODO Token type
+			error.location = peek()->location;
+		}
+		error.details = std::move(kw);
+		return error;
 	}
 	auto var = consume();
 
@@ -98,7 +107,10 @@ Result<Ast> Parser::parse_atomic_expression()
 		// but keywords like `var` announce variable declaration which is higher up in expression parsing.
 		// So we need to explicitly allow only keywords that are also literals
 		if (std::find(Literal_Keywords.begin(), Literal_Keywords.end(), peek()->source) == Literal_Keywords.end()) {
-			return errors::unexpected_token(*peek());
+			return Error {
+				.details = errors::Unexpected_Keyword { .keyword = peek()->source },
+				.location = peek()->location
+			};
 		}
 		[[fallthrough]];
 	case Token::Type::Chord:
@@ -133,7 +145,9 @@ Result<Ast> Parser::parse_atomic_expression()
 			}
 
 			return parse_sequence().and_then([&](Ast &&ast) -> Result<Ast> {
-				Try(ensure(Token::Type::Close_Block));
+				if (not expect(Token::Type::Close_Block)) {
+					unimplemented("Error handling of this code is not implemented yet");
+				}
 				consume();
 				if (is_lambda) {
 					return Ast::lambda(opening.location, std::move(ast), std::move(parameters));
@@ -146,21 +160,38 @@ Result<Ast> Parser::parse_atomic_expression()
 	case Token::Type::Open_Paren:
 		consume();
 		return parse_expression().and_then([&](Ast ast) -> Result<Ast> {
-			Try(ensure(Token::Type::Close_Paren));
+			if (not expect(Token::Type::Close_Paren)) {
+				unimplemented("Error handling of this code is not implemented yet");
+			}
 			consume();
 			return ast;
 		});
 
 	default:
-		return peek().and_then([](auto const& token) -> Result<Ast> {
-			return tl::unexpected(errors::unexpected_token(token));
-		});
+		return Error {
+			.details = errors::internal::Unexpected_Token {
+				.type = "", // TODO fill type
+				.source = peek()->source,
+				.when = "atomic expression parsing"
+			},
+			.location = peek()->location
+		};
 	}
 }
 
 Result<Ast> Parser::parse_identifier_with_trailing_separators()
 {
-	Try(ensure(Token::Type::Symbol));
+	if (not expect(Token::Type::Symbol)) {
+		// TODO Specific error message
+		return Error {
+			.details = errors::internal::Unexpected_Token {
+				.type = "", // TODO fill type
+				.source = peek()->source,
+				.when = "identifier parsing"
+			},
+			.location = peek()->location
+		};
+	}
 	auto lit = Ast::literal(consume());
 	while (expect(Token::Type::Expression_Separator)) { consume(); }
 	return lit;
@@ -168,7 +199,17 @@ Result<Ast> Parser::parse_identifier_with_trailing_separators()
 
 Result<Ast> Parser::parse_identifier()
 {
-	Try(ensure(Token::Type::Symbol));
+	if (not expect(Token::Type::Symbol)) {
+		// TODO Specific error message
+		return Error {
+			.details = errors::internal::Unexpected_Token {
+				.type = "", // TODO fill type
+				.source = peek()->source,
+				.when = "identifier parsing"
+			},
+			.location = peek()->location
+		};
+	}
 	return Ast::literal(consume());
 }
 
@@ -187,7 +228,7 @@ static Result<std::vector<Ast>> parse_many(
 	while ((expr = (p.*parser)()).has_value()) {
 		trees.push_back(std::move(expr).value());
 		if (separator) {
-			if (auto s = p.ensure(*separator); !s.has_value()) {
+			if (not p.expect(*separator)) {
 				break;
 			}
 			do p.consume(); while (p.expect(*separator));
@@ -204,7 +245,10 @@ static Result<std::vector<Ast>> parse_many(
 Result<Token> Parser::peek() const
 {
 	return token_id >= tokens.size()
-		? errors::unexpected_end_of_source(tokens.back().location)
+		? Error {
+				.details = errors::Unexpected_Empty_Source {},
+				.location = tokens.back().location
+			}
 		: Result<Token>(tokens[token_id]);
 }
 
@@ -226,15 +270,6 @@ bool Parser::expect(Token::Type type) const
 bool Parser::expect(Token::Type type, std::string_view lexeme) const
 {
 	return token_id < tokens.size() && tokens[token_id].type == type && tokens[token_id].source == lexeme;
-}
-
-Result<void> Parser::ensure(Token::Type type) const
-{
-	return token_id >= tokens.size()
-		? errors::unexpected_end_of_source(tokens.back().location)
-		: tokens[token_id].type != type
-		? errors::unexpected_token(type, tokens[token_id])
-		: Result<void>{};
 }
 
 // Don't know if it's a good idea to defer parsing of literal values up to value creation, which is current approach.

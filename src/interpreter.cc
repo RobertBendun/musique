@@ -374,7 +374,10 @@ Result<Value> Interpreter::eval(Ast &&ast)
 			auto op = operators.find(std::string(ast.token.source));
 
 			if (op == operators.end()) {
-				return errors::unresolved_operator(ast.token);
+				return Error {
+					.details = errors::Undefined_Operator { .op = ast.token.source },
+					.location = ast.token.location
+				};
 			}
 
 			for (auto& a : ast.arguments) {

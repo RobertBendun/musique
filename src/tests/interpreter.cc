@@ -47,6 +47,7 @@ suite intepreter_test = [] {
 
 		should("allows only for calling which is callable") = [] {
 			evaluates_to(Value::from(Number(0)), "[i|i] 0");
+#if 0
 			{
 				Interpreter i;
 				{
@@ -61,6 +62,7 @@ suite intepreter_test = [] {
 					expect(eq(result.error().type, errors::Not_Callable));
 				}
 			}
+#endif
 		};
 
 		should("allow for value (in)equality comparisons") = [] {
