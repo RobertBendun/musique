@@ -132,6 +132,24 @@ suite value_test = [] {
 			test_note_resolution("cs", 61);
 			test_note_resolution("cf", 59);
 			test_note_resolution("cb", 59);
+
+			test_note_resolution("c##", 62);
+			test_note_resolution("css", 62);
+			test_note_resolution("cff", 58);
+			test_note_resolution("cbb", 58);
+
+			test_note_resolution("cs#", 62);
+			test_note_resolution("c#s", 62);
+			test_note_resolution("cbf", 58);
+			test_note_resolution("cfb", 58);
+
+			test_note_resolution("c#b", 60);
+			test_note_resolution("cb#", 60);
+			test_note_resolution("cfs", 60);
+			test_note_resolution("csf", 60);
+
+			test_note_resolution("c##########", 70);
+			test_note_resolution("cbbbbbbbbbb", 50);
 		};
 	};
 };
