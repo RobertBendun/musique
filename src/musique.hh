@@ -59,16 +59,6 @@ namespace errors
 		std::errc reason;
 	};
 
-	struct Undefined_Identifier
-	{
-	};
-
-	struct Expected_Keyword
-	{
-		std::string_view keyword;
-		std::string_view received_type = {};
-	};
-
 	struct Expected_Expression_Separator_Before
 	{
 		std::string_view what;
@@ -89,17 +79,15 @@ namespace errors
 		std::string_view type;
 	};
 
-	struct Music_Literal_Used_As_Identifier
-	{
-		std::string_view source;
-
-		/// Why only identifier can be used?
-		std::string_view identifier_context;
-	};
-
 	/// Collection of messages that are considered internal and should not be printed to the end user.
 	namespace internal
 	{
+		struct Expected_Keyword
+		{
+			std::string_view keyword;
+			std::string_view received_type = {};
+		};
+
 		struct Unexpected_Token
 		{
 			/// Type of the token
@@ -115,11 +103,8 @@ namespace errors
 
 	using Details = std::variant<
 		Expected_Expression_Separator_Before,
-		Expected_Keyword,
 		Failed_Numeric_Parsing,
-		Music_Literal_Used_As_Identifier,
 		Not_Callable,
-		Undefined_Identifier,
 		Undefined_Operator,
 		Unexpected_Empty_Source,
 		Unexpected_Keyword,

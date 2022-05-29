@@ -68,16 +68,7 @@ Result<Ast> Parser::parse_expression()
 
 Result<Ast> Parser::parse_variable_declaration()
 {
-	if (!expect(Token::Type::Keyword, "var")) {
-		Error error;
-		errors::Expected_Keyword kw { .keyword = "var" };
-		if (token_id >= tokens.size()) {
-			kw.received_type = type_name(peek()->type);
-			error.location = peek()->location;
-		}
-		error.details = std::move(kw);
-		return error;
-	}
+	assert(expect(Token::Type::Keyword, "var"), "Parser::parse_variable_declaration must be called only on expressions that starts with 'var'");
 	auto var = consume();
 
 	auto lvalue = Try(parse_many(*this, &Parser::parse_identifier, std::nullopt, At_Least::One));
