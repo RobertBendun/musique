@@ -51,6 +51,22 @@ static void test_note_resolution(
 	}
 }
 
+static void test_note_resolution(
+	std::string_view name,
+	u8 expected,
+	reflection::source_location sl = reflection::source_location::current())
+{
+	auto const maybe_note = Note::from(name);
+	expect(maybe_note.has_value(), sl) << "Note::from didn't recognized " << name << " as a note";
+	if (maybe_note) {
+		auto note = *maybe_note;
+		note.octave = 4;
+		auto const midi_note = note.into_midi_note();
+		expect(midi_note.has_value(), sl) << "Note::into_midi_note returned nullopt, but should not";
+		expect(eq(int(*midi_note), int(expected)), sl) << "Note::into_midi_note returned wrong value";
+	}
+}
+
 suite value_test = [] {
 	"Value"_test = [] {
 		should("be properly created using Value::from") = [] {
@@ -109,6 +125,13 @@ suite value_test = [] {
 				test_note_resolution("a#", i + -1, i * 12 + 10);
 				test_note_resolution("b",  i + -1, i * 12 + 11);
 			}
+		};
+
+		should("Support flat and sharp") = [] {
+			test_note_resolution("c#", 61);
+			test_note_resolution("cs", 61);
+			test_note_resolution("cf", 59);
+			test_note_resolution("cb", 59);
 		};
 	};
 };

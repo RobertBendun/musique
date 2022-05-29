@@ -1,40 +1,18 @@
 #include <musique.hh>
 
-template<typename T, typename Index, typename Expected>
-concept Indexable = requires(T t, Index i) {
-	{ t[i] } -> std::convertible_to<Expected>;
-};
-
-/// Create hash out of note literal like `c` or `e#`
-constexpr u16 hash_note(Indexable<usize, char> auto const& note)
-{
-	/// TODO Some assertion that we have snd character
-	u8 snd = note[1];
-	if (snd != '#') snd = 0;
-	return u8(note[0]) | (snd << 8);
-}
-
 /// Finds numeric value of note. This form is later used as in
 /// note to midi resolution in formula octave * 12 + note_index
-constexpr u8 note_index(Indexable<usize, char> auto const& note)
+constexpr u8 note_index(u8 note)
 {
-	switch (hash_note(note)) {
-	case hash_note("c"):  return  0;
-	case hash_note("c#"): return  1;
-	case hash_note("d"):  return  2;
-	case hash_note("d#"): return  3;
-	case hash_note("e"):  return  4;
-	case hash_note("e#"): return  5;
-	case hash_note("f"):  return  5;
-	case hash_note("f#"): return  6;
-	case hash_note("g"):  return  7;
-	case hash_note("g#"): return  8;
-	case hash_note("a"):  return  9;
-	case hash_note("a#"): return 10;
-	case hash_note("h"):  return 11;
-	case hash_note("b"):  return 11;
-	case hash_note("h#"): return 12;
-	case hash_note("b#"): return 12;
+	switch (note) {
+	case 'c':  return  0;
+	case 'd':  return  2;
+	case 'e':  return  4;
+	case 'f':  return  5;
+	case 'g':  return  7;
+	case 'a':  return  9;
+	case 'h':  return 11;
+	case 'b':  return 11;
 	}
 	// This should be unreachable since parser limits what character can pass as notes
 	// but just to be sure return special value
@@ -63,7 +41,6 @@ constexpr std::string_view note_index_to_string(auto note_index)
 	case  9:	return "a";
 	case 10:	return "a#";
 	case 11:	return "b";
-	case 12:	return "b#";
 	}
 	unreachable();
 }
@@ -373,8 +350,16 @@ std::ostream& operator<<(std::ostream& os, Array const& v)
 
 std::optional<Note> Note::from(std::string_view literal)
 {
-	if (auto note = note_index(literal); note != u8(-1)) {
-		return Note { .base = note };
+	if (auto const base = note_index(literal[0]); base != u8(-1)) {
+		Note note { .base = base };
+		while (literal.remove_prefix(1), not literal.empty()) {
+			switch (literal.front()) {
+			case '#': case 's': ++note.base; break;
+			case 'b': case 'f': --note.base; break;
+			default:  return note;
+			}
+		}
+		return note;
 	}
 	return std::nullopt;
 }

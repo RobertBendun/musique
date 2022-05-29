@@ -134,6 +134,12 @@ suite lexer_test = [] {
 		expect_token_type_and_value(Token::Type::Chord, "c1");
 		expect_token_type_and_value(Token::Type::Chord, "d1257");
 		expect_token_type_and_value(Token::Type::Chord, "e#5");
+		expect_token_type_and_value(Token::Type::Chord, "ef5");
+		expect_token_type_and_value(Token::Type::Chord, "es5");
+		expect_token_type_and_value(Token::Type::Chord, "eb5");
+		expect_token_type_and_value(Token::Type::Chord, "e##5");
+		expect_token_type_and_value(Token::Type::Chord, "ef#5");
+		expect_token_type_and_value(Token::Type::Chord, "esf5");
 		expect_token_type_and_value(Token::Type::Chord, "g127");
 	};
 

@@ -102,10 +102,9 @@ auto Lexer::next_token() -> Result<Token>
 
 	// lex chord declaration
 	if (consume_if(Notes_Symbols)) {
-		// Allow `c#`
-		consume_if('#');
+		while (consume_if("#sfb")) {}
 
-		while (consume_if('_') || consume_if(unicode::is_digit)) {}
+		while (consume_if(unicode::is_digit)) {}
 
 		// If we encounter any letter that is not part of chord declaration,
 		// then we have symbol, not chord declaration
