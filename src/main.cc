@@ -17,6 +17,7 @@ static bool enable_repl = false;
 
 #define Ignore(Call) do { auto const ignore_ ## __LINE__ = (Call); (void) ignore_ ## __LINE__; } while(0)
 
+/// Pop string from front of an array
 static std::string_view pop(std::span<char const*> &span)
 {
 	auto element = span.front();
@@ -24,8 +25,8 @@ static std::string_view pop(std::span<char const*> &span)
 	return element;
 }
 
-[[noreturn]]
-void usage()
+/// Print usage and exit
+[[noreturn]] void usage()
 {
 	std::cerr <<
 		"usage: musique <options> [filename]\n"
@@ -42,6 +43,7 @@ void usage()
 	std::exit(1);
 }
 
+/// Trim spaces from left an right
 static void trim(std::string_view &s)
 {
 	// left trim
@@ -61,11 +63,13 @@ static void trim(std::string_view &s)
 	}
 }
 
+/// Runs interpreter on given source code
 struct Runner
 {
 	midi::ALSA alsa;
 	Interpreter interpreter;
 
+	/// Setup interpreter and midi connection with given port
 	Runner(std::string port)
 		: alsa("musique")
 	{
@@ -84,6 +88,7 @@ struct Runner
 		});
 	}
 
+	/// Run given source
 	Result<void> run(std::string_view source, std::string_view filename)
 	{
 		auto ast = Try(Parser::parse(source, filename));
@@ -99,17 +104,20 @@ struct Runner
 	}
 };
 
-// We make sure that through life of interpreter source code is allways allocated
+/// All source code through life of the program should stay allocated, since
+/// some of the strings are only views into source
 std::vector<std::string> eternal_sources;
 
-struct Run
-{
-	bool is_file = true;
-	std::string_view argument;
-};
-
+/// Fancy main that supports Result forwarding on error (Try macro)
 static Result<void> Main(std::span<char const*> args)
 {
+	/// Describes all arguments that will be run
+	struct Run
+	{
+		bool is_file = true;
+		std::string_view argument;
+	};
+
 	std::vector<Run> runnables;
 
 	while (not args.empty()) {

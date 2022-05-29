@@ -39,8 +39,10 @@ using i64 = std::int64_t;
 using usize = std::size_t;
 using isize = std::ptrdiff_t;
 
-// Error handling mechanism inspired by Andrew Kelly approach, that was implemented
-// as first class feature in Zig programming language.
+/// Error handling related functions and definitions
+///
+/// Error handling mechanism inspired by Andrew Kelly approach, that was implemented
+/// as first class feature in Zig programming language.
 namespace errors
 {
 	enum Type
@@ -100,12 +102,13 @@ struct Location
 
 std::ostream& operator<<(std::ostream& os, Location const& location);
 
+/// Guards that program exits if condition does not hold
 void assert(bool condition, std::string message, Location loc = Location::caller());
 
-// Marks part of code that was not implemented yet
+/// Marks part of code that was not implemented yet
 [[noreturn]] void unimplemented(std::string_view message = {}, Location loc = Location::caller());
 
-// Marks location that should not be reached
+/// Marks location that should not be reached
 [[noreturn]] void unreachable(Location loc = Location::caller());
 
 struct Error
@@ -189,10 +192,11 @@ struct [[nodiscard("This value may contain critical error, so it should NOT be i
 	using Storage::and_then;
 };
 
-// NOTE This implementation requires C++ language extension: statement expressions
-// It's supported by GCC and Clang, other compilers i don't know
-//
-// Inspired by SerenityOS TRY macro
+/// Shorthand for forwarding error values with Result type family.
+///
+/// This implementation requires C++ language extension: statement expressions
+/// It's supported by GCC and Clang, other compilers i don't know.
+/// Inspired by SerenityOS TRY macro
 #define Try(Value)                               \
 	({                                             \
 		auto try_value = (Value);                    \
@@ -218,6 +222,7 @@ struct Explicit_Bool
 	}
 };
 
+/// All unicode related operations
 namespace unicode
 {
 	inline namespace special_runes
@@ -227,29 +232,32 @@ namespace unicode
 		[[maybe_unused]] constexpr u32 Max_Bytes  = 4;
 	}
 
-	// is_digit returns true if `digit` is ASCII digit
+	/// is_digit returns true if `digit` is ASCII digit
 	bool is_digit(u32 digit);
 
-	// is_space return true if `space` is ASCII blank character
+	/// is_space return true if `space` is ASCII blank character
 	bool is_space(u32 space);
 
-	// is_letter returns true if `letter` is considered a letter by Unicode
+	/// is_letter returns true if `letter` is considered a letter by Unicode
 	bool is_letter(u32 letter);
 
-	// is_identifier returns true if `letter` is valid character for identifier.
-	//
-	// It's modifier by is_first_character flag to determine some character classes
-	// allowance like numbers, which are only allowed NOT at the front of the identifier
+	/// is_identifier returns true if `letter` is valid character for identifier.
+	///
+	/// It's modifier by is_first_character flag to determine some character classes
+	/// allowance like numbers, which are only allowed NOT at the front of the identifier
 	enum class First_Character : bool { Yes = true, No = false };
 	bool is_identifier(u32 letter, First_Character is_first_character);
 }
 
+/// utf8 encoding and decoding
 namespace utf8
 {
 	using namespace unicode::special_runes;
 
-	// Decodes rune and returns remaining string
+	/// Decodes rune and returns remaining string
 	auto decode(std::string_view s) -> std::pair<u32, std::string_view>;
+
+	/// Returns length of the first rune in the provided string
 	auto length(std::string_view s) -> usize;
 
 	struct Print { u32 rune; };
@@ -257,167 +265,231 @@ namespace utf8
 
 std::ostream& operator<<(std::ostream& os, utf8::Print const& print);
 
+/// Lexical token representation for Musique language
 struct Token
 {
+	/// Type of Token
 	enum class Type
 	{
-		// like repeat or choose or chord
-		Symbol,
-
-		// like true, false, nil
-		Keyword,
-
-		// like + - ++ < >
-		Operator,
-
-		// chord literal, like c125
-		Chord,
-
-		// numeric literal (floating point or integer)
-		Numeric,
-
-		// "|" separaters arguments from block body, and provides variable introduction syntax
-		Parameter_Separator,
-
-		// ";" separates expressions. Used to separate calls, like `foo 1 2; bar 3 4`
-		Expression_Separator,
-
-		// "[" and "]", delimit anonymous block of code (potentially a function)
-		Open_Block,
-		Close_Block,
-
-		// "(" and ")", used in arithmetic or as function invocation sarrounding (like in Haskell)
-		Open_Paren,
-		Close_Paren
+		Symbol,               ///< like repeat or choose or chord
+		Keyword,              ///< like true, false, nil
+		Operator,             ///< like "+", "-", "++", "<"
+		Chord,                ///< chord or single note literal, like "c125"
+		Numeric,              ///< numeric literal (floating point or integer)
+		Parameter_Separator,  ///< "|" separaters arguments from block body
+		Expression_Separator, ///< ";" separates expressions. Used mainly to separate calls, like `foo 1 2; bar 3 4`
+		Open_Block,           ///< "[" delimits anonymous block of code (potentially a function)
+		Close_Block,          ///< "]" delimits anonymous block of code (potentially a function)
+		Open_Paren,           ///< "(" used in arithmetic or as function invocation sarrounding
+		Close_Paren           ///< ")" used in arithmetic or as function invocation sarrounding
 	};
 
+	/// Type of token
 	Type type;
+
+	/// Matched source code to the token type
 	std::string_view source;
+
+	/// Location of encountered token
 	Location location;
 };
 
+/// Token debug printing
 std::ostream& operator<<(std::ostream& os, Token const& tok);
+
+/// Token type debug printing
 std::ostream& operator<<(std::ostream& os, Token::Type type);
 
+/// Lexer takes source code and turns it into list of tokens
+///
+/// It allows for creating sequence of tokens by using next_token() method.
+/// On each call to next_token() when source is non empty token is lexed and
+/// source is beeing advanced by removing matched token from string.
 struct Lexer
 {
-	// Source that is beeing lexed
+	/// Source that is beeing lexed
 	std::string_view source;
 
-	// Used for rewinding
+	/// Location in source of the last rune
+	///
+	/// Used only for rewinding
 	u32 last_rune_length = 0;
 
+	/// Start of the token that is currently beeing matched
 	char const* token_start = nullptr;
+
+	/// Bytes matched so far
 	usize token_length = 0;
+
+	/// Location of the start of a token that is currently beeing matched
 	Location token_location{};
 
-	Location prev_location{};
+	/// Current location of Lexer in source
 	Location location{};
 
+	/// Previous location of Lexer in source
+	///
+	/// Used only for rewinding
+	Location prev_location{};
+
+	/// Try to tokenize next token
 	auto next_token() -> Result<Token>;
 
-	// Utility function for next_token()
+	/// Skip whitespace and comments from the beggining of the source
+	///
+	/// Utility function for next_token()
 	void skip_whitespace_and_comments();
 
-	// Finds next rune in source
+	/// Finds next rune in source
 	auto peek() const -> u32;
 
-	// Finds next rune in source and returns it, advancing the string
+	/// Finds next rune in source and returns it, advancing the string
 	auto consume() -> u32;
 
-	// For test beeing
-	//	callable,  current rune is passed to test
-	//  integral,  current rune is tested for equality with test
-	//  string,    current rune is tested for beeing in it
-	//  otherwise, current rune is tested for beeing in test
-	//
-	//  When testing above yields truth, current rune is consumed.
-	//  Returns if rune was consumed
+	/// For test beeing
+	///	 callable,  current rune is passed to test
+	///  integral,  current rune is tested for equality with test
+	///  string,    current rune is tested for beeing in it
+	///  otherwise, current rune is tested for beeing in test
+	///
+	///  When testing above yields truth, current rune is consumed.
+	///  Returns if rune was consumed
 	auto consume_if(auto test) -> bool;
 
-	// Consume two runes with given tests otherwise backtrack
+	/// Consume two runes with given tests otherwise backtrack
 	auto consume_if(auto first, auto second) -> bool;
 
-	// Goes back last rune
+	/// Goes back last rune
 	void rewind();
 
-	// Marks begin of token
+	/// Marks begin of token
 	void start();
 
-	// Marks end of token and returns it's matching source
+	/// Marks end of token and returns it's matching source
 	std::string_view finish();
 };
 
+/// Representation of a node in program tree
 struct Ast
 {
-	// Named constructors of AST structure
+	/// Constructs binary operator
 	static Ast binary(Token, Ast lhs, Ast rhs);
+
+	/// Constructs block
 	static Ast block(Location location, Ast seq = sequence({}));
+
+	/// Constructs call expression
 	static Ast call(std::vector<Ast> call);
+
+	/// Constructs block with parameters
 	static Ast lambda(Location location, Ast seq = sequence({}), std::vector<Ast> parameters = {});
+
+	/// Constructs constants, literals and variable identifiers
 	static Ast literal(Token);
+
+	/// Constructs sequence of operations
 	static Ast sequence(std::vector<Ast> call);
+
+	/// Constructs variable declaration
 	static Ast variable_declaration(Location loc, std::vector<Ast> lvalues, std::optional<Ast> rvalue);
 
+	/// Available ASt types
 	enum class Type
 	{
-		Binary,               // Binary operator application like `1` + `2`
-		Block,                // Block expressions like `[42; hello]`
-		Lambda,               // Block expression beeing functions like `[i|i+1]`
-		Call,                 // Function call application like `print 42`
-		Literal,              // Compile time known constant like `c` or `1`
-		Sequence,             // Several expressions sequences like `42`, `42; 32`
-		Variable_Declaration, // Declaration of a variable with optional value assigment like `var x = 10` or `var y`
+		Binary,               ///< Binary operator application like `1` + `2`
+		Block,                ///< Block expressions like `[42; hello]`
+		Lambda,               ///< Block expression beeing functions like `[i|i+1]`
+		Call,                 ///< Function call application like `print 42`
+		Literal,              ///< Compile time known constant like `c` or `1`
+		Sequence,             ///< Several expressions sequences like `42`, `42; 32`
+		Variable_Declaration, ///< Declaration of a variable with optional value assigment like `var x = 10` or `var y`
 	};
 
+	/// Type of AST node
 	Type type;
+
+	/// Location that introduced this node
 	Location location;
+
+	/// Associated token
 	Token token;
+
+	/// Child nodes
 	std::vector<Ast> arguments{};
 };
 
 bool operator==(Ast const& lhs, Ast const& rhs);
 std::ostream& operator<<(std::ostream& os, Ast::Type type);
 std::ostream& operator<<(std::ostream& os, Ast const& tree);
+
+/// Pretty print program tree for debugging purposes
 void dump(Ast const& ast, unsigned indent = 0);
 
+/// Source code to program tree converter
+///
+/// Intended to be used by library user only by Parser::parse() static function.
 struct Parser
 {
+	/// List of tokens yielded from source
 	std::vector<Token> tokens;
+
+	/// Current token id (offset in tokens array)
 	unsigned token_id = 0;
 
-	// Parses whole source code producing Ast or Error
-	// using Parser structure internally
+	/// Parses whole source code producing Ast or Error
+	/// using Parser structure internally
 	static Result<Ast> parse(std::string_view source, std::string_view filename);
 
+	/// Parse sequence, collection of expressions
 	Result<Ast> parse_sequence();
+
+	/// Parse either infix expression or variable declaration
 	Result<Ast> parse_expression();
+
+	/// Parse infix expression
 	Result<Ast> parse_infix_expression();
+
+	/// Parse function call, literal etc
 	Result<Ast> parse_atomic_expression();
+
+	/// Parse variable declaration
 	Result<Ast> parse_variable_declaration();
 
+	/// Utility function for identifier parsing
 	Result<Ast> parse_identifier_with_trailing_separators();
+
+	/// Utility function for identifier parsing
 	Result<Ast> parse_identifier();
 
+	/// Peek current token
 	Result<Token> peek() const;
+
+	/// Peek type of the current token
 	Result<Token::Type> peek_type() const;
+
+	/// Consume current token
 	Token consume();
 
-	// Tests if current token has given type
+	/// Tests if current token has given type
 	bool expect(Token::Type type) const;
+
+	/// Tests if current token has given type and source
 	bool expect(Token::Type type, std::string_view lexeme) const;
 
-	// Ensures that current token has one of types given.
-	// Otherwise returns error
+	/// Ensures that current token has one of types given, otherwise returns error
 	Result<void> ensure(Token::Type type) const;
 };
 
-// Number type supporting integer and fractional constants
-// Invariant: gcd(num, den) == 1, after any operation
+/// Number type supporting integer and fractional constants
+///
+/// \invariant gcd(num, den) == 1, after any operation
 struct Number
 {
+	/// Type that represents numerator and denominator values
 	using value_type = i64;
-	value_type num = 0, den = 1;
+
+	value_type num = 0; ///< Numerator of a fraction beeing represented
+	value_type den = 1; ///< Denominator of a fraction beeing represented
 
 	constexpr Number()              = default;
 	constexpr Number(Number const&) = default;
@@ -425,12 +497,12 @@ struct Number
 	constexpr Number& operator=(Number const&) = default;
 	constexpr Number& operator=(Number &&)     = default;
 
-	explicit Number(value_type v);
-	Number(value_type num, value_type den);
+	explicit Number(value_type v);          ///< Creates Number as fraction v / 1
+	Number(value_type num, value_type den); ///< Creates Number as fraction num / den
 
-	auto as_int()      const -> value_type; // Returns self as int
-	auto simplify()    const -> Number;     // Returns self, but with gcd(num, den) == 1
-	void simplify_inplace();                // Update self, to have gcd(num, den) == 1
+	auto as_int()      const -> value_type; ///< Returns self as int
+	auto simplify()    const -> Number;     ///< Returns self, but with gcd(num, den) == 1
+	void simplify_inplace();                ///< Update self, to have gcd(num, den) == 1
 
 	bool operator==(Number const&) const;
 	bool operator!=(Number const&) const;
@@ -445,6 +517,7 @@ struct Number
 	Number  operator/(Number const& rhs) const;
 	Number& operator/=(Number const& rhs);
 
+	/// Parses source contained by token into a Number instance
 	static Result<Number> from(Token token);
 };
 
@@ -459,16 +532,29 @@ using Intrinsic = Result<Value>(*)(Interpreter &i, std::vector<Value>);
 /// Lazy Array / Continuation / Closure type thingy
 struct Block
 {
+	/// Location of definition / creation
 	Location location;
+
+	/// Names of expected parameters
 	std::vector<std::string> parameters;
+
+	/// Body that will be executed
 	Ast body;
+
+	/// Context from which block was created. Used for closures
 	std::shared_ptr<Env> context;
 
+	/// Calling block
 	Result<Value> operator()(Interpreter &i, std::vector<Value> params);
+
+	/// Indexing block
 	Result<Value> index(Interpreter &i, unsigned position);
+
+	/// Count of elements in block
 	usize size() const;
 };
 
+/// Representation of musical note
 struct Note
 {
 	/// Base of a note, like `c` (=0), `c#` (=1) `d` (=2)
@@ -491,15 +577,18 @@ struct Note
 
 	bool operator==(Note const&) const;
 
+	/// Simplify note by adding base to octave if octave is present
 	void simplify_inplace();
 };
 
 std::ostream& operator<<(std::ostream& os, Note note);
 
+/// Represantation of simultaneously played notes, aka musical chord
 struct Chord
 {
-	std::vector<Note> notes;
+	std::vector<Note> notes; ///< Notes composing a chord
 
+	/// Parse chord literal from provided source
 	static Chord from(std::string_view source);
 
 	bool operator==(Chord const&) const = default;
@@ -513,7 +602,10 @@ struct Array
 	/// Elements that are stored in array
 	std::vector<Value> elements;
 
+	/// Index element of an array
 	Result<Value> index(Interpreter &i, unsigned position);
+
+	/// Count of elements
 	usize size() const;
 
 	bool operator==(Array const&) const = default;
@@ -521,33 +613,37 @@ struct Array
 
 std::ostream& operator<<(std::ostream& os, Array const& v);
 
-// TODO Add location
+/// Representation of any value in language
 struct Value
 {
+	/// Creates value from literal contained in Token
 	static Result<Value> from(Token t);
+
+	/// Create value holding provided boolean
+	///
+	/// Using Explicit_Bool to prevent from implicit casts
 	static Value from(Explicit_Bool b);
-	static Value from(Number n);
 
-	// Symbol creating functions
-	static Value from(std::string s);
-	static Value from(std::string_view s);
-	static Value from(char const* s);
 
-	static Value from(Block &&l);
-	static Value from(Array &&array);
-	static Value from(Note n);
-	static Value from(Chord chord);
+	static Value from(Number n);           ///< Create value of type number holding provided number
+	static Value from(std::string s);      ///< Create value of type symbol holding provided symbol
+	static Value from(std::string_view s); ///< Create value of type symbol holding provided symbol
+	static Value from(char const* s);      ///< Create value of type symbol holding provided symbol
+	static Value from(Block &&l);          ///< Create value of type block holding provided block
+	static Value from(Array &&array);      ///< Create value of type array holding provided array
+	static Value from(Note n);             ///< Create value of type music holding provided note
+	static Value from(Chord chord);        ///< Create value of type music holding provided chord
 
 	enum class Type
 	{
-		Nil,
-		Bool,
-		Number,
-		Symbol,
-		Intrinsic,
-		Block,
-		Array,
-		Music,
+		Nil,        ///< Unit type, used for denoting emptiness and result of some side effect only functions
+		Bool,       ///< Boolean type, used for logic computations
+		Number,     ///< Number type, representing only rational numbers
+		Symbol,     ///< Symbol type, used to represent identifiers
+		Intrinsic,  ///< Intrinsic functions that are implemented in C++
+		Block,      ///< Block type, containing block value (lazy array/closure/lambda like)
+		Array,      ///< Array type, eager array
+		Music,      ///< Music type,
 	};
 
 	Value() = default;
@@ -556,6 +652,7 @@ struct Value
 	Value& operator=(Value const&) = default;
 	Value& operator=(Value &&) = default;
 
+	/// Contructs Intrinsic, used to simplify definition of intrinsics
 	inline Value(Intrinsic intr) : type{Type::Intrinsic}, intr(intr)
 	{
 	}
@@ -574,26 +671,42 @@ struct Value
 	//   std::string_view - not-owning string type
 	std::string s{};
 
+	/// Returns truth judgment for current type, used primarly for if function
 	bool truthy() const;
+
+	/// Returns false judgment for current type, used primarly for if function
 	bool falsy() const;
+
+	/// Calls contained value if it can be called
 	Result<Value> operator()(Interpreter &i, std::vector<Value> args);
+
+	/// Index contained value if it can be called
 	Result<Value> index(Interpreter &i, unsigned position);
+
+	/// Return elements count of contained value if it can be measured
 	usize size() const;
 
 	bool operator==(Value const& other) const;
 };
 
+/// Returns type name of Value type
 std::string_view type_name(Value::Type t);
 
 std::ostream& operator<<(std::ostream& os, Value const& v);
 
+/// Collection holding all variables in given scope.
 struct Env : std::enable_shared_from_this<Env>
 {
-	// Constructor of Env class
+	/// Constructor of Env class
 	static std::shared_ptr<Env> make();
 
+	/// Global scope that is beeing set by Interpreter
 	static std::shared_ptr<Env> global;
+
+	/// Variables in current scope
 	std::unordered_map<std::string, Value> variables;
+
+	/// Parent scope
 	std::shared_ptr<Env> parent;
 
 	Env(Env const&) = delete;
@@ -603,14 +716,18 @@ struct Env : std::enable_shared_from_this<Env>
 
 	/// Defines new variable regardless of it's current existance
 	Env& force_define(std::string name, Value new_value);
+
+	/// Finds variable in current or parent scopes
 	Value* find(std::string const& name);
 
-	// Scope menagment
+	/// Create new scope with self as parent
 	std::shared_ptr<Env> enter();
+
+	/// Leave current scope returning parent
 	std::shared_ptr<Env> leave();
 
 private:
-	// Ensure that all values of this class are behind shared_ptr
+	/// Ensure that all values of this class are behind shared_ptr
 	Env() = default;
 };
 
@@ -633,6 +750,7 @@ struct Context
 	std::chrono::duration<float> length_to_duration(std::optional<Number> length) const;
 };
 
+/// Given program tree evaluates it into Value
 struct Interpreter
 {
 	/// MIDI connection that is used to play music.
@@ -654,10 +772,13 @@ struct Interpreter
 	Interpreter(Interpreter const&) = delete;
 	Interpreter(Interpreter &&) = default;
 
+	/// Try to evaluate given program tree
 	Result<Value> eval(Ast &&ast);
 
-	// Scope managment
+	// Enter scope by changing current environment
 	void enter_scope();
+
+	// Leave scope by changing current environment
 	void leave_scope();
 
 	/// Play note resolving any missing parameters with context via `midi_connection` member.
