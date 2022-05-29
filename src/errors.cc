@@ -25,12 +25,16 @@ Error Error::with(Location loc) &&
 	return *this;
 }
 
+/// Describes type of error
 enum class Error_Level
 {
 	Error,
 	Bug
 };
 
+/// Centralized production of error headings for consistent error style
+///
+/// @param short_description General description of an error that will be printed in the heading
 static std::ostream& error_heading(
 		std::ostream &os,
 		std::optional<Location> location,
@@ -62,6 +66,7 @@ static std::ostream& error_heading(
 	return os << '\n';
 }
 
+/// Prints message that should encourage contact with developers
 static void encourage_contact(std::ostream &os)
 {
 	os << pretty::begin_comment << "\n"

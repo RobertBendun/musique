@@ -40,40 +40,44 @@ using usize = std::size_t;
 using isize = std::ptrdiff_t;
 
 /// Error handling related functions and definitions
-///
-/// Error handling mechanism inspired by Andrew Kelly approach, that was implemented
-/// as first class feature in Zig programming language.
 namespace errors
 {
+	/// When user puts emoji in the source code
 	struct Unrecognized_Character
 	{
 		u32 invalid_character;
 	};
 
+	/// When parser was expecting code but encountered end of file
 	struct Unexpected_Empty_Source
 	{
 	};
 
+	/// When user passed numeric literal too big for numeric type
 	struct Failed_Numeric_Parsing
 	{
 		std::errc reason;
 	};
 
+	/// When user forgot semicolon or brackets
 	struct Expected_Expression_Separator_Before
 	{
 		std::string_view what;
 	};
 
+	/// When some keywords are not allowed in given context
 	struct Unexpected_Keyword
 	{
 		std::string_view keyword;
 	};
 
+	/// When user tried to use operator that was not defined
 	struct Undefined_Operator
 	{
 		std::string_view op;
 	};
 
+	/// When user tried to call something that can't be called
 	struct Not_Callable
 	{
 		std::string_view type;
@@ -82,12 +86,7 @@ namespace errors
 	/// Collection of messages that are considered internal and should not be printed to the end user.
 	namespace internal
 	{
-		struct Expected_Keyword
-		{
-			std::string_view keyword;
-			std::string_view received_type = {};
-		};
-
+		/// When encountered token that was supposed to be matched in higher branch of the parser
 		struct Unexpected_Token
 		{
 			/// Type of the token
@@ -101,6 +100,7 @@ namespace errors
 		};
 	}
 
+	/// All possible error types
 	using Details = std::variant<
 		Expected_Expression_Separator_Before,
 		Failed_Numeric_Parsing,
@@ -113,18 +113,29 @@ namespace errors
 	>;
 }
 
-/// All code related to pretty printing
+/// All code related to pretty printing. Default mode is no_color
 namespace pretty
 {
+	/// Mark start of printing an error
 	std::ostream& begin_error(std::ostream&);
+
+	/// Mark start of printing a path
 	std::ostream& begin_path(std::ostream&);
+
+	/// Mark start of printing a comment
 	std::ostream& begin_comment(std::ostream&);
+
+	/// Mark end of any above
 	std::ostream& end(std::ostream&);
 
+	/// Switch to colorful output via ANSI escape sequences
 	void terminal_mode();
+
+	/// Switch to colorless output (default one)
 	void no_color_mode();
 }
 
+/// Combine several lambdas into one for visiting std::variant
 template<typename ...Lambdas>
 struct Overloaded : Lambdas... { using Lambdas::operator()...; };
 
@@ -178,25 +189,34 @@ void assert(bool condition, std::string message, Location loc = Location::caller
 /// Marks location that should not be reached
 [[noreturn]] void unreachable(Location loc = Location::caller());
 
+/// Represents all recoverable error messages that interpreter can produce
 struct Error
 {
+	/// Specific message details
 	errors::Details details;
+
+	/// Location that coused all this trouble
 	std::optional<Location> location = std::nullopt;
 
+	/// Return self with new location
 	Error with(Location) &&;
 };
 
+/// Error pretty printing
 std::ostream& operator<<(std::ostream& os, Error const& err);
 
+/// Returns if provided thingy is a given template
 template<template<typename ...> typename Template, typename>
 struct is_template : std::false_type {};
 
 template<template<typename ...> typename Template, typename ...T>
 struct is_template<Template, Template<T...>> : std::true_type {};
 
+/// Returns if provided thingy is a given template
 template<template<typename ...> typename Template, typename T>
 constexpr auto is_template_v = is_template<Template, T>::value;
 
+/// Holds either T or Error
 template<typename T>
 struct [[nodiscard("This value may contain critical error, so it should NOT be ignored")]] Result : tl::expected<T, Error>
 {
