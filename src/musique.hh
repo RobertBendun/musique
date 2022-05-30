@@ -770,6 +770,30 @@ struct Value
 	bool operator==(Value const& other) const;
 };
 
+template<Value::Type>
+struct Member_For_Value_Type {};
+
+template<> struct Member_For_Value_Type<Value::Type::Bool>
+{ static constexpr auto value = &Value::b; };
+
+template<> struct Member_For_Value_Type<Value::Type::Number>
+{ static constexpr auto value = &Value::n; };
+
+template<> struct Member_For_Value_Type<Value::Type::Symbol>
+{ static constexpr auto value = &Value::s; };
+
+template<> struct Member_For_Value_Type<Value::Type::Intrinsic>
+{ static constexpr auto value = &Value::intr; };
+
+template<> struct Member_For_Value_Type<Value::Type::Block>
+{ static constexpr auto value = &Value::blk; };
+
+template<> struct Member_For_Value_Type<Value::Type::Array>
+{ static constexpr auto value = &Value::array; };
+
+template<> struct Member_For_Value_Type<Value::Type::Music>
+{ static constexpr auto value = &Value::chord; };
+
 /// Returns type name of Value type
 std::string_view type_name(Value::Type t);
 

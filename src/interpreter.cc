@@ -4,21 +4,124 @@
 #include <iostream>
 #include <thread>
 
+/// Intrinsic implementation primitive providing a short way to check if arguments match required type signature
+static inline bool typecheck(std::vector<Value> const& args, auto const& ...expected_types)
+{
+	return (args.size() == sizeof...(expected_types)) &&
+		[&args, expected_types...]<std::size_t ...I>(std::index_sequence<I...>) {
+			return ((expected_types == args[I].type) && ...);
+		} (std::make_index_sequence<sizeof...(expected_types)>{});
+}
+
+/// Intrinsic implementation primitive providing a short way to move values based on matched type signature
+template<auto ...Types>
+static inline auto move_from(std::vector<Value>& args)
+{
+	return [&args]<std::size_t ...I>(std::index_sequence<I...>) {
+		return std::tuple { (std::move(args[I]).*(Member_For_Value_Type<Types>::value)) ... };
+	} (std::make_index_sequence<sizeof...(Types)>{});
+}
+
+/// Shape abstraction to define what types are required once
+template<auto ...Types>
+struct Shape
+{
+	static inline auto move_from(std::vector<Value>& args) { return ::move_from<Types...>(args); }
+	static inline auto typecheck(std::vector<Value>& args) { return ::typecheck(args, Types...); }
+};
+
+/// Returns if type can be indexed
+static constexpr bool is_indexable(Value::Type type)
+{
+	return type == Value::Type::Array || type == Value::Type::Block;
+}
+
+/// Binary operation may be vectorized when there are two argument which one is indexable and other is not
+static bool may_be_vectorized(std::vector<Value> const& args)
+{
+	return args.size() == 2 && (is_indexable(args[0].type) != is_indexable(args[1].type));
+}
+
+/// Intrinsic implementation primitive to ease operation vectorization
+/// @invariant args.size() == 2
+Result<Value> vectorize(auto &&operation, Interpreter &interpreter, std::vector<Value> args)
+{
+	assert(args.size() == 2, "Vectorization primitive only supports two arguments");
+	Array array;
+
+	auto lhs = std::move(args.front());
+	auto rhs = std::move(args.back());
+
+	if (is_indexable(lhs.type) && !is_indexable(rhs.type)) {
+		Array array;
+		for (auto i = 0u; i < lhs.size(); ++i) {
+			array.elements.push_back(
+				Try(operation(interpreter, { Try(lhs.index(interpreter, i)), rhs })));
+		}
+		return Value::from(std::move(array));
+	}
+
+	for (auto i = 0u; i < rhs.size(); ++i) {
+		array.elements.push_back(
+			Try(operation(interpreter, { lhs, Try(rhs.index(interpreter, i)) })));
+	}
+	return Value::from(std::move(array));
+}
+
+/// Creates implementation of plus/minus operator that support following operations:
+///   number, number -> number (standard math operations)
+///   n: number, m: music  -> music
+///   m: music,  n: number -> music  moves m by n semitones (+ goes up, - goes down)
+template<typename Binary_Operation>
+static Result<Value> plus_minus_operator(Interpreter &interpreter, std::vector<Value> args)
+{
+	using NN = Shape<Value::Type::Number, Value::Type::Number>;
+	using MN = Shape<Value::Type::Music,  Value::Type::Number>;
+	using NM = Shape<Value::Type::Number, Value::Type::Music>;
+
+	if (NN::typecheck(args)) {
+		auto [a, b] = NN::move_from(args);
+		return Value::from(Binary_Operation{}(std::move(a), std::move(b)));
+	}
+
+	if (MN::typecheck(args)) {
+		auto [chord, offset] = MN::move_from(args);
+		for (auto &note : chord.notes) {
+			note.base = Binary_Operation{}(note.base, offset.as_int());
+			note.simplify_inplace();
+		}
+		return Value::from(std::move(chord));
+	}
+
+	if (NM::typecheck(args)) {
+		auto [offset, chord] = NM::move_from(args);
+		for (auto &note : chord.notes) {
+			note.base = Binary_Operation{}(offset.as_int(), note.base);
+			note.simplify_inplace();
+		}
+		return Value::from(std::move(chord));
+	}
+
+	if (may_be_vectorized(args)) {
+		return vectorize(plus_minus_operator<Binary_Operation>, interpreter, std::move(args));
+	}
+
+	assert(false, "Unsupported types for this operation"); // TODO(assert)
+	unreachable();
+}
+
+
 template<typename Binary_Operation>
 static Result<Value> binary_operator(Interpreter&, std::vector<Value> args)
 {
-	auto result = std::move(args.front());
-	for (auto &v : std::span(args).subspan(1)) {
-		assert(result.type == Value::Type::Number, "LHS should be a number"); // TODO(assert)
-		assert(v.type == Value::Type::Number,      "RHS should be a number"); // TODO(assert)
-		if constexpr (std::is_same_v<Number, std::invoke_result_t<Binary_Operation, Number, Number>>) {
-			result.n = Binary_Operation{}(std::move(result.n), std::move(v).n);
-		} else {
-			result.type = Value::Type::Bool;
-			result.b = Binary_Operation{}(std::move(result.n), std::move(v).n);
-		}
+	using NN = Shape<Value::Type::Number, Value::Type::Number>;
+
+	if (NN::typecheck(args)) {
+		auto [lhs, rhs] = NN::move_from(args);
+		return Value::from(Binary_Operation{}(lhs, rhs));
 	}
-	return result;
+
+	unreachable();
 }
 
 template<typename Binary_Predicate>
@@ -31,19 +134,19 @@ static Result<Value> equality_operator(Interpreter&, std::vector<Value> args)
 template<typename Binary_Predicate>
 static Result<Value> comparison_operator(Interpreter&, std::vector<Value> args)
 {
-	assert(args.size() == 2, "Ordering only allows for 2 operands"); // TODO(assert)
-	assert(args.front().type == args.back().type, "Only values of the same type can be ordered"); // TODO(assert)
+	using NN = Shape<Value::Type::Number, Value::Type::Number>;
+	using BB = Shape<Value::Type::Bool, Value::Type::Bool>;
 
-	switch (args.front().type) {
-	case Value::Type::Number:
-		return Value::from(Binary_Predicate{}(std::move(args.front()).n, std::move(args.back()).n));
-
-	case Value::Type::Bool:
-		return Value::from(Binary_Predicate{}(std::move(args.front()).b, std::move(args.back()).b));
-
-	default:
-		assert(false, "Cannot compare value of given types"); // TODO(assert)
+	if (NN::typecheck(args)) {
+		auto [a, b] = NN::move_from(args);
+		return Value::from(Binary_Predicate{}(std::move(a), std::move(b)));
 	}
+
+	if (BB::typecheck(args)) {
+		auto [a, b] = BB::move_from(args);
+		return Value::from(Binary_Predicate{}(a, b));
+	}
+
 	unreachable();
 }
 
@@ -139,66 +242,6 @@ static inline Result<void> play_notes(Interpreter &interpreter, T args)
 	}
 
 	return {};
-}
-
-constexpr bool is_indexable(Value::Type type)
-{
-	return type == Value::Type::Array || type == Value::Type::Block;
-}
-
-/// Creates implementation of plus/minus operator that support following operations:
-///   number, number -> number (standard math operations)
-///   n: number, m: music  -> music
-///   m: music,  n: number -> music  moves m by n semitones (+ goes up, - goes down)
-template<typename Binary_Operation>
-static Result<Value> plus_minus_operator(Interpreter &interpreter, std::vector<Value> args)
-{
-	assert(args.size() == 2, "Binary operator only accepts 2 arguments");
-	auto lhs = std::move(args.front());
-	auto rhs = std::move(args.back());
-
-	if (lhs.type == rhs.type && lhs.type == Value::Type::Number) {
-		return Value::from(Binary_Operation{}(std::move(lhs).n, std::move(rhs).n));
-	}
-
-	if (lhs.type == Value::Type::Music && rhs.type == Value::Type::Number) {
-		for (auto &note : lhs.chord.notes) {
-			note.base = Binary_Operation{}(note.base, rhs.n.as_int());
-			note.simplify_inplace();
-		}
-		return lhs;
-	}
-
-	if (lhs.type == Value::Type::Number && rhs.type == Value::Type::Music) {
-		for (auto &note : rhs.chord.notes) {
-			note.base = Binary_Operation{}(lhs.n.as_int(), note.base);
-			note.simplify_inplace();
-		}
-		return rhs;
-	}
-
-	if (is_indexable(lhs.type) && !is_indexable(rhs.type)) {
-		Array array;
-		for (auto i = 0u; i < lhs.size(); ++i) {
-			array.elements.push_back(Try(
-				plus_minus_operator<Binary_Operation>(
-					interpreter, { Try(lhs.index(interpreter, i)), rhs })));
-		}
-		return Value::from(std::move(array));
-	}
-
-	if (!is_indexable(lhs.type) && is_indexable(rhs.type)) {
-		Array array;
-		for (auto i = 0u; i < rhs.size(); ++i) {
-			array.elements.push_back(Try(
-				plus_minus_operator<Binary_Operation>(
-					interpreter, { lhs, Try(rhs.index(interpreter, i)) })));
-		}
-		return Value::from(std::move(array));
-	}
-
-	assert(false, "Unsupported types for this operation"); // TODO(assert)
-	unreachable();
 }
 
 template<auto Mem_Ptr>

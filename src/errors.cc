@@ -71,7 +71,8 @@ static void encourage_contact(std::ostream &os)
 {
 	os << pretty::begin_comment << "\n"
 		"Interpreter got in state that was not expected by it's developers.\n"
-		"Contact them providing code that coused it and error message above to resolve this trouble\n"
+		"Contact them and provide code that coused this error and\n"
+		"error message above to resolve this trouble\n"
 		<< pretty::end << std::flush;
 }
 
