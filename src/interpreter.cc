@@ -366,6 +366,30 @@ Interpreter::Interpreter()
 			return Value{};
 		});
 
+		global.force_define("note_on", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
+			using Channel_Note_Velocity = Shape<Value::Type::Number, Value::Type::Number, Value::Type::Number>;
+
+			if (Channel_Note_Velocity::typecheck(args)) {
+				auto [chan, note, vel] = Channel_Note_Velocity::move_from(args);
+				i.midi_connection->send_note_on(chan.as_int(), note.as_int(), vel.as_int());
+				return Value {};
+			}
+
+			unreachable();
+		});
+
+		global.force_define("note_off", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
+			using Channel_Note_Velocity = Shape<Value::Type::Number, Value::Type::Number, Value::Type::Number>;
+
+			if (Channel_Note_Velocity::typecheck(args)) {
+				auto [chan, note, vel] = Channel_Note_Velocity::move_from(args);
+				i.midi_connection->send_note_off(chan.as_int(), note.as_int(), vel.as_int());
+				return Value {};
+			}
+
+			unreachable();
+		});
+
 		operators["+"] = plus_minus_operator<std::plus<>>;
 		operators["-"] = plus_minus_operator<std::minus<>>;
 		operators["*"] = binary_operator<std::multiplies<>>;
