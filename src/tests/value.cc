@@ -67,6 +67,24 @@ static void test_note_resolution(
 	}
 }
 
+static void test_note_resolution(
+	std::string_view name,
+	std::string_view expected = {},
+	reflection::source_location sl = reflection::source_location::current())
+{
+	if (expected.empty())
+		expected = name;
+
+	auto const maybe_note = Note::from(name);
+	expect(maybe_note.has_value(), sl) << "Note::from didn't recognized " << name << " as a note";
+	if (maybe_note) {
+		auto note = *maybe_note;
+		std::stringstream ss;
+		ss << note;
+		expect(eq(expected, ss.str())) << "Different string representation then expected";
+	}
+}
+
 suite value_test = [] {
 	"Value"_test = [] {
 		should("be properly created using Value::from") = [] {
@@ -150,6 +168,21 @@ suite value_test = [] {
 
 			test_note_resolution("c##########", 70);
 			test_note_resolution("cbbbbbbbbbb", 50);
+		};
+
+		should("Preserve note when printing") = [] {
+			test_note_resolution("c");
+			test_note_resolution("c#");
+			test_note_resolution("d");
+			test_note_resolution("d#");
+			test_note_resolution("e");
+			test_note_resolution("f");
+			test_note_resolution("f#");
+			test_note_resolution("g");
+			test_note_resolution("g#");
+			test_note_resolution("a");
+			test_note_resolution("a#");
+			test_note_resolution("b");
 		};
 	};
 };

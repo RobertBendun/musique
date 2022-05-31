@@ -112,13 +112,17 @@ static Result<Value> plus_minus_operator(Interpreter &interpreter, std::vector<V
 
 
 template<typename Binary_Operation>
-static Result<Value> binary_operator(Interpreter&, std::vector<Value> args)
+static Result<Value> binary_operator(Interpreter& interpreter, std::vector<Value> args)
 {
 	using NN = Shape<Value::Type::Number, Value::Type::Number>;
 
 	if (NN::typecheck(args)) {
 		auto [lhs, rhs] = NN::move_from(args);
 		return Value::from(Binary_Operation{}(lhs, rhs));
+	}
+
+	if (may_be_vectorized(args)) {
+		return vectorize(binary_operator<Binary_Operation>, interpreter, args);
 	}
 
 	unreachable();

@@ -36,10 +36,10 @@ void expect_alternative(
 suite intepreter_test = [] {
 	"Interpreter"_test = [] {
 		should("evaluate literals") = [] {
-			evaluates_to(Value::from(false),     "false");
-			evaluates_to(Value::from(true),      "true");
+			evaluates_to(Value::from(false),      "false");
+			evaluates_to(Value::from(true),       "true");
 			evaluates_to(Value::from(Number(10)), "10");
-			evaluates_to(Value{},                   "nil");
+			evaluates_to(Value{},                 "nil");
 		};
 
 		should("evaluate arithmetic") = [] {
@@ -103,6 +103,77 @@ suite intepreter_test = [] {
 		// Previously this test would segfault
 		should("allow assigning result of function calls to a variable") = [] {
 			evaluates_to(Value::from(Number(42)), "var x = [i|i] 42; x");
+		};
+
+		should("support array programming") = [] {
+			evaluates_to(Value::from(Array { .elements = {{
+				Value::from(Number(2)),
+				Value::from(Number(4)),
+				Value::from(Number(6)),
+				Value::from(Number(8))
+			}}}), "2 * [1;2;3;4]");
+
+			evaluates_to(Value::from(Array { .elements = {{
+				Value::from(Note { .base = 1 }),
+				Value::from(Note { .base = 2 }),
+				Value::from(Note { .base = 3 }),
+				Value::from(Note { .base = 4 })
+			}}}), "c + [1;2;3;4]");
+		};
+
+		should("support number - music operations") = [] {
+			evaluates_to(Value::from(Chord { .notes = { Note { .base = 0 }, Note { .base = 3 }, Note { .base = 6 } } }),
+				"c#47 - 1");
+
+			evaluates_to(Value::from(Chord { .notes = { Note { .base = 2 }, Note { .base = 6 }, Note { .base = 9 } } }),
+				"c47 + 2");
+
+			evaluates_to(Value::from(Chord { .notes = { Note { .base = 2 }, Note { .base = 6 }, Note { .base = 9 } } }),
+				"2 + c47");
+		};
+
+		should("support direct chord creation") = [] {
+			evaluates_to(Value::from(Chord { .notes = { Note { .base = 0 }, Note { .base = 4 }, Note { .base = 7 } } }),
+				"chord [c;e;g]");
+
+			evaluates_to(Value::from(Chord { .notes = { Note { .base = 0 }, Note { .base = 4 }, Note { .base = 7 } } }),
+				"chord c e g");
+
+			evaluates_to(Value::from(Chord { .notes = { Note { .base = 0 }, Note { .base = 4 }, Note { .base = 7 } } }),
+				"chord [c;e] g");
+		};
+
+		should("support if builtin") = [] {
+			evaluates_to(Value::from(Number(10)), "if true  [10] [20]");
+			evaluates_to(Value::from(Number(20)), "if false [10] [20]");
+			evaluates_to(Value{},                 "if false [10]");
+		};
+
+		should("support eager array creation") = [] {
+			evaluates_to(Value::from(Array { .elements = {{ Value::from(Number(10)), Value::from(Number(20)), Value::from(Number(30)) }}}),
+				"flat 10 20 30");
+
+			evaluates_to(Value::from(Array { .elements = {{ Value::from(Number(10)), Value::from(Number(20)), Value::from(Number(30)) }}}),
+				"flat [10;20] 30");
+
+			evaluates_to(Value::from(Array { .elements = {{ Value::from(Number(10)), Value::from(Number(20)), Value::from(Number(30)) }}}),
+				"flat (flat 10 20) 30");
+		};
+
+		should("support indexing") = [] {
+			evaluates_to(Value::from(Number(10)), "[5;10;15].1");
+			evaluates_to(Value::from(Number(10)), "(flat 5 10 15).1");
+		};
+
+		should("support size") = [] {
+			evaluates_to(Value::from(Number(3)), "len [5;10;15]");
+			evaluates_to(Value::from(Number(3)), "len (flat 5 10 15)");
+		};
+
+		should("support call like octave and len setting") = [] {
+			evaluates_to(Value::from(Chord { .notes = {{ Note { .base = 0, .octave = 5, .length = Number(10) }}}}), "c 5 10");
+			evaluates_to(Value::from(Chord { .notes = {{ Note { .base = 0, .octave = 5, .length = Number(10) }}}}), "(c 4 8) 5 10");
+			evaluates_to(Value::from(Chord { .notes = {{ Note { .base = 0, .octave = 5 }}}}), "c 5");
 		};
 	};
 };

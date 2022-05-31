@@ -20,20 +20,33 @@ void test_seconds_compute(
 }
 
 suite context_suite = [] {
-	"Context duration resolution"_test = [] {
-		test_seconds_compute(60, Number(2,1), 8);
-		test_seconds_compute(60, Number(1,1), 4);
-		test_seconds_compute(60, Number(1,2), 2);
-		test_seconds_compute(60, Number(1,4), 1);
+	"Context"_test = [] {
+		should("resolve note duration length to seconds") = [] {
+			test_seconds_compute(60, Number(2,1), 8);
+			test_seconds_compute(60, Number(1,1), 4);
+			test_seconds_compute(60, Number(1,2), 2);
+			test_seconds_compute(60, Number(1,4), 1);
 
-		test_seconds_compute(96, Number(2,1), 5);
-		test_seconds_compute(96, Number(1,1), 2.5);
-		test_seconds_compute(96, Number(1,2), 1.25);
-		test_seconds_compute(96, Number(1,4), 0.625);
+			test_seconds_compute(96, Number(2,1), 5);
+			test_seconds_compute(96, Number(1,1), 2.5);
+			test_seconds_compute(96, Number(1,2), 1.25);
+			test_seconds_compute(96, Number(1,4), 0.625);
 
-		test_seconds_compute(120, Number(2,1), 4);
-		test_seconds_compute(120, Number(1,1), 2);
-		test_seconds_compute(120, Number(1,2), 1);
-		test_seconds_compute(120, Number(1,4), 0.5);
+			test_seconds_compute(120, Number(2,1), 4);
+			test_seconds_compute(120, Number(1,1), 2);
+			test_seconds_compute(120, Number(1,2), 1);
+			test_seconds_compute(120, Number(1,4), 0.5);
+		};
+
+		should("fill notes with default context values") = [] {
+			Context ctx;
+			ctx.length = Number(1, 42);
+			ctx.octave = 8;
+
+			expect(eq(ctx.fill({ .base = 0                                   }), Note { .base = 0, .octave = 8, .length = Number(1, 42) }));
+			expect(eq(ctx.fill({ .base = 0, .length = Number(4)              }), Note { .base = 0, .octave = 8, .length = Number(4) }));
+			expect(eq(ctx.fill({ .base = 0, .octave = 1                      }), Note { .base = 0, .octave = 1, .length = Number(1, 42) }));
+			expect(eq(ctx.fill({ .base = 0, .octave = 1, .length = Number(4) }), Note { .base = 0, .octave = 1, .length = Number(4) }));
+		};
 	};
 };
