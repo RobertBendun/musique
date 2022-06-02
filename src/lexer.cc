@@ -14,8 +14,12 @@ constexpr auto Keywords = std::array {
 	"false"sv,
 	"nil"sv,
 	"true"sv,
-	"var"sv
+	"var"sv,
+	"and"sv,
+	"or"sv
 };
+
+static_assert(Keywords.size() == Keywords_Count, "Table above should contain all the tokens for lexing");
 
 void Lexer::skip_whitespace_and_comments()
 {
@@ -124,8 +128,6 @@ auto Lexer::next_token() -> Result<std::variant<Token, End_Of_File>>
 		Token t = { Token::Type::Symbol, finish(), token_location };
 		if (std::find(Keywords.begin(), Keywords.end(), t.source) != Keywords.end()) {
 			t.type = Token::Type::Keyword;
-		} else if (t.source == "v") {
-			t.type = Token::Type::Operator;
 		}
 		return t;
 	}

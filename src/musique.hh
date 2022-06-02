@@ -382,6 +382,8 @@ struct Token
 	Location location;
 };
 
+static constexpr auto Keywords_Count = 6;
+
 std::string_view type_name(Token::Type type);
 
 /// Token debug printing

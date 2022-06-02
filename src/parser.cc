@@ -21,6 +21,15 @@ constexpr auto Literal_Keywords = std::array {
 	"true"sv,
 };
 
+static_assert(Keywords_Count == Literal_Keywords.size() + 3, "Ensure that all literal keywords are listed");
+
+constexpr auto Operator_Keywords = std::array {
+	"and"sv,
+	"or"sv
+};
+
+static_assert(Keywords_Count == Operator_Keywords.size() + 4, "Ensure that all keywords that are operators are listed here");
+
 enum class At_Least : bool
 {
 	Zero,
@@ -113,7 +122,7 @@ Result<Ast> Parser::parse_infix_expression()
 	auto atomics = Try(parse_many(*this, &Parser::parse_atomic_expression, std::nullopt, At_Least::One));
 	auto lhs = wrap_if_several(std::move(atomics), Ast::call);
 
-	if (expect(Token::Type::Operator)) {
+	if (expect(Token::Type::Operator) || expect(Token::Type::Keyword, "and") || expect(Token::Type::Keyword, "or")) {
 		auto op = consume();
 		return parse_expression().map([&](Ast rhs) {
 			return Ast::binary(std::move(op), std::move(lhs), std::move(rhs));

@@ -492,6 +492,19 @@ Result<Value> Interpreter::eval(Ast &&ast)
 			std::vector<Value> values;
 			values.reserve(ast.arguments.size());
 
+			if (ast.token.source == "and" || ast.token.source == "or") {
+				assert(ast.arguments.size() == 2, "Expected arguments of binary operation to be 2 long");
+				auto lhs = std::move(ast.arguments.front());
+				auto rhs = std::move(ast.arguments.back());
+
+				auto result = Try(eval(std::move(lhs)));
+				if (ast.token.source == "or" ? result.truthy() : result.falsy()) {
+					return result;
+				} else {
+					return eval(std::move(rhs));
+				}
+			}
+
 			auto op = operators.find(std::string(ast.token.source));
 
 			if (op == operators.end()) {
