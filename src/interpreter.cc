@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <iostream>
+#include <random>
 #include <thread>
 
 /// Intrinsic implementation primitive providing a short way to check if arguments match required type signature
@@ -332,6 +333,32 @@ Interpreter::Interpreter()
 					array.elements.push_back(std::move(arg));
 				}
 			}
+
+			return Value::from(std::move(array));
+		});
+
+		global.force_define("shuffle", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
+			static std::mt19937 rnd{std::random_device{}()};
+
+			Array array;
+			for (auto &arg : args) {
+				switch (arg.type) {
+				case Value::Type::Array:
+					std::move(arg.array.elements.begin(), arg.array.elements.end(), std::back_inserter(array.elements));
+					break;
+
+				case Value::Type::Block:
+					for (auto j = 0u; j < arg.blk.size(); ++j) {
+						array.elements.push_back(Try(arg.blk.index(i, j)));
+					}
+					break;
+
+				default:
+					array.elements.push_back(std::move(arg));
+				}
+			}
+
+			std::shuffle(array.elements.begin(), array.elements.end(), rnd);
 			return Value::from(std::move(array));
 		});
 
