@@ -362,6 +362,29 @@ Interpreter::Interpreter()
 			return Value::from(std::move(array));
 		});
 
+		global.force_define("permute", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
+			Array array;
+			for (auto &arg : args) {
+				switch (arg.type) {
+				case Value::Type::Array:
+					std::move(arg.array.elements.begin(), arg.array.elements.end(), std::back_inserter(array.elements));
+					break;
+
+				case Value::Type::Block:
+					for (auto j = 0u; j < arg.blk.size(); ++j) {
+						array.elements.push_back(Try(arg.blk.index(i, j)));
+					}
+					break;
+
+				default:
+					array.elements.push_back(std::move(arg));
+				}
+			}
+
+			std::next_permutation(array.elements.begin(), array.elements.end());
+			return Value::from(std::move(array));
+		});
+
 		global.force_define("chord", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
 			Chord chord;
 			Try(create_chord(chord.notes, i, std::move(args)));

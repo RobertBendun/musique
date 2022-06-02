@@ -249,6 +249,44 @@ usize Value::size() const
 	unreachable();
 }
 
+std::partial_ordering Value::operator<=>(Value const& rhs) const
+{
+	// TODO Block - array comparison should be allowed
+	if (type != rhs.type) {
+		return std::partial_ordering::unordered;
+	}
+
+	switch (type) {
+	case Type::Nil:
+		return std::partial_ordering::equivalent;
+
+	case Type::Bool:
+		return b <=> rhs.b;
+
+	case Type::Symbol:
+		return s <=> rhs.s;
+
+	case Type::Number:
+		return n <=> rhs.n;
+
+	case Type::Array:
+		return std::lexicographical_compare_three_way(
+			array.elements.begin(), array.elements.end(),
+			rhs.array.elements.begin(), rhs.array.elements.end()
+		);
+
+	case Type::Music:
+		return chord.notes.front() <=> rhs.chord.notes.front();
+
+	// Block should be compared but after evaluation so for now it's Type::Block
+	case Type::Block:
+	case Type::Intrinsic:
+		return std::partial_ordering::unordered;
+	}
+
+	unreachable();
+}
+
 std::ostream& operator<<(std::ostream& os, Value const& v)
 {
 	switch (v.type) {
@@ -391,6 +429,16 @@ void Note::simplify_inplace()
 	}
 }
 
+std::partial_ordering Note::operator<=>(Note const& rhs) const
+{
+	if (octave.has_value() == rhs.octave.has_value()) {
+		if (octave.has_value())
+			return (12 * *octave) + base <=> (12 * *rhs.octave) + rhs.base;
+		return base <=> rhs.base;
+	}
+	return std::partial_ordering::unordered;
+}
+
 std::ostream& operator<<(std::ostream& os, Note note)
 {
 	note.simplify_inplace();
@@ -401,7 +449,6 @@ std::ostream& operator<<(std::ostream& os, Note note)
 	if (note.length) {
 		os << ":len=" << *note.length;
 	}
-
 	return os;
 }
 

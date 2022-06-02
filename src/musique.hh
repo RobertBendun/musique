@@ -667,6 +667,8 @@ struct Note
 
 	bool operator==(Note const&) const;
 
+	std::partial_ordering operator<=>(Note const&) const;
+
 	/// Simplify note by adding base to octave if octave is present
 	void simplify_inplace();
 };
@@ -713,7 +715,6 @@ struct Value
 	///
 	/// Using Explicit_Bool to prevent from implicit casts
 	static Value from(Explicit_Bool b);
-
 
 	static Value from(Number n);           ///< Create value of type number holding provided number
 	static Value from(std::string s);      ///< Create value of type symbol holding provided symbol
@@ -777,6 +778,8 @@ struct Value
 	usize size() const;
 
 	bool operator==(Value const& other) const;
+
+	std::partial_ordering operator<=>(Value const& other) const;
 };
 
 template<Value::Type>

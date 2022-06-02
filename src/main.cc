@@ -89,7 +89,7 @@ struct Runner
 	}
 
 	/// Run given source
-	Result<void> run(std::string_view source, std::string_view filename)
+	Result<void> run(std::string_view source, std::string_view filename, bool output = false)
 	{
 		auto ast = Try(Parser::parse(source, filename));
 
@@ -97,7 +97,7 @@ struct Runner
 			dump(ast);
 			return {};
 		}
-		if (auto result = Try(interpreter.eval(std::move(ast))); result.type != Value::Type::Nil) {
+		if (auto result = Try(interpreter.eval(std::move(ast))); output && result.type != Value::Type::Nil) {
 			std::cout << result << std::endl;
 		}
 		return {};
@@ -185,6 +185,7 @@ static Result<void> Main(std::span<char const*> args)
 	}
 
 	if (runnables.empty() || enable_repl) {
+		enable_repl = true;
 		for (;;) {
 			char *input_buffer = readline("> ");
 			if (input_buffer == nullptr) {
@@ -215,7 +216,7 @@ static Result<void> Main(std::span<char const*> args)
 				continue;
 			}
 
-			auto result = runner.run(raw, "<repl>");
+			auto result = runner.run(raw, "<repl>", true);
 			if (not result.has_value()) {
 				std::cout << std::flush;
 				std::cerr << result.error() << std::flush;

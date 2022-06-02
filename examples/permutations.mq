@@ -1,0 +1,11 @@
+var factorial = [n | if (n < 2) [1] [factorial (n-1) * n]];
+
+var for_all_permutations = [array fun |
+	var iter = [start stop x | if (start >= stop) [x] [iter (start+1) stop (fun x)]];
+	iter 0 (factorial (len array)) array
+];
+
+for_all_permutations (flat 1 2 3 4 5) [array|
+	say array;
+	permute array
+];
