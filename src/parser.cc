@@ -3,6 +3,18 @@
 
 static Ast wrap_if_several(std::vector<Ast> &&ast, Ast(*wrapper)(std::vector<Ast>));
 
+static inline bool is_identifier_looking(Token::Type type)
+{
+	switch (type) {
+	case Token::Type::Symbol:
+	case Token::Type::Keyword:
+	case Token::Type::Chord:
+		return true;
+	default:
+		return false;
+	}
+}
+
 constexpr auto Literal_Keywords = std::array {
 	"false"sv,
 	"nil"sv,
@@ -39,7 +51,7 @@ Result<Ast> Parser::parse(std::string_view source, std::string_view filename)
 
 	auto const result = parser.parse_sequence();
 
-	if (parser.token_id < parser.tokens.size()) {
+	if (result.has_value() && parser.token_id < parser.tokens.size()) {
 		if (parser.expect(Token::Type::Keyword, "var")) {
 			return Error {
 				.details = errors::Expected_Expression_Separator_Before { .what = "var" },
@@ -71,14 +83,29 @@ Result<Ast> Parser::parse_variable_declaration()
 	assert(expect(Token::Type::Keyword, "var"), "Parser::parse_variable_declaration must be called only on expressions that starts with 'var'");
 	auto var = consume();
 
-	auto lvalue = Try(parse_many(*this, &Parser::parse_identifier, std::nullopt, At_Least::One));
+	auto lvalue = parse_many(*this, &Parser::parse_identifier, std::nullopt, At_Least::One);
+	if (not lvalue.has_value()) {
+		auto details = lvalue.error().details;
+		if (auto ut = std::get_if<errors::internal::Unexpected_Token>(&details); ut) {
+			return Error {
+				.details = errors::Literal_As_Identifier {
+					.type_name = ut->type,
+					.source = ut->source,
+					.context = "variable declaration"
+				},
+				.location = lvalue.error().location
+			};
+		}
+		return std::move(lvalue).error();
+	}
+
 
 	if (expect(Token::Type::Operator, "=")) {
 		consume();
-		return Ast::variable_declaration(var.location, std::move(lvalue), Try(parse_expression()));
+		return Ast::variable_declaration(var.location, *std::move(lvalue), Try(parse_expression()));
 	}
 
-	return Ast::variable_declaration(var.location, std::move(lvalue), std::nullopt);
+	return Ast::variable_declaration(var.location, *std::move(lvalue), std::nullopt);
 }
 
 Result<Ast> Parser::parse_infix_expression()
@@ -143,7 +170,35 @@ Result<Ast> Parser::parse_atomic_expression()
 
 			return parse_sequence().and_then([&](Ast &&ast) -> Result<Ast> {
 				if (not expect(Token::Type::Close_Block)) {
-					unimplemented("Error handling of this code is not implemented yet");
+					if (expect(Token::Type::Parameter_Separator)) {
+						if (is_lambda) {
+							assert(false, "There should be error message that you cannot put multiple parameter separators in one block");
+						} else {
+							// This may be a result of user trying to specify parameters from things that cannot be parameters (like chord literals)
+							// or accidential hit of "|" on the keyboard. We can detect first case by ensuring that all tokens between this place
+							// and beggining of a block are identifier looking: keywords, symbols, literal chord declarations, boolean literals etc
+							std::optional<Token> invalid_token = std::nullopt;
+							auto const success = std::all_of(tokens.begin() + start, tokens.begin() + (token_id - start + 1), [&](Token const& token) {
+								if (!invalid_token && token.type != Token::Type::Symbol) {
+									// TODO Maybe gather all tokens to provide all the help needed in the one iteration
+									invalid_token = token;
+								}
+								return is_identifier_looking(token.type);
+							});
+
+							if (success && invalid_token) {
+								return Error {
+									.details = errors::Literal_As_Identifier {
+										.type_name = type_name(invalid_token->type),
+										.source = invalid_token->source,
+										.context = "block parameter list"
+									},
+									.location = invalid_token->location
+								};
+							}
+						}
+					}
+					unimplemented("Don't know why it stopped, maybe end of file?");
 				}
 				consume();
 				if (is_lambda) {
@@ -182,7 +237,7 @@ Result<Ast> Parser::parse_identifier_with_trailing_separators()
 		// TODO Specific error message
 		return Error {
 			.details = errors::internal::Unexpected_Token {
-				.type = "", // TODO fill type
+				.type = type_name(peek()->type),
 				.source = peek()->source,
 				.when = "identifier parsing"
 			},
@@ -200,7 +255,7 @@ Result<Ast> Parser::parse_identifier()
 		// TODO Specific error message
 		return Error {
 			.details = errors::internal::Unexpected_Token {
-				.type = "", // TODO fill type
+				.type = type_name(peek()->type),
 				.source = peek()->source,
 				.when = "identifier parsing"
 			},

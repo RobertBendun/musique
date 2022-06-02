@@ -119,7 +119,8 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 		[](errors::Unexpected_Keyword const&)                   { return "Unexpected keyword"; },
 		[](errors::Unrecognized_Character const&)               { return "Unrecognized character"; },
 		[](errors::internal::Unexpected_Token const&)           { return "Unexpected token"; },
-		[](errors::Expected_Expression_Separator_Before const&) { return "Missing semicolon"; }
+		[](errors::Expected_Expression_Separator_Before const&) { return "Missing semicolon"; },
+		[](errors::Literal_As_Identifier const&)                { return "Literal used in place of an identifier"; }
 	}, err.details);
 
 	error_heading(os, err.location, Error_Level::Error, short_description);
@@ -158,6 +159,20 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 			if (err.what == "var") {
 				os << "\nIf you want to create variable inside expression try wrapping them inside parentheses like this:\n";
 				os << "    10 + (var i = 20)\n";
+			}
+		},
+
+		[&os](errors::Literal_As_Identifier const& err) {
+			os << "I expected an identifier in " << err.context << ", but found" << (err.type_name.empty() ? "" : " ") << err.type_name << " value = '" << err.source << "'\n";
+
+
+			if (err.type_name == "chord") {
+				os << "\nTry renaming to different name or appending with something that is not part of chord literal like 'x'\n";
+
+				os << pretty::begin_comment <<
+					"\nMusical notation names are reserved for chord and note notations,\n"
+					"and cannot be reused as an identifier to prevent ambiguity\n"
+					<< pretty::end;
 			}
 		},
 

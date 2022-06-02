@@ -83,6 +83,14 @@ namespace errors
 		std::string_view type;
 	};
 
+	// When user provides literal where identifier should be
+	struct Literal_As_Identifier
+	{
+		std::string_view type_name;
+		std::string_view source;
+		std::string_view context;
+	};
+
 	/// Collection of messages that are considered internal and should not be printed to the end user.
 	namespace internal
 	{
@@ -109,6 +117,7 @@ namespace errors
 		Unexpected_Empty_Source,
 		Unexpected_Keyword,
 		Unrecognized_Character,
+		Literal_As_Identifier,
 		internal::Unexpected_Token
 	>;
 }
