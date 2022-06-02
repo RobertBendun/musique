@@ -191,7 +191,6 @@ suite lexer_test = [] {
 		expect_token_type_and_value(Token::Type::Operator, "=");
 		expect_token_type_and_value(Token::Type::Operator, "<");
 		expect_token_type_and_value(Token::Type::Operator, ":");
-		expect_token_type_and_value(Token::Type::Operator, "v");
 		expect_token_type_and_value(Token::Type::Operator, "%");
 	};
 
