@@ -161,20 +161,8 @@ static Result<Value> equality_operator(Interpreter&, std::vector<Value> args)
 template<typename Binary_Predicate>
 static Result<Value> comparison_operator(Interpreter&, std::vector<Value> args)
 {
-	using NN = Shape<Value::Type::Number, Value::Type::Number>;
-	using BB = Shape<Value::Type::Bool, Value::Type::Bool>;
-
-	if (NN::typecheck(args)) {
-		auto [a, b] = NN::move_from(args);
-		return Value::from(Binary_Predicate{}(std::move(a), std::move(b)));
-	}
-
-	if (BB::typecheck(args)) {
-		auto [a, b] = BB::move_from(args);
-		return Value::from(Binary_Predicate{}(a, b));
-	}
-
-	unreachable();
+	assert(args.size() == 2, "Operator handler cannot accept any shape different then 2 arguments");
+	return Value::from(Binary_Predicate{}(args.front(), args.back()));
 }
 
 /// Registers constants like `fn = full note = 1/1`

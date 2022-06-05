@@ -102,6 +102,24 @@ suite intepreter_test = [] {
 			evaluates_to(Value::from(true),  "0 <= 0");
 			evaluates_to(Value::from(true),  "1 <  2");
 			evaluates_to(Value::from(false), "1 >  2");
+
+			evaluates_to(Value::from(true),  "c == c");
+			evaluates_to(Value::from(false), "c != c");
+
+			evaluates_to(Value::from(true),  "c < d");
+			evaluates_to(Value::from(true),  "c != (c 4)");
+			evaluates_to(Value::from(true),  "(c 4) == (c 4)");
+			evaluates_to(Value::from(true),  "(c 3) != (c 4)");
+			evaluates_to(Value::from(true),  "(c 3) < (c 4)");
+			evaluates_to(Value::from(true),  "((c+12) 3) == (c 4)");
+
+			// Value is partially ordered, ensure that different types
+			// are always not equal and not ordered
+			evaluates_to(Value::from(false), "0 <  c");
+			evaluates_to(Value::from(false), "0 >  c");
+			evaluates_to(Value::from(false), "0 <= c");
+			evaluates_to(Value::from(false), "0 >= c");
+			evaluates_to(Value::from(true),  "0 != c");
 		};
 
 		// Added to explicitly test against bug that was in old implementation of enviroments.
