@@ -70,7 +70,7 @@ unit-test-coverage:
 	bin/unit-tests
 	rm -rf coverage
 	mkdir coverage
-	gcovr -e '.*\.hpp' --html --html-details -o coverage/index.html
+	gcovr -e '.*\.hpp' -e 'src/tests/.*' -e 'src/pretty.cc' --html --html-details -o coverage/index.html
 	rm -rf bin/debug
 	xdg-open coverage/index.html
 

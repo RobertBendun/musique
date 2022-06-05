@@ -43,6 +43,28 @@ static bool may_be_vectorized(std::vector<Value> const& args)
 	return args.size() == 2 && (is_indexable(args[0].type) != is_indexable(args[1].type));
 }
 
+static Result<Array> into_flat_array(Interpreter &i, std::vector<Value> args)
+{
+	Array array;
+	for (auto &arg : args) {
+		switch (arg.type) {
+		case Value::Type::Array:
+			std::move(arg.array.elements.begin(), arg.array.elements.end(), std::back_inserter(array.elements));
+			break;
+
+		case Value::Type::Block:
+			for (auto j = 0u; j < arg.blk.size(); ++j) {
+				array.elements.push_back(Try(arg.blk.index(i, j)));
+			}
+			break;
+
+		default:
+			array.elements.push_back(std::move(arg));
+		}
+	}
+	return array;
+}
+
 /// Intrinsic implementation primitive to ease operation vectorization
 /// @invariant args.size() == 2
 Result<Value> vectorize(auto &&operation, Interpreter &interpreter, std::vector<Value> args)
@@ -316,71 +338,18 @@ Interpreter::Interpreter()
 		});
 
 		global.force_define("flat", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
-			Array array;
-			for (auto &arg : args) {
-				switch (arg.type) {
-				case Value::Type::Array:
-					std::move(arg.array.elements.begin(), arg.array.elements.end(), std::back_inserter(array.elements));
-					break;
-
-				case Value::Type::Block:
-					for (auto j = 0u; j < arg.blk.size(); ++j) {
-						array.elements.push_back(Try(arg.blk.index(i, j)));
-					}
-					break;
-
-				default:
-					array.elements.push_back(std::move(arg));
-				}
-			}
-
-			return Value::from(std::move(array));
+			return Value::from(Try(into_flat_array(i, std::move(args))));
 		});
 
 		global.force_define("shuffle", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
 			static std::mt19937 rnd{std::random_device{}()};
-
-			Array array;
-			for (auto &arg : args) {
-				switch (arg.type) {
-				case Value::Type::Array:
-					std::move(arg.array.elements.begin(), arg.array.elements.end(), std::back_inserter(array.elements));
-					break;
-
-				case Value::Type::Block:
-					for (auto j = 0u; j < arg.blk.size(); ++j) {
-						array.elements.push_back(Try(arg.blk.index(i, j)));
-					}
-					break;
-
-				default:
-					array.elements.push_back(std::move(arg));
-				}
-			}
-
+			auto array = Try(into_flat_array(i, std::move(args)));
 			std::shuffle(array.elements.begin(), array.elements.end(), rnd);
 			return Value::from(std::move(array));
 		});
 
 		global.force_define("permute", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
-			Array array;
-			for (auto &arg : args) {
-				switch (arg.type) {
-				case Value::Type::Array:
-					std::move(arg.array.elements.begin(), arg.array.elements.end(), std::back_inserter(array.elements));
-					break;
-
-				case Value::Type::Block:
-					for (auto j = 0u; j < arg.blk.size(); ++j) {
-						array.elements.push_back(Try(arg.blk.index(i, j)));
-					}
-					break;
-
-				default:
-					array.elements.push_back(std::move(arg));
-				}
-			}
-
+			auto array = Try(into_flat_array(i, std::move(args)));
 			std::next_permutation(array.elements.begin(), array.elements.end());
 			return Value::from(std::move(array));
 		});
