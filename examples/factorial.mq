@@ -5,5 +5,11 @@ var for = [ start stop iteration |
 ];
 
 var factorial = [n | if (n <= 1) [1] [n * (factorial (n-1))]];
-
 for 1 10 [i | say (factorial i)];
+
+var factorial_iterative = [n |
+	var x = 1;
+	for 1 n [i|x *= i];
+	x
+];
+for 1 10 [i | say (factorial_iterative i)];

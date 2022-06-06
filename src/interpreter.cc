@@ -490,6 +490,7 @@ Result<Value> Interpreter::eval(Ast &&ast)
 				return *v = Try(eval(std::move(rhs)));
 			}
 
+
 			if (ast.token.source == "and" || ast.token.source == "or") {
 				auto lhs = std::move(ast.arguments.front());
 				auto rhs = std::move(ast.arguments.back());
@@ -504,6 +505,25 @@ Result<Value> Interpreter::eval(Ast &&ast)
 
 			auto op = operators.find(std::string(ast.token.source));
 			if (op == operators.end()) {
+				if (ast.token.source.ends_with('=')) {
+					auto op = operators.find(std::string(ast.token.source.substr(0, ast.token.source.size()-1)));
+					if (op == operators.end()) {
+						return Error {
+							.details = errors::Undefined_Operator { .op = ast.token.source },
+							.location = ast.token.location
+						};
+					}
+
+					auto lhs = std::move(ast.arguments.front());
+					auto rhs = std::move(ast.arguments.back());
+					assert(lhs.type == Ast::Type::Literal && lhs.token.type == Token::Type::Symbol,
+						"Currently LHS of assigment must be an identifier"); // TODO(assert)
+
+					Value *v = env->find(std::string(lhs.token.source));
+					assert(v, "Cannot resolve variable: "s + std::string(lhs.token.source)); // TODO(assert)
+					return *v = Try(op->second(*this, { *v, Try(eval(std::move(rhs))) }));
+				}
+
 				return Error {
 					.details = errors::Undefined_Operator { .op = ast.token.source },
 					.location = ast.token.location
