@@ -18,7 +18,7 @@ syn match musiqueInteger display "[0-9][0-9_]*"
 
 syn keyword musiqueConstant true false nil
 
-syn keyword musiqueDefaultBuiltins if len play
+syn keyword musiqueDefaultBuiltins if len play permute par shuffle chord bpm oct note_on note_off flat update
 syn keyword musiqueLinuxBuiltins say
 
 syn match musiqueComment "--.*$"

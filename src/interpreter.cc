@@ -15,6 +15,15 @@ static inline bool typecheck(std::vector<Value> const& args, auto const& ...expe
 }
 
 /// Intrinsic implementation primitive providing a short way to move values based on matched type signature
+static inline bool typecheck_front(std::vector<Value> const& args, auto const& ...expected_types)
+{
+	return (args.size() >= sizeof...(expected_types)) &&
+		[&args, expected_types...]<std::size_t ...I>(std::index_sequence<I...>) {
+			return ((expected_types == args[I].type) && ...);
+		} (std::make_index_sequence<sizeof...(expected_types)>{});
+}
+
+/// Intrinsic implementation primitive providing a short way to move values based on matched type signature
 template<auto ...Types>
 static inline auto move_from(std::vector<Value>& args)
 {
@@ -27,8 +36,9 @@ static inline auto move_from(std::vector<Value>& args)
 template<auto ...Types>
 struct Shape
 {
-	static inline auto move_from(std::vector<Value>& args) { return ::move_from<Types...>(args); }
-	static inline auto typecheck(std::vector<Value>& args) { return ::typecheck(args, Types...); }
+	static inline auto move_from(std::vector<Value>& args)       { return ::move_from<Types...>(args); }
+	static inline auto typecheck(std::vector<Value>& args)       { return ::typecheck(args, Types...); }
+	static inline auto typecheck_front(std::vector<Value>& args) { return ::typecheck_front(args, Types...); }
 };
 
 /// Returns if type can be indexed
@@ -295,6 +305,27 @@ Interpreter::Interpreter()
 
 		register_note_length_constants();
 
+		global.force_define("update", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
+			assert(args.size() == 3, "Update requires 3 arguments"); // TODO(assert)
+			using Eager_And_Number = Shape<Value::Type::Array, Value::Type::Number>;
+			using Lazy_And_Number  = Shape<Value::Type::Block, Value::Type::Number>;
+
+			if (Eager_And_Number::typecheck_front(args)) {
+				auto [v, index] = Eager_And_Number::move_from(args);
+				v.elements[index.as_int()] = std::move(args.back());
+				return Value::from(std::move(v));
+			}
+
+			if (Lazy_And_Number::typecheck_front(args)) {
+				auto [v, index] = Lazy_And_Number::move_from(args);
+				auto array = Try(into_flat_array(i, { Value::from(std::move(v)) }));
+				array.elements[index.as_int()] = std::move(args.back());
+				return Value::from(std::move(array));
+			}
+
+			unimplemented("Wrong shape of update function");
+		});
+
 		global.force_define("typeof", +[](Interpreter&, std::vector<Value> args) -> Result<Value> {
 			assert(args.size() == 1, "typeof expects only one argument");
 			return Value::from(std::string(type_name(args.front().type)));
@@ -446,11 +477,20 @@ Result<Value> Interpreter::eval(Ast &&ast)
 
 	case Ast::Type::Binary:
 		{
-			std::vector<Value> values;
-			values.reserve(ast.arguments.size());
+			assert(ast.arguments.size() == 2, "Expected arguments of binary operation to be 2 long");
+
+			if (ast.token.source == "=") {
+				auto lhs = std::move(ast.arguments.front());
+				auto rhs = std::move(ast.arguments.back());
+				assert(lhs.type == Ast::Type::Literal && lhs.token.type == Token::Type::Symbol,
+					"Currently LHS of assigment must be an identifier"); // TODO(assert)
+
+				Value *v = env->find(std::string(lhs.token.source));
+				assert(v, "Cannot resolve variable: "s + std::string(lhs.token.source)); // TODO(assert)
+				return *v = Try(eval(std::move(rhs)));
+			}
 
 			if (ast.token.source == "and" || ast.token.source == "or") {
-				assert(ast.arguments.size() == 2, "Expected arguments of binary operation to be 2 long");
 				auto lhs = std::move(ast.arguments.front());
 				auto rhs = std::move(ast.arguments.back());
 
@@ -463,7 +503,6 @@ Result<Value> Interpreter::eval(Ast &&ast)
 			}
 
 			auto op = operators.find(std::string(ast.token.source));
-
 			if (op == operators.end()) {
 				return Error {
 					.details = errors::Undefined_Operator { .op = ast.token.source },
@@ -471,6 +510,8 @@ Result<Value> Interpreter::eval(Ast &&ast)
 				};
 			}
 
+			std::vector<Value> values;
+			values.reserve(ast.arguments.size());
 			for (auto& a : ast.arguments) {
 				values.push_back(Try(eval(std::move(a))));
 			}

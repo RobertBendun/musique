@@ -1,0 +1,27 @@
+----------------------------------
+Simple variable assigment
+----------------------------------
+var x = 10;
+var y = 20;
+say x;
+say y;
+
+x = 30;
+say x;
+say y;
+
+x = y;
+say x;
+say y;
+
+----------------------------------
+Array updates
+----------------------------------
+var array = flat 1 2 3;
+say array;
+
+array = update array 1 10;
+say array;
+
+array = update array 1 (array.2);
+say array;

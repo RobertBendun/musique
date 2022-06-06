@@ -116,18 +116,33 @@ def record_tests(file_paths: list):
         tc = Test_Case.from_run(res, [])
         tc.save(test_case_file)
 
+def add_tests(file_paths: list):
+    to_be_added = []
+
+    for program_file in file_paths:
+        test_case_file = find_path_for_test_case(program_file)
+        if not os.path.exists(test_case_file):
+            print(f"Add test {program_file}? (yes/no)")
+            if "yes".startswith(input().strip().lower()):
+                to_be_added.append(program_file)
+
+    record_tests(to_be_added)
+
+
 # list of files to test
 def main():
     file_paths, mode = [], run_tests
 
     if len(argv) < 2:
-        print("[ERROR] Expected mode argument (either 'record' or 'test')")
+        print("[ERROR] Expected mode argument (either 'record', 'add' or 'test')")
         exit(1)
 
     if argv[1] == "test":
         mode = run_tests
     elif argv[1] == "record":
         mode = record_tests
+    elif argv[1] == "add":
+        mode = add_tests
     else:
         print(f"[ERROR] Unrecognized mode '{argv[1]}'")
         exit(1)
@@ -142,6 +157,8 @@ def main():
                 file_paths.extend(glob(f"{path}/*.mq"))
             else:
                 file_paths.append(path)
+        elif mode == add_tests:
+            print("Adding: " + path)
 
     mode(file_paths)
 
