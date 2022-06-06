@@ -24,25 +24,35 @@ static_assert(Keywords.size() == Keywords_Count, "Table above should contain all
 void Lexer::skip_whitespace_and_comments()
 {
 	for (;;) {
-		bool done_something = false;
-
-		while (consume_if(unicode::is_space)) {
-			done_something = true;
+		{ // Skip whitespace
+			bool done_something = false;
+			while (consume_if(unicode::is_space)) done_something = true;
+			if (done_something) continue;
 		}
 
-		// #! line comments
-		if (consume_if('#', '!')) {
-			done_something = true;
-			while (peek() && peek() != '\n') {
-				consume();
+		{ // Skip #! comments
+			if (consume_if('#', '!')) {
+				while (peek() && peek() != '\n') consume();
+				continue;
 			}
 		}
 
 		// -- line and multiline coments
 		if (consume_if('-', '-')) {
-			done_something = true;
-			if (consume_if('-')) {
-				// multiline
+			if (!consume_if('-')) {
+				// skiping a single line comment requires advancing until newline
+				while (peek() && peek() != '\n') consume();
+				continue;
+			}
+
+			// multiline comments begins with at least 3 '-' and ends with at least 3 '-'
+			// so when we encounter 3 '-', we must explicitly skip remaining '-', so they
+			// wil not end multiline comment
+
+			// skip remaining from multiline comment begining
+			while (consume_if('-')) {}
+
+			{ // parse multiline comment until '---' marking end
 				unsigned count = 0;
 				while (count < 3) if (consume_if('-')) {
 					++count;
@@ -50,17 +60,15 @@ void Lexer::skip_whitespace_and_comments()
 					consume();
 					count = 0;
 				}
+				// skip remaining from multiline comment ending
 				while (consume_if('-')) {}
-			} else {
-				// single line
-				while (peek() && peek() != '\n') {
-					consume();
-				}
 			}
+			continue;
 		}
 
-		if (not done_something)
-			break;
+		// When we reached this place, we didn't skip any whitespace or comment
+		// so our work is done
+		break;
 	}
 }
 

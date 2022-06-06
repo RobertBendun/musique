@@ -86,7 +86,7 @@ void assert(bool condition, std::string message, Location loc)
 
 	encourage_contact(std::cerr);
 
-	std::exit(1);
+	std::exit(42);
 }
 
 [[noreturn]] void unimplemented(std::string_view message, Location loc)
@@ -99,14 +99,14 @@ void assert(bool condition, std::string message, Location loc)
 
 	encourage_contact(std::cerr);
 
-	std::exit(1);
+	std::exit(42);
 }
 
 [[noreturn]] void unreachable(Location loc)
 {
 	error_heading(std::cerr, loc, Error_Level::Bug, "Reached unreachable state");
 	encourage_contact(std::cerr);
-	std::exit(1);
+	std::exit(42);
 }
 
 std::ostream& operator<<(std::ostream& os, Error const& err)
