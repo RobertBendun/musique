@@ -125,36 +125,47 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 
 	error_heading(os, err.location, Error_Level::Error, short_description);
 
+	auto const loc = err.location;
 	visit(Overloaded {
-		[&os](errors::Unrecognized_Character const& err) {
+		[&](errors::Unrecognized_Character const& err) {
 			os << "I encountered character in the source code that was not supposed to be here.\n";
 			os << "  Character Unicode code: U+" << std::hex << err.invalid_character << '\n';
 			os << "  Character printed: '" << utf8::Print{err.invalid_character} << "'\n";
 			os << "\n";
+
+			Lines::the.print(os, std::string(loc->filename), loc->line, loc->line);
+
 			os << "Musique only accepts characters that are unicode letters or ascii numbers and punctuation\n";
 		},
 
-		[&os](errors::Failed_Numeric_Parsing const& err) {
+		[&](errors::Failed_Numeric_Parsing const& err) {
 			constexpr auto Max = std::numeric_limits<decltype(Number::num)>::max();
 			constexpr auto Min = std::numeric_limits<decltype(Number::num)>::min();
-			os << "I tried to parse numeric literal, but I failed.";
+			os << "I tried to parse numeric literal, but I failed.\n\n";
+
+			Lines::the.print(os, std::string(loc->filename), loc->line, loc->line);
+
 			if (err.reason == std::errc::result_out_of_range) {
-				os << " Declared number is outside of valid range of numbers that can be represented.\n";
-				os << "  Only numbers in range [" << Min << ", " << Max << "] are supported\n";
+				os << "\nDeclared number is outside of valid range of numbers that can be represented.\n";
+				os << "Only numbers in range [" << Min << ", " << Max << "] are supported\n";
 			}
 		},
 
-		[&os](errors::internal::Unexpected_Token const& ut) {
+		[&](errors::internal::Unexpected_Token const& ut) {
 			os << "I encountered unexpected token during " << ut.when << '\n';
 			os << "  Token type: " << ut.type << '\n';
-			os << "  Token source: " << ut.source << '\n';
+			os << "  Token source: " << ut.source << "\n\n";
+
+			Lines::the.print(os, std::string(loc->filename), loc->line, loc->line);
 
 			os << pretty::begin_comment << "\nThis error is considered an internal one. It should not be displayed to the end user.\n" << pretty::end;
 			encourage_contact(os);
 		},
 
-		[&os](errors::Expected_Expression_Separator_Before const& err) {
-			os << "I failed to parse following code, due to missing semicolon before it!\n";
+		[&](errors::Expected_Expression_Separator_Before const& err) {
+			os << "I failed to parse following code, due to missing semicolon before it!\n\n";
+
+			Lines::the.print(os, std::string(loc->filename), loc->line, loc->line);
 
 			if (err.what == "var") {
 				os << "\nIf you want to create variable inside expression try wrapping them inside parentheses like this:\n";
@@ -162,9 +173,10 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 			}
 		},
 
-		[&os](errors::Literal_As_Identifier const& err) {
-			os << "I expected an identifier in " << err.context << ", but found" << (err.type_name.empty() ? "" : " ") << err.type_name << " value = '" << err.source << "'\n";
+		[&](errors::Literal_As_Identifier const& err) {
+			os << "I expected an identifier in " << err.context << ", but found" << (err.type_name.empty() ? "" : " ") << err.type_name << " value = '" << err.source << "'\n\n";
 
+			Lines::the.print(os, std::string(loc->filename), loc->line, loc->line);
 
 			if (err.type_name == "chord") {
 				os << "\nTry renaming to different name or appending with something that is not part of chord literal like 'x'\n";
@@ -176,10 +188,10 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 			}
 		},
 
-		[&os](errors::Not_Callable const&)                     { unimplemented(); },
-		[&os](errors::Undefined_Operator const&)               { unimplemented(); },
-		[&os](errors::Unexpected_Keyword const&)               { unimplemented(); },
-		[&os](errors::Unexpected_Empty_Source const&)          { unimplemented(); }
+		[&](errors::Not_Callable const&)                     { unimplemented(); },
+		[&](errors::Undefined_Operator const&)               { unimplemented(); },
+		[&](errors::Unexpected_Keyword const&)               { unimplemented(); },
+		[&](errors::Unexpected_Empty_Source const&)          { unimplemented(); }
 	}, err.details);
 
 	return os;

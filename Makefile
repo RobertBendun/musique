@@ -14,6 +14,7 @@ Obj=                 \
 		errors.o         \
 		interpreter.o    \
 		lexer.o          \
+		lines.o          \
 		location.o       \
 		number.o         \
 		parser.o         \

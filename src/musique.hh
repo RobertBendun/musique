@@ -392,6 +392,23 @@ std::ostream& operator<<(std::ostream& os, Token const& tok);
 /// Token type debug printing
 std::ostream& operator<<(std::ostream& os, Token::Type type);
 
+struct Lines
+{
+	static Lines the;
+
+	/// Region of lines in files
+	std::unordered_map<std::string, std::vector<std::string_view>> lines;
+
+	/// Add lines from file
+	void add_file(std::string filename, std::string_view source);
+
+	/// Add single line into file (REPL usage)
+	void add_line(std::string const& filename, std::string_view source);
+
+	/// Print selected region
+	void print(std::ostream& os, std::string const& file, unsigned first_line, unsigned last_line) const;
+};
+
 /// Explicit marker of the end of file
 struct End_Of_File {};
 

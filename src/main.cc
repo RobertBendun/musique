@@ -166,11 +166,13 @@ static Result<void> Main(std::span<char const*> args)
 
 	for (auto const& [is_file, argument] : runnables) {
 		if (!is_file) {
+			Lines::the.add_line("<arguments>", argument);
 			Try(runner.run(argument, "<arguments>"));
 			continue;
 		}
-		auto const path = argument;
+		auto path = argument;
 		if (path == "-") {
+			path = "<stdin>";
 			eternal_sources.emplace_back(std::istreambuf_iterator<char>(std::cin), std::istreambuf_iterator<char>());
 		} else {
 			if (not fs::exists(path)) {
@@ -181,6 +183,7 @@ static Result<void> Main(std::span<char const*> args)
 			eternal_sources.emplace_back(std::istreambuf_iterator<char>(source_file), std::istreambuf_iterator<char>());
 		}
 
+		Lines::the.add_file(std::string(path), eternal_sources.back());
 		Try(runner.run(eternal_sources.back(), path));
 	}
 
@@ -216,6 +219,7 @@ static Result<void> Main(std::span<char const*> args)
 				continue;
 			}
 
+			Lines::the.add_line("<repl>", raw);
 			auto result = runner.run(raw, "<repl>", true);
 			if (not result.has_value()) {
 				std::cout << std::flush;
