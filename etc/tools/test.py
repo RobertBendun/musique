@@ -151,6 +151,10 @@ def main():
         print("[ERROR] Expected test case")
         exit(1)
 
+    interpreter = os.getenv("INTERPRETER")
+    if interpreter:
+        Interpreter = interpreter
+
     for path in argv[2:]:
         if os.path.exists(path):
             if os.path.isdir(path):

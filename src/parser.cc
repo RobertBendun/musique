@@ -119,10 +119,11 @@ Result<Ast> Parser::parse_variable_declaration()
 
 Result<Ast> Parser::parse_infix_expression()
 {
-	auto atomics = Try(parse_many(*this, &Parser::parse_atomic_expression, std::nullopt, At_Least::One));
+	auto atomics = Try(parse_many(*this, &Parser::parse_index_expression, std::nullopt, At_Least::One));
 	auto lhs = wrap_if_several(std::move(atomics), Ast::call);
 
 	if (expect(Token::Type::Operator) || expect(Token::Type::Keyword, "and") || expect(Token::Type::Keyword, "or")) {
+		assert(not expect(Token::Type::Operator, "."), "This should be handled by parse_index_expression");
 		auto op = consume();
 		return parse_expression().map([&](Ast rhs) {
 			return Ast::binary(std::move(op), std::move(lhs), std::move(rhs));
@@ -130,6 +131,23 @@ Result<Ast> Parser::parse_infix_expression()
 	}
 
 	return lhs;
+}
+
+Result<Ast> Parser::parse_index_expression()
+{
+	auto result = Try(parse_atomic_expression());
+
+	while (expect(Token::Type::Operator, ".")) {
+		auto op = consume();
+		if (auto maybe_index = parse_atomic_expression(); maybe_index.has_value()) {
+			result = Ast::binary(std::move(op), std::move(result), *std::move(maybe_index));
+		} else {
+			// TODO Report that error occured during parsing of index expression
+			return std::move(maybe_index).error();
+		}
+	}
+
+	return result;
 }
 
 Result<Ast> Parser::parse_atomic_expression()

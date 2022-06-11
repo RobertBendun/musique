@@ -561,6 +561,9 @@ struct Parser
 	/// Parse infix expression
 	Result<Ast> parse_infix_expression();
 
+	/// Parse either index expression or atomic expression
+	Result<Ast> parse_index_expression();
+
 	/// Parse function call, literal etc
 	Result<Ast> parse_atomic_expression();
 
