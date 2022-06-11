@@ -1,6 +1,6 @@
 MAKEFLAGS="-j $(grep -c ^processor /proc/cpuinfo)"
 CXXFLAGS:=$(CXXFLAGS) -std=c++20 -Wall -Wextra -Werror=switch -Werror=return-type -Werror=unused-result
-CPPFLAGS:=$(CPPFLAGS) -Ilib/expected/ -Ilib/ut/ -Ilib/midi/include -Isrc/
+CPPFLAGS:=$(CPPFLAGS) -Ilib/expected/ -Ilib/ut/ -Ilib/midi/include -Isrc/ -Ilib/bestline/
 RELEASE_FLAGS=-O3
 DEBUG_FLAGS=-O0 -ggdb -fsanitize=undefined
 CXX=g++
@@ -49,17 +49,21 @@ bin/%.o: src/%.cc src/*.hh
 	@echo "CXX $@"
 	@$(CXX) $(CXXFLAGS) $(RELEASE_FLAGS) $(CPPFLAGS) -o $@ $< -c
 
-bin/musique: $(Release_Obj) bin/main.o src/*.hh lib/midi/libmidi-alsa.a
+bin/musique: $(Release_Obj) bin/main.o bin/bestline.o src/*.hh lib/midi/libmidi-alsa.a
 	@echo "CXX $@"
-	@$(CXX) $(CXXFLAGS) $(RELEASE_FLAGS) $(CPPFLAGS) -o $@ $(Release_Obj) bin/main.o $(LDFLAGS) $(LDLIBS)
+	@$(CXX) $(CXXFLAGS) $(RELEASE_FLAGS) $(CPPFLAGS) -o $@ $(Release_Obj) bin/bestline.o bin/main.o $(LDFLAGS) $(LDLIBS)
 
-bin/debug/musique: $(Debug_Obj) bin/debug/main.o src/*.hh
+bin/debug/musique: $(Debug_Obj) bin/debug/main.o bin/bestline.o src/*.hh
 	@echo "CXX $@"
-	@$(CXX) $(CXXFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) -o $@ $(Debug_Obj) bin/debug/main.o $(LDFLAGS) $(LDLIBS)
+	@$(CXX) $(CXXFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) -o $@ $(Debug_Obj) bin/bestline.o bin/debug/main.o  $(LDFLAGS) $(LDLIBS)
 
 bin/debug/%.o: src/%.cc src/*.hh
 	@echo "CXX $@"
 	@$(CXX) $(CXXFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) -o $@ $< -c
+
+bin/bestline.o: lib/bestline/bestline.c lib/bestline/bestline.h
+	@echo "CC $@"
+	@$(CC) $< -c -O3 -o $@
 
 unit-tests: bin/unit-tests
 	./$<

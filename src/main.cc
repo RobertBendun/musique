@@ -7,8 +7,10 @@
 
 #include <musique.hh>
 #include <midi.hh>
-#include <readline/readline.h>
-#include <readline/history.h>
+
+extern "C" {
+#include <bestline.h>
+}
 
 namespace fs = std::filesystem;
 
@@ -66,6 +68,8 @@ static void trim(std::string_view &s)
 /// Runs interpreter on given source code
 struct Runner
 {
+	static inline Runner *the;
+
 	midi::ALSA alsa;
 	Interpreter interpreter;
 
@@ -73,6 +77,9 @@ struct Runner
 	Runner(std::string port)
 		: alsa("musique")
 	{
+		assert(the == nullptr, "Only one instance of runner is supported");
+		the = this;
+
 		alsa.init_sequencer();
 		alsa.connect(port);
 		interpreter.midi_connection = &alsa;
@@ -87,6 +94,11 @@ struct Runner
 			return {};
 		});
 	}
+
+	Runner(Runner const&) = delete;
+	Runner(Runner &&) = delete;
+	Runner& operator=(Runner const&) = delete;
+	Runner& operator=(Runner &&) = delete;
 
 	/// Run given source
 	Result<void> run(std::string_view source, std::string_view filename, bool output = false)
@@ -107,6 +119,19 @@ struct Runner
 /// All source code through life of the program should stay allocated, since
 /// some of the strings are only views into source
 std::vector<std::string> eternal_sources;
+
+void completion(char const* buf, bestlineCompletions *lc)
+{
+	std::string_view in{buf};
+
+	for (auto scope = Runner::the->interpreter.env.get(); scope != nullptr; scope = scope->parent.get()) {
+		for (auto const& [name, _] : scope->variables) {
+			if (name.starts_with(in)) {
+				bestlineAddCompletion(lc, name.c_str());
+			}
+		}
+	}
+}
 
 /// Fancy main that supports Result forwarding on error (Try macro)
 static Result<void> Main(std::span<char const*> args)
@@ -189,8 +214,9 @@ static Result<void> Main(std::span<char const*> args)
 
 	if (runnables.empty() || enable_repl) {
 		enable_repl = true;
+		bestlineSetCompletionCallback(completion);
 		for (;;) {
-			char *input_buffer = readline("> ");
+			char *input_buffer = bestlineWithHistory("> ", "musique");
 			if (input_buffer == nullptr) {
 				break;
 			}
@@ -207,8 +233,6 @@ static Result<void> Main(std::span<char const*> args)
 				free(input_buffer);
 				continue;
 			}
-
-			add_history(input_buffer);
 
 			if (command.starts_with(':')) {
 				command.remove_prefix(1);
@@ -234,10 +258,6 @@ static Result<void> Main(std::span<char const*> args)
 
 int main(int argc, char const** argv)
 {
-	rl_readline_name = *argv;
-	// Set editing mode to Vim-like
-	rl_editing_mode = 0;
-
 	auto const args = std::span(argv, argc).subspan(1);
 	auto const result = Main(args);
 	if (not result.has_value()) {
