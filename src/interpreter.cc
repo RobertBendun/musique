@@ -432,6 +432,32 @@ Interpreter::Interpreter()
 			unreachable();
 		});
 
+		{
+			constexpr auto pgmchange = +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
+				using Program = Shape<Value::Type::Number>;
+				using Channel_Program = Shape<Value::Type::Number, Value::Type::Number>;
+
+				if (Program::typecheck(args)) {
+					auto [program] = Program::move_from(args);
+					i.midi_connection->send_program_change(0, program.as_int());
+					return Value{};
+				}
+
+				if (Channel_Program::typecheck(args)) {
+					auto [chan, program] = Channel_Program::move_from(args);
+					i.midi_connection->send_program_change(chan.as_int(), program.as_int());
+					return Value{};
+				}
+
+				unreachable();
+			};
+
+			global.force_define("instrument",     pgmchange);
+			global.force_define("pgmchange",      pgmchange);
+			global.force_define("program_change", pgmchange);
+		}
+
+
 		operators["+"] = plus_minus_operator<std::plus<>>;
 		operators["-"] = plus_minus_operator<std::minus<>>;
 		operators["*"] = binary_operator<std::multiplies<>>;
