@@ -47,13 +47,19 @@ static constexpr bool is_indexable(Value::Type type)
 	return type == Value::Type::Array || type == Value::Type::Block;
 }
 
+/// Returns if type can be called
+static constexpr bool is_callable(Value::Type type)
+{
+	return type == Value::Type::Block || type == Value::Type::Intrinsic;
+}
+
 /// Binary operation may be vectorized when there are two argument which one is indexable and other is not
 static bool may_be_vectorized(std::vector<Value> const& args)
 {
 	return args.size() == 2 && (is_indexable(args[0].type) != is_indexable(args[1].type));
 }
 
-static Result<Array> into_flat_array(Interpreter &i, std::vector<Value> args)
+static Result<Array> into_flat_array(Interpreter &i, std::span<Value> args)
 {
 	Array array;
 	for (auto &arg : args) {
@@ -73,6 +79,11 @@ static Result<Array> into_flat_array(Interpreter &i, std::vector<Value> args)
 		}
 	}
 	return array;
+}
+
+static Result<Array> into_flat_array(Interpreter &i, std::vector<Value> args)
+{
+	return into_flat_array(i, std::span(args));
 }
 
 /// Intrinsic implementation primitive to ease operation vectorization
@@ -399,6 +410,24 @@ Interpreter::Interpreter()
 			if (max == array.elements.end())
 				return Value{};
 			return *max;
+		});
+
+		global.force_define("partition", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
+			assert(!args.empty(), "partition requires function to partition with"); // TODO(assert)
+			auto predicate = std::move(args.front());
+			assert(is_callable(predicate.type), "partition requires function to partition with"); // TODO(assert)
+
+			auto array = Try(into_flat_array(i, std::span(args).subspan(1)));
+
+			Array tuple[2] = {};
+			for (auto &value : array.elements) {
+				tuple[Try(predicate(i, { std::move(value) })).truthy()].elements.push_back(std::move(value));
+			}
+
+			return Value::from(Array { .elements = {
+				Value::from(std::move(tuple[true])),
+				Value::from(std::move(tuple[false]))
+			}});
 		});
 
 		global.force_define("chord", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
