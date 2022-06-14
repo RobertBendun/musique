@@ -373,6 +373,34 @@ Interpreter::Interpreter()
 			return Value::from(std::move(array));
 		});
 
+		global.force_define("sort", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
+			auto array = Try(into_flat_array(i, std::move(args)));
+			std::sort(array.elements.begin(), array.elements.end());
+			return Value::from(std::move(array));
+		});
+
+		global.force_define("reverse", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
+			auto array = Try(into_flat_array(i, std::move(args)));
+			std::reverse(array.elements.begin(), array.elements.end());
+			return Value::from(std::move(array));
+		});
+
+		global.force_define("min", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
+			auto array = Try(into_flat_array(i, std::move(args)));
+			auto min = std::min_element(array.elements.begin(), array.elements.end());
+			if (min == array.elements.end())
+				return Value{};
+			return *min;
+		});
+
+		global.force_define("max", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
+			auto array = Try(into_flat_array(i, std::move(args)));
+			auto max = std::max_element(array.elements.begin(), array.elements.end());
+			if (max == array.elements.end())
+				return Value{};
+			return *max;
+		});
+
 		global.force_define("chord", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
 			Chord chord;
 			Try(create_chord(chord.notes, i, std::move(args)));
