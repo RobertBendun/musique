@@ -119,6 +119,9 @@ Result<Value> vectorize(auto &&operation, Interpreter &interpreter, std::vector<
 template<typename Binary_Operation>
 static Result<Value> plus_minus_operator(Interpreter &interpreter, std::vector<Value> args)
 {
+	static_assert(std::is_same_v<Binary_Operation, std::plus<>> || std::is_same_v<Binary_Operation, std::minus<>>,
+		"Error reporting depends on only one of this two types beeing provided");
+
 	using NN = Shape<Value::Type::Number, Value::Type::Number>;
 	using MN = Shape<Value::Type::Music,  Value::Type::Number>;
 	using NM = Shape<Value::Type::Number, Value::Type::Music>;
@@ -150,14 +153,29 @@ static Result<Value> plus_minus_operator(Interpreter &interpreter, std::vector<V
 		return vectorize(plus_minus_operator<Binary_Operation>, interpreter, std::move(args));
 	}
 
-	assert(false, "Unsupported types for this operation"); // TODO(assert)
-	unreachable();
+	// TODO Limit possibilities based on provided types
+	return Error {
+		.details = errors::Unsupported_Types_For {
+			.type = errors::Unsupported_Types_For::Operator,
+			.name = std::is_same_v<std::plus<>, Binary_Operation> ? "+" : "-",
+			.possibilities = {
+				"(number, number) -> number",
+				"(music, number) -> music",
+				"(number, music) -> music",
+				"(array, number|music) -> array",
+				"(number|music, array) -> array",
+			}
+		},
+		.location = {}, // TODO fill location
+	};
 }
 
 
-template<typename Binary_Operation>
+template<typename Binary_Operation, char ...Chars>
 static Result<Value> binary_operator(Interpreter& interpreter, std::vector<Value> args)
 {
+	static constexpr char Name[] = { Chars..., '\0' };
+
 	using NN = Shape<Value::Type::Number, Value::Type::Number>;
 
 	if (NN::typecheck(args)) {
@@ -166,10 +184,21 @@ static Result<Value> binary_operator(Interpreter& interpreter, std::vector<Value
 	}
 
 	if (may_be_vectorized(args)) {
-		return vectorize(binary_operator<Binary_Operation>, interpreter, args);
+		return vectorize(binary_operator<Binary_Operation, Chars...>, interpreter, args);
 	}
 
-	unreachable();
+	return Error {
+		.details = errors::Unsupported_Types_For {
+			.type = errors::Unsupported_Types_For::Operator,
+			.name = Name,
+			.possibilities = {
+				"(number, number) -> number",
+				"(array, number) -> array",
+				"(number, array) -> array"
+			}
+		},
+		.location = {}, // TODO fill location
+	};
 }
 
 template<typename Binary_Predicate>
@@ -343,10 +372,24 @@ Interpreter::Interpreter()
 		});
 
 		global.force_define("if", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
-			assert(args.size() == 2 || args.size() == 3, "argument count does not add up - expected: if <condition> <then> [<else>]");
+			if (args.size() != 2 && args.size() != 3) {
+error:
+				return Error {
+					.details = errors::Unsupported_Types_For {
+						.type = errors::Unsupported_Types_For::Function,
+						.name = "if",
+						.possibilities = {
+							"(any, function) -> any",
+							"(any, function, function) -> any"
+						}
+					}
+				};
+			}
 			if (args.front().truthy()) {
+				if (not is_callable(args[1].type)) goto error;
 				return args[1](i, {});
 			} else if (args.size() == 3) {
+				if (not is_callable(args[2].type)) goto error;
 				return args[2](i, {});
 			} else {
 				return Value{};
@@ -357,8 +400,6 @@ Interpreter::Interpreter()
 			if (args.size() != 1 || !is_indexable(args.front().type)) {
 				return ctx_read_write_property<&Context::length>(i, std::move(args));
 			}
-			assert(args.size() == 1, "len only accepts one argument");
-			assert(args.front().type == Value::Type::Block || args.front().type == Value::Type::Array, "Only blocks and arrays can have length");
 			return Value::from(Number(args.front().size()));
 		});
 
@@ -530,8 +571,8 @@ Interpreter::Interpreter()
 
 		operators["+"] = plus_minus_operator<std::plus<>>;
 		operators["-"] = plus_minus_operator<std::minus<>>;
-		operators["*"] = binary_operator<std::multiplies<>>;
-		operators["/"] = binary_operator<std::divides<>>;
+		operators["*"] = binary_operator<std::multiplies<>, '*'>;
+		operators["/"] = binary_operator<std::divides<>, '/'>;
 
 		operators["<"]  = comparison_operator<std::less<>>;
 		operators[">"]  = comparison_operator<std::greater<>>;

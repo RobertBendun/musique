@@ -120,7 +120,12 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 		[](errors::Unrecognized_Character const&)               { return "Unrecognized character"; },
 		[](errors::internal::Unexpected_Token const&)           { return "Unexpected token"; },
 		[](errors::Expected_Expression_Separator_Before const&) { return "Missing semicolon"; },
-		[](errors::Literal_As_Identifier const&)                { return "Literal used in place of an identifier"; }
+		[](errors::Literal_As_Identifier const&)                { return "Literal used in place of an identifier"; },
+		[](errors::Unsupported_Types_For const& type)           {
+			return type.type == errors::Unsupported_Types_For::Function
+				? "Function called with wrong arguments"
+				: "Operator does not support given values";
+		},
 	}, err.details);
 
 	error_heading(os, err.location, Error_Level::Error, short_description);
@@ -185,6 +190,36 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 					"\nMusical notation names are reserved for chord and note notations,\n"
 					"and cannot be reused as an identifier to prevent ambiguity\n"
 					<< pretty::end;
+			}
+		},
+
+		[&](errors::Unsupported_Types_For const& err) {
+			switch (err.type) {
+			case errors::Unsupported_Types_For::Function:
+				{
+					os << "I tried to call function '" << err.name << "' but you gave me wrong types for it!\n";
+					os << "Make sure that all values matches one of supported signatures listed below!\n";
+					os << '\n';
+
+					for (auto const& possibility : err.possibilities) {
+						os << "  " << possibility << '\n';
+					}
+				}
+				break;
+			case errors::Unsupported_Types_For::Operator:
+				{
+					os << "I tried and failed to evaluate operator '" << err.name << "' due to values with wrong types provided\n";
+					os << "Make sure that both values matches one of supported signatures listed below!\n";
+					os << '\n';
+
+					if (err.name == "+") { os << "Addition only supports:\n"; }
+					else { os << "Operator '" << err.name << "' only supports:\n"; }
+
+					for (auto const& possibility : err.possibilities) {
+						os << "  " << possibility << '\n';
+					}
+				}
+				break;
 			}
 		},
 

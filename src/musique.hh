@@ -83,12 +83,25 @@ namespace errors
 		std::string_view type;
 	};
 
-	// When user provides literal where identifier should be
+	/// When user provides literal where identifier should be
 	struct Literal_As_Identifier
 	{
 		std::string_view type_name;
 		std::string_view source;
 		std::string_view context;
+	};
+
+	/// When user provides wrong type for given operation
+	struct Unsupported_Types_For
+	{
+		/// Type of operation
+		enum { Operator, Function } type;
+
+		/// Name of operation
+		std::string_view name;
+
+		/// Possible ways to use it correctly
+		std::vector<std::string> possibilities;
 	};
 
 	/// Collection of messages that are considered internal and should not be printed to the end user.
@@ -112,12 +125,13 @@ namespace errors
 	using Details = std::variant<
 		Expected_Expression_Separator_Before,
 		Failed_Numeric_Parsing,
+		Literal_As_Identifier,
 		Not_Callable,
 		Undefined_Operator,
 		Unexpected_Empty_Source,
 		Unexpected_Keyword,
 		Unrecognized_Character,
-		Literal_As_Identifier,
+		Unsupported_Types_For,
 		internal::Unexpected_Token
 	>;
 }
