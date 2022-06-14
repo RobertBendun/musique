@@ -430,6 +430,19 @@ Interpreter::Interpreter()
 			}});
 		});
 
+		global.force_define("rotate", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
+			assert(!args.empty(), "rotate requires offset"); // TODO(assert)
+			auto offset = std::move(args.front()).n.as_int();
+			auto array = Try(into_flat_array(i, std::span(args).subspan(1)));
+			offset = offset % array.elements.size();
+			if (offset > 0) {
+				std::rotate(array.elements.begin(), array.elements.begin() + offset, array.elements.end());
+			} else if (offset < 0) {
+				std::rotate(array.elements.rbegin(), array.elements.rbegin() + (-offset), array.elements.rend());
+			}
+			return Value::from(std::move(array));
+		});
+
 		global.force_define("chord", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
 			Chord chord;
 			Try(create_chord(chord.notes, i, std::move(args)));
