@@ -34,14 +34,21 @@ static std::string_view pop(std::span<char const*> &span)
 		"usage: musique <options> [filename]\n"
 		"  where filename is path to file with Musique code that will be executed\n"
 		"  where options are:\n"
+		"    -i,--input PORT\n"
+		"      provides input port, a place where Musique receives MIDI messages\n"
+		"    -o,--output PORT\n"
+		"      provides output port, a place where Musique produces MIDI messages\n"
+		"    -l,--list\n"
+		"      lists all available MIDI ports and quit\n"
+		"\n"
 		"    -c,--run CODE\n"
 		"      executes given code\n"
-		"    -i,--interactive,--repl\n"
+		"    -I,--interactive,--repl\n"
 		"      enables interactive mode even when another code was passed\n"
+		"\n"
 		"    --ast\n"
 		"      prints ast for given code\n"
-		"    -l,--list\n"
-		"      lists all available MIDI ports and quit\n";
+		;
 	std::exit(1);
 }
 
@@ -74,15 +81,19 @@ struct Runner
 	Interpreter interpreter;
 
 	/// Setup interpreter and midi connection with given port
-	Runner(std::string port)
+	Runner(std::string input_port, std::string output_port)
 		: alsa("musique")
 	{
 		assert(the == nullptr, "Only one instance of runner is supported");
 		the = this;
 
-		alsa.init_sequencer();
-		alsa.connect_output(port);
-		interpreter.midi_connection = &alsa;
+		bool const alsa_go = output_port.size() || input_port.size();
+		if (alsa_go) {
+			alsa.init_sequencer();
+			interpreter.midi_connection = &alsa;
+		}
+		if (output_port.size()) alsa.connect_output(output_port);
+		if (input_port.size())  alsa.connect_input(input_port);
 
 		Env::global->force_define("say", +[](Interpreter&, std::vector<Value> args) -> Result<Value> {
 			for (auto it = args.begin(); it != args.end(); ++it) {
@@ -147,6 +158,10 @@ static Result<void> Main(std::span<char const*> args)
 		std::string_view argument;
 	};
 
+	// Arbitraly chosen for conviniance of the author
+	std::string_view input_port{};
+	std::string_view output_port{};
+
 	std::vector<Run> runnables;
 
 	while (not args.empty()) {
@@ -178,8 +193,26 @@ static Result<void> Main(std::span<char const*> args)
 			continue;
 		}
 
-		if (arg == "--repl" || arg == "-i" || arg == "--interactive")  {
+		if (arg == "--repl" || arg == "-I" || arg == "--interactive")  {
 			enable_repl = true;
+			continue;
+		}
+
+		if (arg == "-i" || arg == "--input") {
+			if (args.empty()) {
+				std::cerr << "musique: error: option " << arg << " requires an argument" << std::endl;
+				std::exit(1);
+			}
+			input_port = pop(args);
+			continue;
+		}
+
+		if (arg == "-o" || arg == "--output") {
+			if (args.empty()) {
+				std::cerr << "musique: error: option " << arg << " requires an argument" << std::endl;
+				std::exit(1);
+			}
+			output_port = pop(args);
 			continue;
 		}
 
@@ -187,7 +220,7 @@ static Result<void> Main(std::span<char const*> args)
 		std::exit(1);
 	}
 
-	Runner runner("14");
+	Runner runner{std::string(input_port), std::string(output_port)};
 
 	for (auto const& [is_file, argument] : runnables) {
 		if (!is_file) {
