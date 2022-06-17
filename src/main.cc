@@ -81,7 +81,7 @@ struct Runner
 		the = this;
 
 		alsa.init_sequencer();
-		alsa.connect(port);
+		alsa.connect_output(port);
 		interpreter.midi_connection = &alsa;
 
 		Env::global->force_define("say", +[](Interpreter&, std::vector<Value> args) -> Result<Value> {
