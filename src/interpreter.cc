@@ -5,6 +5,46 @@
 #include <random>
 #include <thread>
 
+struct Interpreter::Incoming_Midi_Callbacks
+{
+	Value note_on{};
+	Value note_off{};
+
+	Incoming_Midi_Callbacks() = default;
+
+	Incoming_Midi_Callbacks(Incoming_Midi_Callbacks &&) = delete;
+	Incoming_Midi_Callbacks(Incoming_Midi_Callbacks const&) = delete;
+
+	Incoming_Midi_Callbacks& operator=(Incoming_Midi_Callbacks &&) = delete;
+	Incoming_Midi_Callbacks& operator=(Incoming_Midi_Callbacks const&) = delete;
+
+	void add_callbacks(midi::Connection &midi, Interpreter &interpreter)
+	{
+		register_callback(midi.note_on_callback, note_on, interpreter);
+		register_callback(midi.note_off_callback, note_off, interpreter);
+	}
+
+	template<typename ...T>
+	void register_callback(std::function<void(T...)> &target, Value &callback, Interpreter &i)
+	{
+		target = [interpreter = &i, callback = &callback](T ...source_args)
+		{
+			std::cout << "hello from callback!" << std::endl;
+			if (callback->type != Value::Type::Nil) {
+				auto result = (*callback)(*interpreter, { Value::from(Number(source_args))...  });
+				// We discard this since callback is running in another thread.
+				(void) result;
+			}
+		};
+	}
+};
+
+void Interpreter::register_callbacks()
+{
+	assert(callbacks != nullptr, "Interpreter constructor should initialize this field");
+	callbacks->add_callbacks(*midi_connection, *this);
+}
+
 /// Intrinsic implementation primitive providing a short way to check if arguments match required type signature
 static inline bool typecheck(std::vector<Value> const& args, auto const& ...expected_types)
 {
@@ -339,6 +379,9 @@ Interpreter::Interpreter()
 	{ // Environment initlialization
 		assert(!bool(Env::global), "Only one instance of interpreter can be at one time");
 		env = Env::global = Env::make();
+	}
+	{ // MIDI input callbacks initialization
+		callbacks = std::make_unique<Interpreter::Incoming_Midi_Callbacks>();
 	}
 	{ // Global default functions initialization
 		auto &global = *Env::global;

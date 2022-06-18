@@ -920,6 +920,10 @@ struct Interpreter
 	/// There is always at least one context
 	std::vector<Context> context_stack;
 
+	struct Incoming_Midi_Callbacks;
+	std::unique_ptr<Incoming_Midi_Callbacks> callbacks;
+	void register_callbacks();
+
 	Interpreter();
 	~Interpreter();
 	Interpreter(Interpreter const&) = delete;

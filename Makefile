@@ -6,7 +6,7 @@ DEBUG_FLAGS=-O0 -ggdb -fsanitize=undefined
 CXX=g++
 
 LDFLAGS=-L./lib/midi/
-LDLIBS=-lmidi-alsa -lasound -lreadline
+LDLIBS=-lmidi-alsa -lasound -lpthread
 
 Obj=                 \
 		context.o        \

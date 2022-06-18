@@ -4,6 +4,7 @@
 #include <fstream>
 #include <iostream>
 #include <span>
+#include <thread>
 
 #include <musique.hh>
 #include <midi.hh>
@@ -79,10 +80,12 @@ struct Runner
 
 	midi::ALSA alsa;
 	Interpreter interpreter;
+	std::thread midi_input_event_loop;
 
 	/// Setup interpreter and midi connection with given port
 	Runner(std::string input_port, std::string output_port)
 		: alsa("musique")
+		, interpreter{}
 	{
 		assert(the == nullptr, "Only one instance of runner is supported");
 		the = this;
@@ -92,8 +95,18 @@ struct Runner
 			alsa.init_sequencer();
 			interpreter.midi_connection = &alsa;
 		}
-		if (output_port.size()) alsa.connect_output(output_port);
-		if (input_port.size())  alsa.connect_input(input_port);
+		if (output_port.size()) {
+			std::cout << "Connected MIDI output to port " << output_port << ". Ready to play!" << std::endl;
+			alsa.connect_output(output_port);
+		}
+		if (input_port.size()) {
+			std::cout << "Connected MIDI input to port " << input_port << ". Ready for incoming messages!" << std::endl;
+			alsa.connect_input(input_port);
+		}
+		if (alsa_go) {
+			interpreter.register_callbacks();
+			midi_input_event_loop = std::thread([this] { handle_midi_event_loop(); });
+		}
 
 		Env::global->force_define("say", +[](Interpreter&, std::vector<Value> args) -> Result<Value> {
 			for (auto it = args.begin(); it != args.end(); ++it) {
@@ -110,6 +123,11 @@ struct Runner
 	Runner(Runner &&) = delete;
 	Runner& operator=(Runner const&) = delete;
 	Runner& operator=(Runner &&) = delete;
+
+	void handle_midi_event_loop()
+	{
+		alsa.input_event_loop();
+	}
 
 	/// Run given source
 	Result<void> run(std::string_view source, std::string_view filename, bool output = false)
