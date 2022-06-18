@@ -27,15 +27,33 @@ struct Interpreter::Incoming_Midi_Callbacks
 	template<typename ...T>
 	void register_callback(std::function<void(T...)> &target, Value &callback, Interpreter &i)
 	{
-		target = [interpreter = &i, callback = &callback](T ...source_args)
-		{
-			std::cout << "hello from callback!" << std::endl;
-			if (callback->type != Value::Type::Nil) {
-				auto result = (*callback)(*interpreter, { Value::from(Number(source_args))...  });
-				// We discard this since callback is running in another thread.
-				(void) result;
-			}
-		};
+		if (&callback == &note_on || &callback == &note_off) {
+			// This messages have MIDI note number as second value, so they should be represented
+			// in our own note abstraction, not as numbers.
+			target = [interpreter = &i, callback = &callback](T ...source_args)
+			{
+				if (callback->type != Value::Type::Nil) {
+					std::vector<Value> args { Value::from(Number(source_args))... };
+					args[1] = Value::from(Chord { .notes { Note {
+						.base = i32(args[1].n.num % 12),
+						.octave = args[1].n.num / 12
+					}}});
+					auto result = (*callback)(*interpreter, std::move(args));
+					// We discard this since callback is running in another thread.
+					(void) result;
+				}
+			};
+		} else {
+			// Generic case, preserve all passed parameters as numbers
+			target = [interpreter = &i, callback = &callback](T ...source_args)
+			{
+				if (callback->type != Value::Type::Nil) {
+					auto result = (*callback)(*interpreter, { Value::from(Number(source_args))...  });
+					// We discard this since callback is running in another thread.
+					(void) result;
+				}
+			};
+		}
 	}
 };
 
@@ -43,6 +61,11 @@ void Interpreter::register_callbacks()
 {
 	assert(callbacks != nullptr, "Interpreter constructor should initialize this field");
 	callbacks->add_callbacks(*midi_connection, *this);
+
+	callbacks->note_on = Value(+[](Interpreter &, std::vector<Value> args) -> Result<Value> {
+		std::cout << "Received: " << args[1] << "\r\n" << std::flush;
+		return Value{};
+	});
 }
 
 /// Intrinsic implementation primitive providing a short way to check if arguments match required type signature
@@ -669,7 +692,6 @@ Result<Value> Interpreter::eval(Ast &&ast)
 				assert(v, "Cannot resolve variable: "s + std::string(lhs.token.source)); // TODO(assert)
 				return *v = Try(eval(std::move(rhs)));
 			}
-
 
 			if (ast.token.source == "and" || ast.token.source == "or") {
 				auto lhs = std::move(ast.arguments.front());
