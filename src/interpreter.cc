@@ -609,6 +609,23 @@ error:
 			unreachable();
 		});
 
+		global.force_define("incoming", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
+			assert(args.size() == 2, "Wrong arity of 'incoming' function");
+			assert(args[0].type == Value::Type::Symbol, "Expected symbol for first argument of 'incoming'");
+			assert(is_callable(args[1].type), "Expected function for second argument of 'incoming'");
+
+			std::string const& symbol = args[0].s;
+
+			if (symbol == "note_on" || symbol == "noteon") {
+				i.callbacks->note_on = std::move(args[1]);
+			} else if (symbol == "note_off" || symbol == "noteoff") {
+				i.callbacks->note_off = std::move(args[1]);
+			} else {
+				assert(false, "symbol not recognized for 'incoming'");
+			}
+			return Value{};
+		});
+
 		{
 			constexpr auto pgmchange = +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
 				using Program = Shape<Value::Type::Number>;
@@ -668,6 +685,10 @@ Result<Value> Interpreter::eval(Ast &&ast)
 		switch (ast.token.type) {
 		case Token::Type::Symbol:
 			{
+				if (ast.token.source.starts_with('\'')) {
+					return Value::from(std::move(ast.token.source).substr(1));
+				}
+
 				auto const value = env->find(std::string(ast.token.source));
 				assert(value, "Missing variable error is not implemented yet: variable: "s + std::string(ast.token.source));
 				return *value;
