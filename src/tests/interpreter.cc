@@ -45,6 +45,7 @@ suite intepreter_test = [] {
 			evaluates_to(Value::from(true),       "true");
 			evaluates_to(Value::from(Number(10)), "10");
 			evaluates_to(Value{},                 "nil");
+			evaluates_to(Value::from("foo"),      "'foo");
 		};
 
 		should("evaluate arithmetic") = [] {
@@ -126,6 +127,10 @@ suite intepreter_test = [] {
 		// Previously this test would segfault
 		should("allow assigning result of function calls to a variable") = [] {
 			evaluates_to(Value::from(Number(42)), "var x = [i|i] 42; x");
+		};
+
+		should("allow modifying declared variable") = [] {
+			evaluates_to(Value::from(Number(43)), "var x = 42; x = 43; 10; x");
 		};
 
 		should("support array programming") = [] {
@@ -274,6 +279,138 @@ suite intepreter_test = [] {
 				if (not evaluates_to(exp, str))
 					quit = true;
 			};
+		};
+
+		should("Update value of array with 'update'") = [] {
+			evaluates_to(Value::from(Array { .elements = {
+				Value::from(Number(1)), Value::from(Number(10)), Value::from(Number(3))
+			}}), "update [1;2;3] 1 10");
+
+			evaluates_to(Value::from(Array { .elements = {
+				Value::from(Number(1)), Value::from(Number(10)), Value::from(Number(3))
+			}}), "update (flat 1 2 3) 1 10");
+		};
+
+		should("Support 'reverse' operation") = [] {
+			evaluates_to(Value::from(Array { .elements = {
+				Value::from(Number(1)), Value::from(Number(2)), Value::from(Number(3))
+			}}), "reverse 3 2 1");
+
+			evaluates_to(Value::from(Array { .elements = {
+				Value::from(Number(1)), Value::from(Number(2)), Value::from(Number(3))
+			}}), "reverse (flat 3 2) 1");
+
+			evaluates_to(Value::from(Array { .elements = {
+				Value::from(Number(1)), Value::from(Number(2)), Value::from(Number(3))
+			}}), "reverse [3;2] 1");
+		};
+
+		should("Support 'min' operation") = [] {
+			evaluates_to(Value::from(Number(10)), "min 10 20");
+			evaluates_to(Value::from(Number(10)), "min 20 10");
+			evaluates_to(Value::from(Chord { .notes = { Note { .base = 0 } } }), "min c d");
+			evaluates_to(Value::from(Chord { .notes = { Note { .base = 0 } } }), "min d c");
+		};
+
+		should("Support 'max' operation") = [] {
+			evaluates_to(Value::from(Number(20)), "max 10 20");
+			evaluates_to(Value::from(Number(20)), "max 20 10");
+			evaluates_to(Value::from(Chord { .notes = { Note { .base = 2 } } }), "max c d");
+			evaluates_to(Value::from(Chord { .notes = { Note { .base = 2 } } }), "max d c");
+		};
+
+		should("Support 'rotate' operation") = [] {
+			evaluates_to(Value::from(Array { .elements = {
+				Value::from(Number(1)),
+				Value::from(Number(2)),
+				Value::from(Number(3)),
+				Value::from(Number(4)),
+				Value::from(Number(5)),
+			}}), "rotate 0 [1;2;3;4;5]");
+
+			should("Support 'rotate' to right via negative rotation index") = [] {
+				evaluates_to(Value::from(Array { .elements = {
+					Value::from(Number(5)),
+					Value::from(Number(1)),
+					Value::from(Number(2)),
+					Value::from(Number(3)),
+					Value::from(Number(4)),
+				}}), "rotate (0-1) [1;2;3;4;5]");
+
+				evaluates_to(Value::from(Array { .elements = {
+					Value::from(Number(4)),
+					Value::from(Number(5)),
+					Value::from(Number(1)),
+					Value::from(Number(2)),
+					Value::from(Number(3)),
+				}}), "rotate (0-2) [1;2;3;4;5]");
+
+				evaluates_to(Value::from(Array { .elements = {
+					Value::from(Number(3)),
+					Value::from(Number(4)),
+					Value::from(Number(5)),
+					Value::from(Number(1)),
+					Value::from(Number(2)),
+				}}), "rotate (0-3) [1;2;3;4;5]");
+
+				evaluates_to(Value::from(Array { .elements = {
+					Value::from(Number(2)),
+					Value::from(Number(3)),
+					Value::from(Number(4)),
+					Value::from(Number(5)),
+					Value::from(Number(1)),
+				}}), "rotate (0-4) [1;2;3;4;5]");
+
+				evaluates_to(Value::from(Array { .elements = {
+					Value::from(Number(1)),
+					Value::from(Number(2)),
+					Value::from(Number(3)),
+					Value::from(Number(4)),
+					Value::from(Number(5)),
+				}}), "rotate (0-5) [1;2;3;4;5]");
+			};
+		};
+
+		should("Support 'rotate' to left via positive rotation index") = [] {
+			evaluates_to(Value::from(Array { .elements = {
+				Value::from(Number(2)),
+				Value::from(Number(3)),
+				Value::from(Number(4)),
+				Value::from(Number(5)),
+				Value::from(Number(1)),
+			}}), "rotate 1 [1;2;3;4;5]");
+
+			evaluates_to(Value::from(Array { .elements = {
+				Value::from(Number(3)),
+				Value::from(Number(4)),
+				Value::from(Number(5)),
+				Value::from(Number(1)),
+				Value::from(Number(2)),
+			}}), "rotate 2 [1;2;3;4;5]");
+
+			evaluates_to(Value::from(Array { .elements = {
+				Value::from(Number(4)),
+				Value::from(Number(5)),
+				Value::from(Number(1)),
+				Value::from(Number(2)),
+				Value::from(Number(3)),
+			}}), "rotate 3 [1;2;3;4;5]");
+
+			evaluates_to(Value::from(Array { .elements = {
+				Value::from(Number(5)),
+				Value::from(Number(1)),
+				Value::from(Number(2)),
+				Value::from(Number(3)),
+				Value::from(Number(4)),
+			}}), "rotate 4 [1;2;3;4;5]");
+
+			evaluates_to(Value::from(Array { .elements = {
+				Value::from(Number(1)),
+				Value::from(Number(2)),
+				Value::from(Number(3)),
+				Value::from(Number(4)),
+				Value::from(Number(5)),
+			}}), "rotate 5 [1;2;3;4;5]");
 		};
 	};
 };
