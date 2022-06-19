@@ -173,19 +173,25 @@ suite parser_test = [] {
 	};
 
 	"Variable declarations"_test = [] {
-		expect_ast("var x = 10", Ast::variable_declaration(
-			{},
-			{ Ast::literal({ Token::Type::Symbol, "x", {} }) },
-			Ast::literal({ Token::Type::Numeric, "10", {} })));
+		should("Support variable declaration with assigment") = [] {
+			expect_ast("var x = 10", Ast::variable_declaration(
+				{},
+				{ Ast::literal({ Token::Type::Symbol, "x", {} }) },
+				Ast::literal({ Token::Type::Numeric, "10", {} })));
+		};
 
-		expect_ast("var x", Ast::variable_declaration(
-			{},
-			{ Ast::literal({ Token::Type::Symbol, "x", {} }) },
-			std::nullopt));
+		skip / should("Support variable declaration") = [] {
+			expect_ast("var x", Ast::variable_declaration(
+				{},
+				{ Ast::literal({ Token::Type::Symbol, "x", {} }) },
+				std::nullopt));
+		};
 
-		expect_ast("var x y", Ast::variable_declaration(
-			{},
-			{Ast::literal({ Token::Type::Symbol, "x", {} }), Ast::literal({ Token::Type::Symbol, "y", {} })},
-			std::nullopt));
+		skip / should("Support multiple variables declaration") = [] {
+			expect_ast("var x y", Ast::variable_declaration(
+				{},
+				{Ast::literal({ Token::Type::Symbol, "x", {} }), Ast::literal({ Token::Type::Symbol, "y", {} })},
+				std::nullopt));
+		};
 	};
 };
