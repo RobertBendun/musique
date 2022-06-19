@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <sstream>
+#include <stdexcept>
 
 template<typename T, typename ...Params>
 concept Callable = requires(T t, Params ...params) { t(params...); };
@@ -79,6 +80,10 @@ static void encourage_contact(std::ostream &os)
 void assert(bool condition, std::string message, Location loc)
 {
 	if (condition) return;
+#if Debug
+	std::cout << "assertion failed at " << loc << " with message: " << message << std::endl;
+	throw std::runtime_error(message);
+#else
 	error_heading(std::cerr, loc, Error_Level::Bug, "Assertion in interpreter");
 
 	if (not message.empty())
@@ -87,10 +92,18 @@ void assert(bool condition, std::string message, Location loc)
 	encourage_contact(std::cerr);
 
 	std::exit(42);
+#endif
 }
 
-[[noreturn]] void unimplemented(std::string_view message, Location loc)
+#if !Debug
+[[noreturn]]
+#endif
+void unimplemented(std::string_view message, Location loc)
 {
+#if Debug
+	std::cout << "unreachable state reached at " << loc << " with message: " << message << std::endl;
+	throw std::runtime_error(std::string(message));
+#else
 	error_heading(std::cerr, loc, Error_Level::Bug, "This part of interpreter was not implemented yet");
 
 	if (not message.empty()) {
@@ -100,13 +113,22 @@ void assert(bool condition, std::string message, Location loc)
 	encourage_contact(std::cerr);
 
 	std::exit(42);
+#endif
 }
 
-[[noreturn]] void unreachable(Location loc)
+#if !Debug
+[[noreturn]]
+#endif
+void unreachable(Location loc)
 {
+#if Debug
+	std::cout << "unreachable state reached at " << loc << std::endl;
+	throw std::runtime_error("reached unreachable");
+#else
 	error_heading(std::cerr, loc, Error_Level::Bug, "Reached unreachable state");
 	encourage_contact(std::cerr);
 	std::exit(42);
+#endif
 }
 
 std::ostream& operator<<(std::ostream& os, Error const& err)
