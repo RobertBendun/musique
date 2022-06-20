@@ -588,6 +588,7 @@ error:
 
 		global.force_define("note_on", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
 			using Channel_Note_Velocity = Shape<Value::Type::Number, Value::Type::Number, Value::Type::Number>;
+			using Channel_Music_Velocity = Shape<Value::Type::Number, Value::Type::Music, Value::Type::Number>;
 
 			if (Channel_Note_Velocity::typecheck(args)) {
 				auto [chan, note, vel] = Channel_Note_Velocity::move_from(args);
@@ -595,25 +596,71 @@ error:
 				return Value {};
 			}
 
-			unreachable();
+			if (Channel_Music_Velocity::typecheck(args)) {
+				auto [chan, chord, vel] = Channel_Music_Velocity::move_from(args);
+
+				for (auto note : chord.notes) {
+					note = i.context_stack.back().fill(note);
+					i.midi_connection->send_note_on(chan.as_int(), *note.into_midi_note(), vel.as_int());
+				}
+			}
+
+			return Error {
+				.details = errors::Unsupported_Types_For {
+					.type = errors::Unsupported_Types_For::Function,
+					.name = "note_on",
+					.possibilities = {
+						"(number, music, number) -> nil"
+						"(number, number, number) -> nil",
+					}
+				},
+				.location = {}
+			};
 		});
 
 		global.force_define("note_off", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
-			using Channel_Note_Velocity = Shape<Value::Type::Number, Value::Type::Number, Value::Type::Number>;
+			using Channel_Note = Shape<Value::Type::Number, Value::Type::Number>;
+			using Channel_Music = Shape<Value::Type::Number, Value::Type::Music>;
 
-			if (Channel_Note_Velocity::typecheck(args)) {
-				auto [chan, note, vel] = Channel_Note_Velocity::move_from(args);
-				i.midi_connection->send_note_off(chan.as_int(), note.as_int(), vel.as_int());
+			if (Channel_Note::typecheck(args)) {
+				auto [chan, note] = Channel_Note::move_from(args);
+				i.midi_connection->send_note_off(chan.as_int(), note.as_int(), 127);
 				return Value {};
 			}
 
-			unreachable();
+			if (Channel_Music::typecheck(args)) {
+				auto [chan, chord] = Channel_Music::move_from(args);
+
+				for (auto note : chord.notes) {
+					note = i.context_stack.back().fill(note);
+					i.midi_connection->send_note_off(chan.as_int(), *note.into_midi_note(), 127);
+				}
+			}
+
+			return Error {
+				.details = errors::Unsupported_Types_For {
+					.type = errors::Unsupported_Types_For::Function,
+					.name = "note_off",
+					.possibilities = {
+						"(number, music) -> nil"
+						"(number, number) -> nil",
+					}
+				},
+				.location = {}
+			};
 		});
 
 		global.force_define("incoming", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
-			assert(args.size() == 2, "Wrong arity of 'incoming' function");
-			assert(args[0].type == Value::Type::Symbol, "Expected symbol for first argument of 'incoming'");
-			assert(is_callable(args[1].type), "Expected function for second argument of 'incoming'");
+			if (args.size() != 2 || args[0].type != Value::Type::Symbol || !is_callable(args[1].type)) {
+				return Error {
+					.details = errors::Unsupported_Types_For {
+						.type = errors::Unsupported_Types_For::Function,
+						.name = "incoming",
+						.possibilities = { "(symbol, function) -> nil" }
+					},
+					.location = {}
+				};
+			}
 
 			std::string const& symbol = args[0].s;
 
@@ -622,7 +669,7 @@ error:
 			} else if (symbol == "note_off" || symbol == "noteoff") {
 				i.callbacks->note_off = std::move(args[1]);
 			} else {
-				assert(false, "symbol not recognized for 'incoming'");
+
 			}
 			return Value{};
 		});
@@ -644,7 +691,17 @@ error:
 					return Value{};
 				}
 
-				unreachable();
+				return Error {
+					.details = errors::Unsupported_Types_For {
+						.type = errors::Unsupported_Types_For::Function,
+						.name = "note_off",
+						.possibilities = {
+							"(number) -> nil",
+							"(number, number) -> nil",
+						}
+					},
+					.location = {}
+				};
 			};
 
 			global.force_define("instrument",     pgmchange);
