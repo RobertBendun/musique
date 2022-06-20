@@ -3,6 +3,8 @@
 
 static Ast wrap_if_several(std::vector<Ast> &&ast, Ast(*wrapper)(std::vector<Ast>));
 
+static usize precedense(std::string_view op);
+
 static inline bool is_identifier_looking(Token::Type type)
 {
 	switch (type) {
@@ -122,14 +124,58 @@ Result<Ast> Parser::parse_infix_expression()
 	auto atomics = Try(parse_many(*this, &Parser::parse_index_expression, std::nullopt, At_Least::One));
 	auto lhs = wrap_if_several(std::move(atomics), Ast::call);
 
-	if (expect(Token::Type::Operator) || expect(Token::Type::Keyword, "and") || expect(Token::Type::Keyword, "or")) {
+	bool const next_is_operator = expect(Token::Type::Operator)
+		|| expect(Token::Type::Keyword, "and")
+		|| expect(Token::Type::Keyword, "or");
+
+	if (next_is_operator) {
 		assert(not expect(Token::Type::Operator, "."), "This should be handled by parse_index_expression");
 		auto op = consume();
-		return parse_expression().map([&](Ast rhs) {
-			return Ast::binary(std::move(op), std::move(lhs), std::move(rhs));
-		});
+
+		Ast ast;
+		ast.location = op.location;
+		ast.type = Ast::Type::Binary;
+		ast.token = std::move(op);
+		ast.arguments.emplace_back(std::move(lhs));
+		return parse_rhs_of_infix_expression(std::move(ast));
 	}
 
+	return lhs;
+}
+
+Result<Ast> Parser::parse_rhs_of_infix_expression(Ast lhs)
+{
+	auto atomics = Try(parse_many(*this, &Parser::parse_index_expression, std::nullopt, At_Least::One));
+	auto rhs = wrap_if_several(std::move(atomics), Ast::call);
+
+	bool const next_is_operator = expect(Token::Type::Operator)
+		|| expect(Token::Type::Keyword, "and")
+		|| expect(Token::Type::Keyword, "or");
+
+	if (!next_is_operator) {
+		lhs.arguments.emplace_back(std::move(rhs));
+		return lhs;
+	}
+
+	assert(not expect(Token::Type::Operator, "."), "This should be handled by parse_index_expression");
+	auto op = consume();
+
+	if (precedense(lhs.token.source) > precedense(op.source)) {
+		lhs.arguments.emplace_back(std::move(rhs));
+		Ast ast;
+		ast.location = op.location;
+		ast.type = Ast::Type::Binary;
+		ast.token = std::move(op);
+		ast.arguments.emplace_back(std::move(lhs));
+		return parse_rhs_of_infix_expression(std::move(ast));
+	}
+
+	Ast ast;
+	ast.location = op.location;
+	ast.type = Ast::Type::Binary;
+	ast.token = std::move(op);
+	ast.arguments.emplace_back(std::move(rhs));
+	lhs.arguments.emplace_back(Try(parse_rhs_of_infix_expression(std::move(ast))));
 	return lhs;
 }
 
@@ -431,6 +477,22 @@ Ast wrap_if_several(std::vector<Ast> &&ast, Ast(*wrapper)(std::vector<Ast>))
 	if (ast.size() == 1)
 		return std::move(ast)[0];
 	return wrapper(std::move(ast));
+}
+
+constexpr bool one_of(std::string_view id, auto const& ...args)
+{
+	return ((id == args) || ...);
+}
+
+static usize precedense(std::string_view op)
+{
+	if (one_of(op, "or")) return 100;
+	if (one_of(op, "and")) return 150;
+	if (one_of(op, "<", ">", "<=", ">=", "==", "!=")) return 200;
+	if (one_of(op, "+", "-")) return 300;
+	if (one_of(op, "*", "/")) return 400;
+
+	unreachable();
 }
 
 bool operator==(Ast const& lhs, Ast const& rhs)
