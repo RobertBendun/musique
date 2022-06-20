@@ -78,7 +78,7 @@ Result<Ast> Parser::parse(std::string_view source, std::string_view filename)
 Result<Ast> Parser::parse_sequence()
 {
 	auto seq = Try(parse_many(*this, &Parser::parse_expression, Token::Type::Expression_Separator, At_Least::Zero));
-	return wrap_if_several(std::move(seq), Ast::sequence);
+	return Ast::sequence(std::move(seq));
 }
 
 Result<Ast> Parser::parse_expression()
@@ -283,14 +283,15 @@ Result<Ast> Parser::parse_atomic_expression()
 		}
 
 	case Token::Type::Open_Paren:
-		consume();
-		return parse_expression().and_then([&](Ast ast) -> Result<Ast> {
+		{
+			consume();
+			auto ast = Try(parse_sequence());
 			if (not expect(Token::Type::Close_Paren)) {
 				unimplemented("Error handling of this code is not implemented yet");
 			}
 			consume();
 			return ast;
-		});
+		}
 
 	default:
 		return Error {

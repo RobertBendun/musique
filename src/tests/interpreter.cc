@@ -129,6 +129,12 @@ suite intepreter_test = [] {
 			evaluates_to(Value::from(Number(42)), "var x = [i|i] 42; x");
 		};
 
+		// Added to explicitly test against bug
+		// Previously this test would return 10
+		should("respect parens in block") = [] {
+			evaluates_to(Value::from(Number(42)), "[(10;42)].0");
+		};
+
 		should("allow modifying declared variable") = [] {
 			evaluates_to(Value::from(Number(43)), "var x = 42; x = 43; 10; x");
 		};
