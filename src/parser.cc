@@ -271,7 +271,10 @@ Result<Ast> Parser::parse_atomic_expression()
 							}
 						}
 					}
-					unimplemented("Don't know why it stopped, maybe end of file?");
+					return Error {
+						.details = errors::Unexpected_Empty_Source {},
+						.location = {}
+					};
 				}
 				consume();
 				if (is_lambda) {
@@ -287,7 +290,15 @@ Result<Ast> Parser::parse_atomic_expression()
 			consume();
 			auto ast = Try(parse_sequence());
 			if (not expect(Token::Type::Close_Paren)) {
-				unimplemented("Error handling of this code is not implemented yet");
+				auto const& token = Try(peek());
+				return Error {
+					.details = errors::internal::Unexpected_Token {
+						.type = type_name(token.type),
+						.source = token.source,
+						.when = "waiting for closing paren ')'"
+					},
+					.location = token.location
+				};
 			}
 			consume();
 			return ast;

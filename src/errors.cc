@@ -185,8 +185,10 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 
 			Lines::the.print(os, std::string(loc->filename), loc->line, loc->line);
 
-			os << pretty::begin_comment << "\nThis error is considered an internal one. It should not be displayed to the end user.\n" << pretty::end;
-			encourage_contact(os);
+			os << pretty::begin_comment << "\nThis error is considered an internal one. It should not be displayed to the end user.\n";
+			os << "\n";
+			os << "This error message is temporary and will be replaced by better one in the future\n";
+			os << pretty::end;
 		},
 
 		[&](errors::Expected_Expression_Separator_Before const& err) {
