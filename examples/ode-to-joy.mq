@@ -1,15 +1,13 @@
-var C = c47;
-var E = e47;
-var G = g47;
-var A = a37;
+var C = chord (c 3 1) (g 3 1) (c 4 1);
+var G = chord (g 3 1) (d 4 1) (g 4 1);
 
 oct 5;
-par (C 4) e e f g;
-par (G 4) g f e d;
-par (C 4) c c d e;
-par (G 4) e d d;
-par (C 4) e e f g;
-par (G 4) g f e d;
-par (C 4) c c d e;
-par (G 4) d c;
-par (C 4) c
+par (C) e e f g;
+par (G) g f e d;
+par (C) c c d e;
+par (G) e (d 5 (1/4)) (d 5 (1/2));
+par (C) e e f g;
+par (G) g f e d;
+par (C) c c d e;
+par (G) (d 4 (3/4)) c;
+par (C) (c 4 1)
