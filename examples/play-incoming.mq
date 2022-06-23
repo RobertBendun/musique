@@ -1,0 +1,2 @@
+incoming 'noteon [channel note velocity |
+	play (note 4 (1/2)) ];
