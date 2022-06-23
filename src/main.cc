@@ -81,6 +81,7 @@ struct Runner
 	midi::ALSA alsa;
 	Interpreter interpreter;
 	std::thread midi_input_event_loop;
+	std::stop_source stop_source;
 
 	/// Setup interpreter and midi connection with given port
 	Runner(std::string input_port, std::string output_port)
@@ -106,6 +107,7 @@ struct Runner
 		if (alsa_go) {
 			interpreter.register_callbacks();
 			midi_input_event_loop = std::thread([this] { handle_midi_event_loop(); });
+			midi_input_event_loop.detach();
 		}
 
 		Env::global->force_define("say", +[](Interpreter&, std::vector<Value> args) -> Result<Value> {
@@ -119,6 +121,11 @@ struct Runner
 		});
 	}
 
+	~Runner()
+	{
+		stop_source.request_stop();
+	}
+
 	Runner(Runner const&) = delete;
 	Runner(Runner &&) = delete;
 	Runner& operator=(Runner const&) = delete;
@@ -126,7 +133,7 @@ struct Runner
 
 	void handle_midi_event_loop()
 	{
-		alsa.input_event_loop();
+		alsa.input_event_loop(stop_source.get_token());
 	}
 
 	/// Run given source
