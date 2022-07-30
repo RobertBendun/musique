@@ -23,6 +23,11 @@ static_assert(Keywords.size() == Keywords_Count, "Table above should contain all
 
 void Lexer::skip_whitespace_and_comments()
 {
+	// Comments in this language have two kinds:
+	//   Single line comment that starts with either '--' or '#!' and ends with end of line
+	//   Multiline comments that start with at least 3 '-' and ends with at least 3 '-'
+	// This function skips over all of them
+
 	for (;;) {
 		{ // Skip whitespace
 			bool done_something = false;
@@ -37,7 +42,7 @@ void Lexer::skip_whitespace_and_comments()
 			}
 		}
 
-		// -- line and multiline coments
+		// Skip -- line and multiline coments
 		if (consume_if('-', '-')) {
 			if (!consume_if('-')) {
 				// skiping a single line comment requires advancing until newline
@@ -97,6 +102,8 @@ auto Lexer::next_token() -> Result<std::variant<Token, End_Of_File>>
 			return Token { Token::Type::Parameter_Separator, finish(), token_location };
 	}
 
+	// Lex numeric literals
+	// They may have following forms: 0, 0.1
 	if (consume_if(unicode::is_digit)) {
 		while (consume_if(unicode::is_digit)) {}
 		if (peek() == '.') {
@@ -112,7 +119,7 @@ auto Lexer::next_token() -> Result<std::variant<Token, End_Of_File>>
 		return Token { Token::Type::Numeric, finish(), token_location };
 	}
 
-	// lex chord declaration
+	// Lex chord declaration
 	if (consume_if(Notes_Symbols)) {
 		while (consume_if("#sfb")) {}
 
@@ -127,6 +134,7 @@ auto Lexer::next_token() -> Result<std::variant<Token, End_Of_File>>
 		return Token { Token::Type::Chord, finish(), token_location };
 	}
 
+	// Lex symbol
 	using namespace std::placeholders;
 	if (consume_if(std::bind(unicode::is_identifier, _1, unicode::First_Character::Yes))) {
 	symbol_lexing:
@@ -140,6 +148,7 @@ auto Lexer::next_token() -> Result<std::variant<Token, End_Of_File>>
 		return t;
 	}
 
+	// Lex operator
 	if (consume_if(Valid_Operator_Chars)) {
 		while (consume_if(Valid_Operator_Chars)) {}
 		return Token { Token::Type::Operator, finish(), token_location };

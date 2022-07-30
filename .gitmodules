@@ -1,3 +1,3 @@
 [submodule "lib/midi"]
 	path = lib/midi
-	url = git@engi.evolpe.it:pi/midi.git
+	url = https://git.wmi.amu.edu.pl/s416496/midi.git

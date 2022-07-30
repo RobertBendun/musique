@@ -217,6 +217,8 @@ static Result<Value> plus_minus_operator(Interpreter &interpreter, std::vector<V
 	}
 
 	// TODO Limit possibilities based on provided types
+	static_assert(std::is_same_v<std::plus<>, Binary_Operation> || std::is_same_v<std::minus<>, Binary_Operation>,
+			"Error message printing only supports operators given above");
 	return Error {
 		.details = errors::Unsupported_Types_For {
 			.type = errors::Unsupported_Types_For::Operator,
