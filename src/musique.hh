@@ -575,6 +575,9 @@ struct Parser
 	/// Parse infix expression
 	Result<Ast> parse_infix_expression();
 
+	/// Parse call expression
+	Result<Ast> parse_call_expression();
+
 	/// Parse right hand size of infix expression
 	Result<Ast> parse_rhs_of_infix_expression(Ast lhs);
 

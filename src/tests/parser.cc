@@ -105,6 +105,15 @@ suite parser_test = [] {
 			Ast::literal({ Token::Type::Numeric, "2", {} })
 		}));
 
+		should("Prioritize binary expressions over function calls") = [] {
+			expect_single_ast("say 1 + 2", Ast::call({
+				Ast::literal({ Token::Type::Symbol, "say", {} }),
+				Ast::binary({ Token::Type::Operator, "+", {} },
+					Ast::literal({ Token::Type::Numeric, "1", {} }),
+					Ast::literal({ Token::Type::Numeric, "2", {} }))
+			}));
+		};
+
 		should("Support function call with complicated expression") = [] {
 			expect_single_ast("say (fib (n-1) + fib (n-2))", Ast::call({
 				Ast::literal({ Token::Type::Symbol, "say", {} }),

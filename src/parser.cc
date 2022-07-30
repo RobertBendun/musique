@@ -86,7 +86,7 @@ Result<Ast> Parser::parse_expression()
 	if (expect(Token::Type::Keyword, "var")) {
 		return parse_variable_declaration();
 	}
-	return parse_infix_expression();
+	return parse_call_expression();
 }
 
 Result<Ast> Parser::parse_variable_declaration()
@@ -119,10 +119,16 @@ Result<Ast> Parser::parse_variable_declaration()
 	return Ast::variable_declaration(var.location, *std::move(lvalue), std::nullopt);
 }
 
+
+Result<Ast> Parser::parse_call_expression()
+{
+	auto maybe_call = Try(parse_many(*this, &Parser::parse_infix_expression, std::nullopt, At_Least::One));
+	return wrap_if_several(std::move(maybe_call), Ast::call);
+}
+
 Result<Ast> Parser::parse_infix_expression()
 {
-	auto atomics = Try(parse_many(*this, &Parser::parse_index_expression, std::nullopt, At_Least::One));
-	auto lhs = wrap_if_several(std::move(atomics), Ast::call);
+	auto lhs = Try(parse_index_expression());
 
 	bool const next_is_operator = expect(Token::Type::Operator)
 		|| expect(Token::Type::Keyword, "and")
@@ -145,8 +151,7 @@ Result<Ast> Parser::parse_infix_expression()
 
 Result<Ast> Parser::parse_rhs_of_infix_expression(Ast lhs)
 {
-	auto atomics = Try(parse_many(*this, &Parser::parse_index_expression, std::nullopt, At_Least::One));
-	auto rhs = wrap_if_several(std::move(atomics), Ast::call);
+	auto rhs = Try(parse_index_expression());
 
 	bool const next_is_operator = expect(Token::Type::Operator)
 		|| expect(Token::Type::Keyword, "and")
