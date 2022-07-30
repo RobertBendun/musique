@@ -241,6 +241,10 @@ static Result<void> Main(std::span<char const*> args)
 			continue;
 		}
 
+		if (arg == "-h" || arg == "--help") {
+			usage();
+		}
+
 		std::cerr << "musique: error: unrecognized command line option: " << arg << std::endl;
 		std::exit(1);
 	}

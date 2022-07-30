@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <numeric>
+#include <iterator>
 
 using namespace boost::ut;
 using namespace std::string_view_literals;
