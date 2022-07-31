@@ -1,12 +1,23 @@
 MAKEFLAGS="-j $(grep -c ^processor /proc/cpuinfo)"
 CXXFLAGS:=$(CXXFLAGS) -std=c++20 -Wall -Wextra -Werror=switch -Werror=return-type -Werror=unused-result -Wno-maybe-uninitialized
-CPPFLAGS:=$(CPPFLAGS) -Ilib/expected/ -Ilib/ut/ -Ilib/midi/include -Isrc/ -Ilib/bestline/
+CPPFLAGS:=$(CPPFLAGS)        \
+					-Ilib/bestline/    \
+					-Ilib/expected/    \
+					-Ilib/midi/include \
+					-Ilib/scheduler    \
+					-Ilib/ut/          \
+					-Isrc/
 RELEASE_FLAGS=-O3
 DEBUG_FLAGS=-O0 -ggdb -fsanitize=undefined -DDebug
 CXX=g++
 
-LDFLAGS=-L./lib/midi/
-LDLIBS=-lmidi-alsa -lasound -lpthread
+LDFLAGS=-L./lib/midi/ -L./lib/scheduler/
+LDLIBS=-lscheduler -lmidi-alsa -lasound -lpthread
+
+Bestline_Dependency   = bin/bestline.o
+Scheduler_Dependency  = lib/scheduler/libscheduler.a
+Midi_Dependency       = lib/midi/libmidi-alsa.a
+External_Dependencies = $(Scheduler_Dependency) $(Midi_Dependency) $(Bestline_Dependency)
 
 Obj=                 \
 		context.o        \
@@ -49,11 +60,14 @@ bin/%.o: src/%.cc src/*.hh
 	@echo "CXX $@"
 	@$(CXX) $(CXXFLAGS) $(RELEASE_FLAGS) $(CPPFLAGS) -o $@ $< -c
 
-bin/musique: $(Release_Obj) bin/main.o bin/bestline.o src/*.hh lib/midi/libmidi-alsa.a
+lib/%.a:
+	(cd $(shell dirname $@); make)
+
+bin/musique: $(Release_Obj) bin/main.o src/*.hh $(External_Dependencies)
 	@echo "CXX $@"
 	@$(CXX) $(CXXFLAGS) $(RELEASE_FLAGS) $(CPPFLAGS) -o $@ $(Release_Obj) bin/bestline.o bin/main.o $(LDFLAGS) $(LDLIBS)
 
-bin/debug/musique: $(Debug_Obj) bin/debug/main.o bin/bestline.o src/*.hh
+bin/debug/musique: $(Debug_Obj) bin/debug/main.o src/*.hh $(External_Dependencies)
 	@echo "CXX $@"
 	@$(CXX) $(CXXFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) -o $@ $(Debug_Obj) bin/bestline.o bin/debug/main.o  $(LDFLAGS) $(LDLIBS)
 
@@ -89,9 +103,12 @@ bin/unit-tests: $(Test_Obj) $(Debug_Obj)
 	@echo "CXX $@"
 	@$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(DEBUG_FLAGS) -o $@ $^
 
-clean:
+clean: clean-dependencies
 	rm -rf bin coverage
 
-.PHONY: clean doc doc-open all test unit-tests
+clean-dependencies:
+	rm -f $(External_Dependencies)
+
+.PHONY: clean clean-dependencies doc doc-open all test unit-tests
 
 $(shell mkdir -p bin/debug/tests)

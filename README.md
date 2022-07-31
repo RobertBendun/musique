@@ -7,18 +7,17 @@ Interpreter języka Musique. Możliwy do wykorzystywania jako:
 
 ## Budowanie interpretera
 
-Jeśli nie posiadasz zależności `lib/midi` to:
+Jeśli nie posiadasz zależności `lib/midi` lub `lib/scheduler` to:
 
 ```console
 $ git submodule init
 $ git submodule update
-$ (cd lib/midi; make)
 ```
 
 A następnie zbuduj interpreter:
 
 ```console
-$ make bin/musique
+$ make
 ```
 
 ## Dostępne komendy
