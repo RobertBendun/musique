@@ -1,3 +1,6 @@
 [submodule "lib/midi"]
 	path = lib/midi
 	url = https://git.wmi.amu.edu.pl/s416496/midi.git
+[submodule "lib/scheduler"]
+	path = lib/scheduler
+	url = https://github.com/RobertBendun/scheduler.git
