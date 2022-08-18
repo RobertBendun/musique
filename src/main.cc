@@ -81,6 +81,7 @@ struct Runner
 	midi::ALSA alsa;
 	Interpreter interpreter;
 	std::thread midi_input_event_loop;
+	std::optional<std::jthread> scheduler_thread;
 	std::stop_source stop_source;
 
 	/// Setup interpreter and midi connection with given port
@@ -109,6 +110,8 @@ struct Runner
 			midi_input_event_loop = std::thread([this] { handle_midi_event_loop(); });
 			midi_input_event_loop.detach();
 		}
+
+		scheduler_thread = std::jthread([this](std::stop_token tok) { interpreter.scheduler.activate(tok); });
 
 		Env::global->force_define("say", +[](Interpreter&, std::vector<Value> args) -> Result<Value> {
 			for (auto it = args.begin(); it != args.end(); ++it) {

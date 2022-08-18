@@ -61,12 +61,26 @@ void Interpreter::register_callbacks()
 {
 	assert(callbacks != nullptr, "Interpreter constructor should initialize this field");
 	callbacks->add_callbacks(*midi_connection, *this);
-
-	callbacks->note_on = Value(+[](Interpreter &, std::vector<Value> args) -> Result<Value> {
-		std::cout << "Received: " << args[1] << "\r\n" << std::flush;
-		return Value{};
-	});
 }
+
+template<size_t N>
+static inline void await(Interpreter &interpreter, std::array<scheduler::Job_Id, N> dependencies)
+{
+	std::mutex mu;
+	std::unique_lock lock(mu);
+
+	std::condition_variable wait_for_finish;
+	bool finished = false;
+
+	interpreter.scheduler.schedule(dependencies, [&] { finished = true; wait_for_finish.notify_one(); });
+	wait_for_finish.wait(lock, [&finished] { return finished; });
+}
+
+static inline void await(Interpreter &interpreter, scheduler::Job_Id dependency)
+{
+	return await(interpreter, std::array { dependency });
+}
+
 
 /// Intrinsic implementation primitive providing a short way to check if arguments match required type signature
 static inline bool typecheck(std::vector<Value> const& args, auto const& ...expected_types)
@@ -345,6 +359,7 @@ static inline Result<void> create_chord(std::vector<Note> &chord, Interpreter &i
 	return {};
 }
 
+
 template<Iterable T>
 static inline Result<void> play_notes(Interpreter &interpreter, T args)
 {
@@ -360,13 +375,13 @@ static inline Result<void> play_notes(Interpreter &interpreter, T args)
 		case Value::Type::Array:
 		case Value::Type::Block:
 			Try(play_notes(interpreter, std::move(arg)));
-			break;
 
-		case Value::Type::Music:
-			interpreter.play(arg.chord);
-			break;
+		break; case Value::Type::Music:
+			{
+				await(interpreter, std::array{ interpreter.play(arg.chord) });
+			}
 
-		default:
+		break; default:
 			assert(false, "this type does not support playing");
 		}
 	}
@@ -565,7 +580,7 @@ error:
 		global.force_define("par", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
 			assert(args.size() >= 1, "par only makes sense for at least one argument"); // TODO(assert)
 			if (args.size() == 1) {
-				i.play(std::move(args.front()).chord);
+				await(i, i.play(std::move(args.front()).chord));
 				return Value{};
 			}
 
@@ -578,7 +593,7 @@ error:
 			}
 
 			for (auto it = std::next(args.begin()); it != args.end(); ++it) {
-				i.play(std::move(*it).chord);
+				await(i, i.play(std::move(*it).chord));
 			}
 
 			for (auto const& note : chord.notes) {
@@ -886,7 +901,7 @@ void Interpreter::leave_scope()
 	env = env->leave();
 }
 
-void Interpreter::play(Chord chord)
+scheduler::Job_Id Interpreter::play(Chord chord)
 {
 	assert(midi_connection, "To play midi Interpreter requires instance of MIDI connection");
 
@@ -895,22 +910,26 @@ void Interpreter::play(Chord chord)
 	// Fill all notes that don't have octave or length with defaults
 	std::transform(chord.notes.begin(), chord.notes.end(), chord.notes.begin(), [&](Note note) { return ctx.fill(note); });
 
-	// Sort that we have smaller times first
-	std::sort(chord.notes.begin(), chord.notes.end(), [](Note const& lhs, Note const& rhs) { return lhs.length < rhs.length; });
-
-	Number max_time = *chord.notes.back().length;
-
 	// Turn all notes on
 	for (auto const& note : chord.notes) {
 		midi_connection->send_note_on(0, *note.into_midi_note(), 127);
 	}
 
-	// Turn off each note at right time
+	Context::Duration max_duration;
+	auto last_job_id = 0;
+
+	// Register all note endings to scheduler
 	for (auto const& note : chord.notes) {
-		if (max_time != Number(0)) {
-			max_time -= *note.length;
-			std::this_thread::sleep_for(ctx.length_to_duration(*note.length));
+		auto duration = ctx.length_to_duration(*note.length);
+		auto job_id = scheduler.schedule(
+			std::chrono::duration_cast<scheduler::Clock::duration>(duration),
+			[this, note = note] { midi_connection->send_note_off(0, *note.into_midi_note(), 127); }
+		);
+		if (duration > max_duration) {
+			max_duration = duration;
+			last_job_id = job_id;
 		}
-		midi_connection->send_note_off(0, *note.into_midi_note(), 127);
 	}
+
+	return last_job_id;
 }

@@ -7,8 +7,8 @@ Note Context::fill(Note note) const
 	return note;
 }
 
-std::chrono::duration<float> Context::length_to_duration(std::optional<Number> length) const
+Context::Duration Context::length_to_duration(std::optional<Number> length) const
 {
 	auto const len = length ? *length : this->length;
-	return std::chrono::duration<float>(float(len.num * (60.f / (float(bpm) / 4))) / len.den);
+	return Context::Duration(float(len.num * (60.f / (float(bpm) / 4))) / len.den);
 }

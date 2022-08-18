@@ -12,6 +12,7 @@
 #include <variant>
 
 #include <midi.hh>
+#include <scheduler.hh>
 #include <tl/expected.hpp>
 
 #if defined(__cpp_lib_source_location)
@@ -890,6 +891,8 @@ private:
 /// Context holds default values for music related actions
 struct Context
 {
+	using Duration = std::chrono::duration<float>;
+
 	/// Default note octave
 	i8 octave = 4;
 
@@ -903,7 +906,7 @@ struct Context
 	Note fill(Note) const;
 
 	/// Converts length to seconds with current bpm
-	std::chrono::duration<float> length_to_duration(std::optional<Number> length) const;
+	Duration length_to_duration(std::optional<Number> length) const;
 };
 
 /// Given program tree evaluates it into Value
@@ -912,6 +915,7 @@ struct Interpreter
 	/// MIDI connection that is used to play music.
 	/// It's optional for simple interpreter testing.
 	midi::Connection *midi_connection = nullptr;
+	scheduler::Scheduler scheduler;
 
 	/// Operators defined for language
 	std::unordered_map<std::string, Intrinsic> operators;
@@ -930,7 +934,7 @@ struct Interpreter
 	Interpreter();
 	~Interpreter();
 	Interpreter(Interpreter const&) = delete;
-	Interpreter(Interpreter &&) = default;
+	Interpreter(Interpreter &&) = delete;
 
 	/// Try to evaluate given program tree
 	Result<Value> eval(Ast &&ast);
@@ -941,8 +945,9 @@ struct Interpreter
 	// Leave scope by changing current environment
 	void leave_scope();
 
-	/// Play note resolving any missing parameters with context via `midi_connection` member.
-	void play(Chord);
+	/// Play note resolving any missing parameters with context via `midi_connection` member
+	/// @returns Total time of notes played
+	scheduler::Job_Id play(Chord);
 };
 
 namespace errors
