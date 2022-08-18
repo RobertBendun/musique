@@ -1,4 +1,5 @@
 #include <musique.hh>
+#include <musique_internal.hh>
 
 /// Intrinsic implementation primitive to ease operation vectorization
 /// @invariant args.size() == 2

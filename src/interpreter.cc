@@ -1,4 +1,5 @@
 #include <musique.hh>
+#include <musique_internal.hh>
 
 #include <chrono>
 #include <iostream>
