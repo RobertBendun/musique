@@ -711,52 +711,66 @@ error:
 			global.force_define("program_change", pgmchange);
 		}
 
+		// Operators definition table
+		static constexpr auto Operators = std::array {
+			std::tuple { "+", plus_minus_operator<std::plus<>> },
+			std::tuple { "-", plus_minus_operator<std::minus<>> },
+			std::tuple { "*", binary_operator<std::multiplies<>, '*'> },
+			std::tuple { "/", binary_operator<std::divides<>, '/'> },
 
-		operators["+"] = plus_minus_operator<std::plus<>>;
-		operators["-"] = plus_minus_operator<std::minus<>>;
-		operators["*"] = binary_operator<std::multiplies<>, '*'>;
-		operators["/"] = binary_operator<std::divides<>, '/'>;
+			std::tuple { "<",  comparison_operator<std::less<>> },
+			std::tuple { ">",  comparison_operator<std::greater<>> },
+			std::tuple { "<=", comparison_operator<std::less_equal<>> },
+			std::tuple { ">=", comparison_operator<std::greater_equal<>> },
 
-		operators["<"]  = comparison_operator<std::less<>>;
-		operators[">"]  = comparison_operator<std::greater<>>;
-		operators["<="] = comparison_operator<std::less_equal<>>;
-		operators[">="] = comparison_operator<std::greater_equal<>>;
+			std::tuple { "==", equality_operator<std::equal_to<>> },
+			std::tuple { "!=", equality_operator<std::not_equal_to<>> },
 
-		operators["=="] = equality_operator<std::equal_to<>>;
-		operators["!="] = equality_operator<std::not_equal_to<>>;
+			std::tuple { ".",
+				+[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
+					assert(args.size() == 2, "Operator . requires two arguments"); // TODO(assert)
+					assert(args.back().type == Value::Type::Number, "Only numbers can be used for indexing"); // TODO(assert)
+					return std::move(args.front()).index(i, std::move(args.back()).n.as_int());
+				}
+			},
 
-		operators["."] = +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
-			assert(args.size() == 2, "Operator . requires two arguments"); // TODO(assert)
-			assert(args.back().type == Value::Type::Number, "Only numbers can be used for indexing"); // TODO(assert)
-			return std::move(args.front()).index(i, std::move(args.back()).n.as_int());
-		};
+			std::tuple { "&",
+				+[](Interpreter&, std::vector<Value> args) -> Result<Value> {
+					using Chord_Chord = Shape<Value::Type::Music, Value::Type::Music>;
 
-		operators["&"] = +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
-			using Chord_Chord = Shape<Value::Type::Music, Value::Type::Music>;
+					if (Chord_Chord::typecheck(args)) {
+						auto [lhs, rhs] = Chord_Chord::move_from(args);
+						auto &l = lhs.notes;
+						auto &r = rhs.notes;
 
-			if (Chord_Chord::typecheck(args)) {
-				auto [lhs, rhs] = Chord_Chord::move_from(args);
-				auto &l = lhs.notes;
-				auto &r = rhs.notes;
+						// Append one set of notes to another to make bigger chord!
+						l.reserve(l.size() + r.size());
+						std::move(r.begin(), r.end(), std::back_inserter(l));
 
-				// Append one set of notes to another to make bigger chord!
-				l.reserve(l.size() + r.size());
-				std::move(r.begin(), r.end(), std::back_inserter(l));
-
-				return Value::from(lhs);
-			}
-
-			return Error {
-				.details = errors::Unsupported_Types_For {
-					.type = errors::Unsupported_Types_For::Operator,
-					.name = "&",
-					.possibilities = {
-						"(music, music) -> music",
+						return Value::from(lhs);
 					}
-				},
-				.location = {}
-			};
+
+					return Error {
+						.details = errors::Unsupported_Types_For {
+							.type = errors::Unsupported_Types_For::Operator,
+							.name = "&",
+							.possibilities = {
+								"(music, music) -> music",
+							}
+						},
+						.location = {}
+					};
+				}
+			},
 		};
+
+		// All operators should be defined here except 'and' and 'or' which handle evaluation differently
+		// and are need unevaluated expressions for their proper evaluation. Exclusion of them is marked
+		// as subtraction of total excluded operators from expected constant
+		static_assert(Operators.size() == Operators_Count - 2, "All operators handlers are defined here");
+
+		// Set all predefined operators into operators array
+		for (auto &[name, fptr] : Operators) { operators[name] = fptr; }
 	}
 }
 

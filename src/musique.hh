@@ -404,7 +404,8 @@ struct Token
 	Location location;
 };
 
-static constexpr auto Keywords_Count = 6;
+static constexpr usize Keywords_Count  =  6;
+static constexpr usize Operators_Count = 14;
 
 std::string_view type_name(Token::Type type);
 
