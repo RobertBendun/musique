@@ -730,6 +730,33 @@ error:
 			assert(args.back().type == Value::Type::Number, "Only numbers can be used for indexing"); // TODO(assert)
 			return std::move(args.front()).index(i, std::move(args.back()).n.as_int());
 		};
+
+		operators["&"] = +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
+			using Chord_Chord = Shape<Value::Type::Music, Value::Type::Music>;
+
+			if (Chord_Chord::typecheck(args)) {
+				auto [lhs, rhs] = Chord_Chord::move_from(args);
+				auto &l = lhs.notes;
+				auto &r = rhs.notes;
+
+				// Append one set of notes to another to make bigger chord!
+				l.reserve(l.size() + r.size());
+				std::move(r.begin(), r.end(), std::back_inserter(l));
+
+				return Value::from(lhs);
+			}
+
+			return Error {
+				.details = errors::Unsupported_Types_For {
+					.type = errors::Unsupported_Types_For::Operator,
+					.name = "&",
+					.possibilities = {
+						"(music, music) -> music",
+					}
+				},
+				.location = {}
+			};
+		};
 	}
 }
 

@@ -502,7 +502,7 @@ static usize precedense(std::string_view op)
 	if (one_of(op, "and")) return 150;
 	if (one_of(op, "<", ">", "<=", ">=", "==", "!=")) return 200;
 	if (one_of(op, "+", "-")) return 300;
-	if (one_of(op, "*", "/")) return 400;
+	if (one_of(op, "*", "/", "&")) return 400;
 
 	unreachable();
 }
