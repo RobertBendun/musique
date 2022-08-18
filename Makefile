@@ -9,6 +9,7 @@ LDFLAGS=-L./lib/midi/
 LDLIBS=-lmidi-alsa -lasound -lpthread
 
 Obj=                    \
+		builtin_functions.o \
 		builtin_operators.o \
 		context.o           \
 		environment.o       \
