@@ -36,12 +36,12 @@ $ make bin/musique
 - `make test` - Uruchom wszystkie dostępne testy automatyczne
 - `make unit-tests` - Uruchamia testy jednostkowe interpretera
 - `make unit-test-coverage` - Uruchamia raport pokrycia kodu przez testy jednostkowe
-- `etc/tools/test.py test examples` - Uruchamia testy zachowań przykładów
-- `etc/tools/test.py record examples` - Nagrywa testy zachowań przykładów
+- `scripts/test.py test examples` - Uruchamia testy zachowań przykładów
+- `scripts/test.py record examples` - Nagrywa testy zachowań przykładów
 
 ### Debugowanie
 
-- `etc/tools/log-function-calls.sh` - Tworzy listę wywołań funkcji używając GDB
+- `scripts/log-function-calls.sh` - Tworzy listę wywołań funkcji używając GDB
 
 ## Budowa projektu
 
@@ -51,11 +51,12 @@ $ make bin/musique
 ├── coverage
 ├── doc            Dokumentacja języka, interpretera
 │   └── build      Miejsce produkcji dokumentacji
-├── etc/tools      Dodatkowe narzędzia
+├── editor         Pluginy do edytorów dodające wsparcie dla języka
 ├── lib            Zewnętrzne zależności projektu
 │   ├── expected
 │   └── ut
 └── include        Główny katalog z plikami nagłówkowymi
+├── scripts        Skrypty wspierające budowanie i tworzenie
 └── src            Główny katalog z plikami źródłowymi
     └── tests      Katalog z testami jednostkowymi
 ```

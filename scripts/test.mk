@@ -12,7 +12,7 @@ Tests=          \
 Test_Obj=$(addprefix bin/debug/tests/,$(Tests))
 
 test: unit-tests
-	etc/tools/test.py test examples
+	scripts/test.py test examples
 
 unit-tests: bin/unit-tests
 	./$<
