@@ -134,6 +134,7 @@ void unreachable(Location loc)
 std::ostream& operator<<(std::ostream& os, Error const& err)
 {
 	std::string_view short_description = visit(Overloaded {
+		[](errors::Missing_Variable const&)                     { return "Cannot find variable"; },
 		[](errors::Failed_Numeric_Parsing const&)               { return "Failed to parse a number"; },
 		[](errors::Not_Callable const&)                         { return "Value not callable"; },
 		[](errors::Undefined_Operator const&)                   { return "Undefined operator"; },
@@ -154,6 +155,17 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 
 	auto const loc = err.location;
 	visit(Overloaded {
+		[&](errors::Missing_Variable const& err) {
+			os << "I encountered '" << err.name << "' that looks like variable but\n";
+			os << "I can't find it in surrounding scope or in one of parent's scopes\n";
+			os << "\n";
+
+			Lines::the.print(os, std::string(loc->filename), loc->line, loc->line);
+
+			os << "\n";
+			os << "Variables can only be references in scope (block) where they been created\n";
+			os << "or from parent blocks to variable block\n";
+		},
 		[&](errors::Unrecognized_Character const& err) {
 			os << "I encountered character in the source code that was not supposed to be here.\n";
 			os << "  Character Unicode code: U+" << std::hex << err.invalid_character << '\n';

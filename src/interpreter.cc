@@ -749,8 +749,15 @@ Result<Value> Interpreter::eval(Ast &&ast)
 					return Value::from(std::move(ast.token.source).substr(1));
 				}
 
-				auto const value = env->find(std::string(ast.token.source));
-				assert(value, "Missing variable error is not implemented yet: variable: "s + std::string(ast.token.source));
+				auto name = std::string(ast.token.source);
+
+				auto const value = env->find(name);
+				if (!value) {
+					return Error {
+						.details  = errors::Missing_Variable { .name = std::move(name) },
+						.location = ast.location
+					};
+				}
 				return *value;
 			}
 			return Value{};

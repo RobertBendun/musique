@@ -104,6 +104,13 @@ namespace errors
 		std::vector<std::string> possibilities;
 	};
 
+	/// When user tries to use variable that has not been defined yet.
+	struct Missing_Variable
+	{
+		/// Name of variable
+		std::string name;
+	};
+
 	/// Collection of messages that are considered internal and should not be printed to the end user.
 	namespace internal
 	{
@@ -126,6 +133,7 @@ namespace errors
 		Expected_Expression_Separator_Before,
 		Failed_Numeric_Parsing,
 		Literal_As_Identifier,
+		Missing_Variable,
 		Not_Callable,
 		Undefined_Operator,
 		Unexpected_Empty_Source,
