@@ -952,10 +952,74 @@ struct Interpreter
 
 	/// Play note resolving any missing parameters with context via `midi_connection` member.
 	void play(Chord);
+
+	/// Add to global interpreter scope all builtin function definitions
+	///
+	/// Invoked during construction
+	void register_builtin_functions();
+
+	/// Add to interpreter operators table all operators
+	///
+	/// Invoked during construction
+	void register_builtin_operators();
 };
 
 namespace errors
 {
 	[[noreturn]]
 	void all_tokens_were_not_parsed(std::span<Token>);
+}
+
+/// Intrinsic implementation primitive providing a short way to check if arguments match required type signature
+static inline bool typecheck(std::vector<Value> const& args, auto const& ...expected_types)
+{
+	return (args.size() == sizeof...(expected_types)) &&
+		[&args, expected_types...]<std::size_t ...I>(std::index_sequence<I...>) {
+			return ((expected_types == args[I].type) && ...);
+		} (std::make_index_sequence<sizeof...(expected_types)>{});
+}
+
+/// Intrinsic implementation primitive providing a short way to move values based on matched type signature
+static inline bool typecheck_front(std::vector<Value> const& args, auto const& ...expected_types)
+{
+	return (args.size() >= sizeof...(expected_types)) &&
+		[&args, expected_types...]<std::size_t ...I>(std::index_sequence<I...>) {
+			return ((expected_types == args[I].type) && ...);
+		} (std::make_index_sequence<sizeof...(expected_types)>{});
+}
+
+/// Intrinsic implementation primitive providing a short way to move values based on matched type signature
+template<auto ...Types>
+static inline auto move_from(std::vector<Value>& args)
+{
+	return [&args]<std::size_t ...I>(std::index_sequence<I...>) {
+		return std::tuple { (std::move(args[I]).*(Member_For_Value_Type<Types>::value)) ... };
+	} (std::make_index_sequence<sizeof...(Types)>{});
+}
+
+/// Shape abstraction to define what types are required once
+template<auto ...Types>
+struct Shape
+{
+	static inline auto move_from(std::vector<Value>& args)       { return ::move_from<Types...>(args); }
+	static inline auto typecheck(std::vector<Value>& args)       { return ::typecheck(args, Types...); }
+	static inline auto typecheck_front(std::vector<Value>& args) { return ::typecheck_front(args, Types...); }
+};
+
+/// Returns if type can be indexed
+static constexpr bool is_indexable(Value::Type type)
+{
+	return type == Value::Type::Array || type == Value::Type::Block;
+}
+
+/// Returns if type can be called
+static constexpr bool is_callable(Value::Type type)
+{
+	return type == Value::Type::Block || type == Value::Type::Intrinsic;
+}
+
+/// Binary operation may be vectorized when there are two argument which one is indexable and other is not
+static inline bool may_be_vectorized(std::vector<Value> const& args)
+{
+	return args.size() == 2 && (is_indexable(args[0].type) != is_indexable(args[1].type));
 }

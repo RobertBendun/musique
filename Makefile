@@ -8,19 +8,20 @@ CXX=g++
 LDFLAGS=-L./lib/midi/
 LDLIBS=-lmidi-alsa -lasound -lpthread
 
-Obj=                 \
-		context.o        \
-		environment.o    \
-		errors.o         \
-		interpreter.o    \
-		lexer.o          \
-		lines.o          \
-		location.o       \
-		number.o         \
-		parser.o         \
-		pretty.o         \
-		unicode.o        \
-		unicode_tables.o \
+Obj=                    \
+		builtin_operators.o \
+		context.o           \
+		environment.o       \
+		errors.o            \
+		interpreter.o       \
+		lexer.o             \
+		lines.o             \
+		location.o          \
+		number.o            \
+		parser.o            \
+		pretty.o            \
+		unicode.o           \
+		unicode_tables.o    \
 		value.o
 
 Tests=          \
