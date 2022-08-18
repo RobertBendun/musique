@@ -55,7 +55,8 @@ $ make bin/musique
 ├── lib            Zewnętrzne zależności projektu
 │   ├── expected
 │   └── ut
-└── src            Główny katalog z kodem źródłowym
+└── include        Główny katalog z plikami nagłówkowymi
+└── src            Główny katalog z plikami źródłowymi
     └── tests      Katalog z testami jednostkowymi
 ```
 

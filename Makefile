@@ -1,6 +1,6 @@
 MAKEFLAGS="-j $(grep -c ^processor /proc/cpuinfo)"
 CXXFLAGS:=$(CXXFLAGS) -std=c++20 -Wall -Wextra -Werror=switch -Werror=return-type -Werror=unused-result -Wno-maybe-uninitialized
-CPPFLAGS:=$(CPPFLAGS) -Ilib/expected/ -Ilib/ut/ -Ilib/midi/include -Isrc/ -Ilib/bestline/
+CPPFLAGS:=$(CPPFLAGS) -Ilib/expected/ -Ilib/ut/ -Ilib/midi/include -Iinclude/ -Ilib/bestline/
 RELEASE_FLAGS=-O3
 DEBUG_FLAGS=-O0 -ggdb -fsanitize=undefined -DDebug
 CXX=g++
@@ -47,19 +47,19 @@ test: unit-tests
 
 debug: bin/debug/musique
 
-bin/%.o: src/%.cc src/*.hh
+bin/%.o: src/%.cc include/*.hh
 	@echo "CXX $@"
 	@$(CXX) $(CXXFLAGS) $(RELEASE_FLAGS) $(CPPFLAGS) -o $@ $< -c
 
-bin/musique: $(Release_Obj) bin/main.o bin/bestline.o src/*.hh lib/midi/libmidi-alsa.a
+bin/musique: $(Release_Obj) bin/main.o bin/bestline.o include/*.hh lib/midi/libmidi-alsa.a
 	@echo "CXX $@"
 	@$(CXX) $(CXXFLAGS) $(RELEASE_FLAGS) $(CPPFLAGS) -o $@ $(Release_Obj) bin/bestline.o bin/main.o $(LDFLAGS) $(LDLIBS)
 
-bin/debug/musique: $(Debug_Obj) bin/debug/main.o bin/bestline.o src/*.hh
+bin/debug/musique: $(Debug_Obj) bin/debug/main.o bin/bestline.o include/*.hh
 	@echo "CXX $@"
 	@$(CXX) $(CXXFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) -o $@ $(Debug_Obj) bin/bestline.o bin/debug/main.o  $(LDFLAGS) $(LDLIBS)
 
-bin/debug/%.o: src/%.cc src/*.hh
+bin/debug/%.o: src/%.cc include/*.hh
 	@echo "CXX $@"
 	@$(CXX) $(CXXFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) -o $@ $< -c
 
@@ -81,7 +81,7 @@ unit-test-coverage:
 	rm -rf bin/debug
 	xdg-open coverage/index.html
 
-doc: Doxyfile src/*.cc src/*.hh
+doc: Doxyfile src/*.cc include/*.hh
 	doxygen
 
 doc-open: doc
