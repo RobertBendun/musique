@@ -5,7 +5,6 @@
 #include <memory>
 #include <iostream>
 
-
 void Interpreter::register_callbacks()
 {
 	assert(callbacks == nullptr, "This field should be uninitialized");
@@ -80,7 +79,7 @@ static inline Result<void> play_notes(Interpreter &interpreter, T args)
 			break;
 
 		case Value::Type::Music:
-			interpreter.play(arg.chord);
+			Try(interpreter.play(arg.chord));
 			break;
 
 		default:
@@ -294,9 +293,11 @@ error:
 	global.force_define("oct", &ctx_read_write_property<&Context::octave>);
 
 	global.force_define("par", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
+		Try(ensure_midi_connection_available(i, Midi_Connection_Type::Output, "par"));
+
 		assert(args.size() >= 1, "par only makes sense for at least one argument"); // TODO(assert)
 		if (args.size() == 1) {
-			i.play(std::move(args.front()).chord);
+			Try(i.play(std::move(args.front()).chord));
 			return Value{};
 		}
 
@@ -309,7 +310,7 @@ error:
 		}
 
 		for (auto it = std::next(args.begin()); it != args.end(); ++it) {
-			i.play(std::move(*it).chord);
+			Try(i.play(std::move(*it).chord));
 		}
 
 		for (auto const& note : chord.notes) {

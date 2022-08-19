@@ -134,6 +134,7 @@ void unreachable(Location loc)
 std::ostream& operator<<(std::ostream& os, Error const& err)
 {
 	std::string_view short_description = visit(Overloaded {
+		[](errors::Operation_Requires_Midi_Connection const&)   { return "Operation requires MIDI connection"; },
 		[](errors::Missing_Variable const&)                     { return "Cannot find variable"; },
 		[](errors::Failed_Numeric_Parsing const&)               { return "Failed to parse a number"; },
 		[](errors::Not_Callable const&)                         { return "Value not callable"; },
@@ -154,13 +155,29 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 	error_heading(os, err.location, Error_Level::Error, short_description);
 
 	auto const loc = err.location;
+	auto const print_error_line = [&] {
+		if (loc->filename != "") {
+			Lines::the.print(os, std::string(loc->filename), loc->line, loc->line);
+		}
+	};
+
 	visit(Overloaded {
+		[&](errors::Operation_Requires_Midi_Connection const& err) {
+			os << "I cannot '" << err.name << "' due to lack of MIDI " << (err.is_input ? "input" : "output") << "connection\n";
+			os << "\n";
+
+			print_error_line();
+
+			os << "You can connect to given MIDI device by specifing port when running musique command like:\n";
+			os << (err.is_input ? "  --input" : "  --output") << " PORT\n";
+			os << "You can list all available ports with --list flag\n";
+		},
 		[&](errors::Missing_Variable const& err) {
 			os << "I encountered '" << err.name << "' that looks like variable but\n";
 			os << "I can't find it in surrounding scope or in one of parent's scopes\n";
 			os << "\n";
 
-			Lines::the.print(os, std::string(loc->filename), loc->line, loc->line);
+			print_error_line();
 
 			os << "\n";
 			os << "Variables can only be references in scope (block) where they been created\n";
@@ -172,7 +189,7 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 			os << "  Character printed: '" << utf8::Print{err.invalid_character} << "'\n";
 			os << "\n";
 
-			Lines::the.print(os, std::string(loc->filename), loc->line, loc->line);
+			print_error_line();
 
 			os << "Musique only accepts characters that are unicode letters or ascii numbers and punctuation\n";
 		},
@@ -182,7 +199,7 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 			constexpr auto Min = std::numeric_limits<decltype(Number::num)>::min();
 			os << "I tried to parse numeric literal, but I failed.\n\n";
 
-			Lines::the.print(os, std::string(loc->filename), loc->line, loc->line);
+			print_error_line();
 
 			if (err.reason == std::errc::result_out_of_range) {
 				os << "\nDeclared number is outside of valid range of numbers that can be represented.\n";
@@ -195,7 +212,7 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 			os << "  Token type: " << ut.type << '\n';
 			os << "  Token source: " << ut.source << "\n\n";
 
-			Lines::the.print(os, std::string(loc->filename), loc->line, loc->line);
+			print_error_line();
 
 			os << pretty::begin_comment << "\nThis error is considered an internal one. It should not be displayed to the end user.\n";
 			os << "\n";
@@ -206,7 +223,7 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 		[&](errors::Expected_Expression_Separator_Before const& err) {
 			os << "I failed to parse following code, due to missing semicolon before it!\n\n";
 
-			Lines::the.print(os, std::string(loc->filename), loc->line, loc->line);
+			print_error_line();
 
 			if (err.what == "var") {
 				os << "\nIf you want to create variable inside expression try wrapping them inside parentheses like this:\n";
@@ -217,7 +234,7 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 		[&](errors::Literal_As_Identifier const& err) {
 			os << "I expected an identifier in " << err.context << ", but found" << (err.type_name.empty() ? "" : " ") << err.type_name << " value = '" << err.source << "'\n\n";
 
-			Lines::the.print(os, std::string(loc->filename), loc->line, loc->line);
+			print_error_line();
 
 			if (err.type_name == "chord") {
 				os << "\nTry renaming to different name or appending with something that is not part of chord literal like 'x'\n";

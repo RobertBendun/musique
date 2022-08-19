@@ -1,6 +1,8 @@
 #ifndef Musique_Internal_HH
 #define Musique_Internal_HH
 
+#include <musique.hh>
+
 /// Binary operation may be vectorized when there are two argument which one is indexable and other is not
 static inline bool may_be_vectorized(std::vector<Value> const& args)
 {
@@ -59,5 +61,8 @@ struct Interpreter::Incoming_Midi_Callbacks
 		}
 	}
 };
+
+enum class Midi_Connection_Type { Output, Input };
+Result<void> ensure_midi_connection_available(Interpreter&, Midi_Connection_Type, std::string_view operation_name);
 
 #endif

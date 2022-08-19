@@ -202,9 +202,9 @@ void Interpreter::leave_scope()
 	env = env->leave();
 }
 
-void Interpreter::play(Chord chord)
+Result<void> Interpreter::play(Chord chord)
 {
-	assert(midi_connection, "To play midi Interpreter requires instance of MIDI connection");
+	Try(ensure_midi_connection_available(*this, Midi_Connection_Type::Output, "play"));
 
 	auto &ctx = context_stack.back();
 
@@ -229,4 +229,37 @@ void Interpreter::play(Chord chord)
 		}
 		midi_connection->send_note_off(0, *note.into_midi_note(), 127);
 	}
+
+	return {};
+}
+
+Result<void> ensure_midi_connection_available(Interpreter &i, Midi_Connection_Type m, std::string_view operation_name)
+{
+	switch (m) {
+	break; case Midi_Connection_Type::Output:
+		if (i.midi_connection == nullptr || !i.midi_connection->supports_output()) {
+			return Error {
+				.details = errors::Operation_Requires_Midi_Connection {
+					.is_input = false,
+					.name = std::string(operation_name),
+				},
+				.location = {}
+			};
+		}
+
+	break; case Midi_Connection_Type::Input:
+		if (i.midi_connection == nullptr || !i.midi_connection->supports_input()) {
+			return Error {
+				.details = errors::Operation_Requires_Midi_Connection {
+					.is_input = false,
+					.name = std::string(operation_name),
+				},
+				.location = {}
+			};
+		}
+	break; default:
+		unreachable();
+	}
+
+	return {};
 }

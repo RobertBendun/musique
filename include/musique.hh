@@ -112,6 +112,16 @@ namespace errors
 		std::string name;
 	};
 
+	/// When user tries to invoke some MIDI action but haven't established MIDI connection
+	struct Operation_Requires_Midi_Connection
+	{
+		/// If its input or output connection missing
+		bool is_input;
+
+		/// Name of the operation that was beeing invoked
+		std::string name;
+	};
+
 	/// Collection of messages that are considered internal and should not be printed to the end user.
 	namespace internal
 	{
@@ -136,6 +146,7 @@ namespace errors
 		Literal_As_Identifier,
 		Missing_Variable,
 		Not_Callable,
+		Operation_Requires_Midi_Connection,
 		Undefined_Operator,
 		Unexpected_Empty_Source,
 		Unexpected_Keyword,
@@ -952,7 +963,7 @@ struct Interpreter
 	void leave_scope();
 
 	/// Play note resolving any missing parameters with context via `midi_connection` member.
-	void play(Chord);
+	Result<void> play(Chord);
 
 	/// Add to global interpreter scope all builtin function definitions
 	///
