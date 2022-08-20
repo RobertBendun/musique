@@ -52,4 +52,47 @@ suite number_test = [] {
 		test_number_from(".75",  Number(3, 4));
 		test_number_from("120.", Number(120, 1));
 	};
+
+	"Rounding"_test = [] {
+		should("Support floor operation") = [] {
+			expect(eq(Number(0),   Number(1, 2).floor()));
+			expect(eq(Number(1),   Number(3, 2).floor()));
+			expect(eq(Number(-1),  Number(-1, 2).floor()));
+			expect(eq(Number(0),   Number(0).floor()));
+			expect(eq(Number(1),   Number(1).floor()));
+			expect(eq(Number(-1),  Number(-1).floor()));
+		};
+
+		should("Support ceil operation") = [] {
+			expect(eq(Number(1),   Number(1, 2).ceil()));
+			expect(eq(Number(2),   Number(3, 2).ceil()));
+			expect(eq(Number(0),  Number(-1, 2).ceil()));
+			expect(eq(Number(-1),  Number(-3, 2).ceil()));
+			expect(eq(Number(0),   Number(0).ceil()));
+			expect(eq(Number(1),   Number(1).ceil()));
+			expect(eq(Number(-1),  Number(-1).ceil()));
+		};
+
+		should("Support round operation") = [] {
+			expect(eq(Number(1),   Number(3, 4).round()));
+			expect(eq(Number(0),   Number(1, 4).round()));
+			expect(eq(Number(1),   Number(5, 4).round()));
+			expect(eq(Number(2),   Number(7, 4).round()));
+
+			expect(eq(Number(-1),   Number(-3, 4).round()));
+			expect(eq(Number(0),   Number(-1, 4).round()));
+			expect(eq(Number(-1),   Number(-5, 4).round()));
+			expect(eq(Number(-2),   Number(-7, 4).round()));
+		};
+	};
+
+	"Number exponantiation"_test = [] {
+		should("Support integer powers") = [] {
+			expect(eq(Number(1, 4), Number(1, 2).pow(Number(2))));
+			expect(eq(Number(4, 1), Number(1, 2).pow(Number(-2))));
+
+			expect(eq(Number(4, 1), Number(2).pow(Number(2))));
+			expect(eq(Number(1, 4), Number(2).pow(Number(-2))));
+		};
+	};
 };

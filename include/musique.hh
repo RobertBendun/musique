@@ -667,6 +667,13 @@ struct Number
 	Number  operator/(Number const& rhs) const;
 	Number& operator/=(Number const& rhs);
 
+	Number floor() const; ///< Return number rounded down to nearest integer
+	Number ceil()  const; ///< Return number rounded up to nearest integer
+	Number round() const; ///< Return number rounded to nearest integer
+
+	Number inverse()     const; ///< Return number raised to power -1
+	Number pow(Number n) const; ///< Return number raised to power `n`.
+
 	/// Parses source contained by token into a Number instance
 	static Result<Number> from(Token token);
 };

@@ -190,3 +190,93 @@ parse_fractional:
 
 	return result.simplify();
 }
+
+Number Number::floor() const
+{
+	auto result = *this;
+	if (den <= -1 || den >= 1) {
+		if (auto const r = result.num % result.den; r != 0) {
+			result.num += ((num < 0) xor (den < 0) ? 1 : -1) * r;
+			result.num /= result.den;
+			result.den = 1;
+		} else {
+			result.simplify_inplace();
+		}
+	}
+	return result;
+}
+
+Number Number::ceil()  const
+{
+	auto result = *this;
+	if (den <= -1 || den >= 1) {
+		if (auto const r = result.num % result.den; r != 0) {
+			result.num += ((num < 0) xor (den < 0) ? -1 : 1) * r;
+			result.num /= result.den;
+			result.den = 1;
+		} else {
+			result.simplify_inplace();
+		}
+	}
+	return result;
+}
+
+Number Number::round() const
+{
+	auto result = *this;
+	if (den <= -1 || den >= 1) {
+		if (auto const r = result.num % result.den; r != 0) {
+			auto const dir = r * 2 >= result.den ? -1 : 1;
+			result.num += ((num < 0) xor (den < 0) ? dir : -dir) * r;
+			result.num /= result.den;
+			result.den = 1;
+		} else {
+			result.simplify_inplace();
+		}
+	}
+	return result;
+}
+
+Number Number::inverse() const
+{
+	assert(num != 0, "Cannot take inverse of fraction with 0 in denominator");
+	return { den, num };
+}
+
+namespace impl
+{
+	// Raise Number to integer power helper
+	static inline Number pow(Number const& x, decltype(Number::num) n)
+	{
+		// We simply raise numerator and denominator to required power
+		// and if n is negative we take inverse.
+		if (n == 0) return Number(1);
+		auto result = Number { 1, 1 };
+
+		auto flip = false;
+		if (n < 0) { flip = true; n = -n; }
+
+		for (auto i = n; i != 0; --i) result.num *= x.num;
+		for (auto i = n; i != 0; --i) result.den *= x.den;
+		return flip ? result.inverse() : result;
+	}
+}
+
+Number Number::pow(Number n) const
+{
+	n.simplify_inplace();
+
+	// Simple case, we raise this to integer power.
+	if (n.den == 1) {
+		return impl::pow(*this, n.num);
+	}
+
+	// Hard case, we raise this to fractional power.
+	// Essentialy finding n.den root of (x to n.num power).
+	// We need to protect ourselfs against even roots of negative numbers.
+	// TODO Implement this case properly.
+	//
+	// TODO(assert) <- taking power is not always doable so this operation
+	//   should produce error not crash with assertion failure in the future.
+	unimplemented();
+}

@@ -132,22 +132,24 @@ static Result<Value> comparison_operator(Interpreter&, std::vector<Value> args)
 	return Value::from(Binary_Predicate{}(args.front(), args.back()));
 }
 
+using Operator_Entry = std::tuple<char const*, Intrinsic>;
+
 /// Operators definition table
 static constexpr auto Operators = std::array {
-	std::tuple { "+", plus_minus_operator<std::plus<>> },
-	std::tuple { "-", plus_minus_operator<std::minus<>> },
-	std::tuple { "*", binary_operator<std::multiplies<>, '*'> },
-	std::tuple { "/", binary_operator<std::divides<>, '/'> },
+	Operator_Entry { "+", plus_minus_operator<std::plus<>> },
+	Operator_Entry { "-", plus_minus_operator<std::minus<>> },
+	Operator_Entry { "*", binary_operator<std::multiplies<>, '*'> },
+	Operator_Entry { "/", binary_operator<std::divides<>, '/'> },
 
-	std::tuple { "<",  comparison_operator<std::less<>> },
-	std::tuple { ">",  comparison_operator<std::greater<>> },
-	std::tuple { "<=", comparison_operator<std::less_equal<>> },
-	std::tuple { ">=", comparison_operator<std::greater_equal<>> },
+	Operator_Entry { "<",  comparison_operator<std::less<>> },
+	Operator_Entry { ">",  comparison_operator<std::greater<>> },
+	Operator_Entry { "<=", comparison_operator<std::less_equal<>> },
+	Operator_Entry { ">=", comparison_operator<std::greater_equal<>> },
 
-	std::tuple { "==", equality_operator<std::equal_to<>> },
-	std::tuple { "!=", equality_operator<std::not_equal_to<>> },
+	Operator_Entry { "==", equality_operator<std::equal_to<>> },
+	Operator_Entry { "!=", equality_operator<std::not_equal_to<>> },
 
-	std::tuple { ".",
+	Operator_Entry { ".",
 		+[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
 			assert(args.size() == 2, "Operator . requires two arguments"); // TODO(assert)
 			assert(args.back().type == Value::Type::Number, "Only numbers can be used for indexing"); // TODO(assert)
@@ -155,7 +157,7 @@ static constexpr auto Operators = std::array {
 		}
 	},
 
-	std::tuple { "&",
+	Operator_Entry { "&",
 		+[](Interpreter&, std::vector<Value> args) -> Result<Value> {
 			using Chord_Chord = Shape<Value::Type::Music, Value::Type::Music>;
 
