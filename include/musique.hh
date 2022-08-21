@@ -1023,6 +1023,11 @@ struct Shape
 	static inline auto move_from(std::vector<Value>& args)       { return ::move_from<Types...>(args); }
 	static inline auto typecheck(std::vector<Value>& args)       { return ::typecheck(args, Types...); }
 	static inline auto typecheck_front(std::vector<Value>& args) { return ::typecheck_front(args, Types...); }
+
+	static inline auto typecheck_and_move(std::vector<Value>& args)
+	{
+		return typecheck(args) ? std::optional { move_from(args) } : std::nullopt;
+	}
 };
 
 /// Returns if type can be indexed

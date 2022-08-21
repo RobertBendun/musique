@@ -173,6 +173,42 @@ invalid_argument_type:
 	};
 }
 
+enum class Range_Direction { Up, Down };
+template<Range_Direction dir>
+Result<Value> builtin_range(Interpreter&, std::vector<Value> args)
+{
+	using N   = Shape<Value::Type::Number>;
+	using NN  = Shape<Value::Type::Number, Value::Type::Number>;
+	using NNN = Shape<Value::Type::Number, Value::Type::Number, Value::Type::Number>;
+
+	auto start = Number(0), stop = Number(0), step = Number(1);
+
+	if (0) {}
+	else if (auto a = N::typecheck_and_move(args))   { std::tie(stop)              = *a; }
+	else if (auto a = NN::typecheck_and_move(args))  { std::tie(start, stop)       = *a; }
+	else if (auto a = NNN::typecheck_and_move(args)) { std::tie(start, stop, step) = *a; }
+	else {
+		return Error {
+			.details = errors::Unsupported_Types_For {
+				.type = errors::Unsupported_Types_For::Function,
+				.name = "range",
+				.possibilities = {
+					"(stop: number) -> array of number",
+					"(start: number, stop: number) -> array of number",
+					"(start: number, stop: number, step: number) -> array of number",
+				}
+			},
+			.location = {}
+		};
+	}
+
+	Array array;
+	for (; start < stop; start += step) {
+		array.elements.push_back(Value::from(start));
+	}
+	return Value::from(std::move(array));
+}
+
 void Interpreter::register_builtin_functions()
 {
 	auto &global = *Env::global;
@@ -462,7 +498,7 @@ error:
 			return Error {
 				.details = errors::Unsupported_Types_For {
 					.type = errors::Unsupported_Types_For::Function,
-					.name = "note_off",
+					.name = "program_change",
 					.possibilities = {
 						"(number) -> nil",
 						"(number, number) -> nil",
@@ -480,4 +516,8 @@ error:
 	global.force_define("ceil",  apply_numeric_transform<&Number::ceil>);
 	global.force_define("floor", apply_numeric_transform<&Number::floor>);
 	global.force_define("round", apply_numeric_transform<&Number::round>);
+
+	global.force_define("range", builtin_range<Range_Direction::Up>);
+	global.force_define("up",    builtin_range<Range_Direction::Up>);
+	global.force_define("down",  builtin_range<Range_Direction::Down>);
 }
