@@ -312,6 +312,11 @@ struct [[nodiscard("This value may contain critical error, so it should NOT be i
 	}
 
 	using Storage::and_then;
+
+	operator std::optional<Error>() &&
+	{
+		return Storage::has_value() ? std::nullopt : std::optional(Storage::error());
+	}
 };
 
 /// Shorthand for forwarding error values with Result type family.

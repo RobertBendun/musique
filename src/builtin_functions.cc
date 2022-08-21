@@ -209,6 +209,102 @@ Result<Value> builtin_range(Interpreter&, std::vector<Value> args)
 	return Value::from(std::move(array));
 }
 
+static auto builtin_program_change(Interpreter &i, std::vector<Value> args) -> Result<Value> {
+	using Program = Shape<Value::Type::Number>;
+	using Channel_Program = Shape<Value::Type::Number, Value::Type::Number>;
+
+	if (Program::typecheck(args)) {
+		auto [program] = Program::move_from(args);
+		i.midi_connection->send_program_change(0, program.as_int());
+		return Value{};
+	}
+
+	if (Channel_Program::typecheck(args)) {
+		auto [chan, program] = Channel_Program::move_from(args);
+		i.midi_connection->send_program_change(chan.as_int(), program.as_int());
+		return Value{};
+	}
+
+	return Error {
+		.details = errors::Unsupported_Types_For {
+			.type = errors::Unsupported_Types_For::Function,
+			.name = "program_change",
+			.possibilities = {
+				"(number) -> nil",
+				"(number, number) -> nil",
+			}
+		},
+		.location = {}
+	};
+}
+
+static inline Result<void> sequential_play(Interpreter &i, Value v)
+{
+	switch (v.type) {
+	break; case Value::Type::Array:
+		for (auto &el : v.array.elements)
+			Try(sequential_play(i, std::move(el)));
+
+	break; case Value::Type::Block:
+		unimplemented(); // waits for eval support
+
+	break; case Value::Type::Music:
+		return i.play(v.chord);
+
+	break; default:
+		;
+	}
+
+	return {};
+}
+
+static Result<Value> builtin_par(Interpreter &i, std::vector<Value> args) {
+	Try(ensure_midi_connection_available(i, Midi_Connection_Type::Output, "par"));
+
+	assert(args.size() >= 1, "par only makes sense for at least one argument"); // TODO(assert)
+	if (args.size() == 1) {
+		Try(i.play(std::move(args.front()).chord));
+		return Value{};
+	}
+
+	// Create chord that should sustain during playing of all other notes
+	auto &ctx = i.context_stack.back();
+	auto chord = std::move(args.front()).chord;
+	std::transform(chord.notes.begin(), chord.notes.end(), chord.notes.begin(), [&](Note note) { return ctx.fill(note); });
+
+	for (auto const& note : chord.notes) {
+		i.midi_connection->send_note_on(0, *note.into_midi_note(), 127);
+	}
+
+	auto const chord_off = [&] {
+		for (auto const& note : chord.notes) {
+			i.midi_connection->send_note_off(0, *note.into_midi_note(), 127);
+		}
+	};
+
+	for (auto it = std::next(args.begin()); it != args.end(); ++it) {
+		std::optional<Error> error = std::nullopt;
+		switch (it->type) {
+		break;
+		case Value::Type::Music:
+		case Value::Type::Array:
+		case Value::Type::Block:
+			error = sequential_play(i, *it);
+
+		break; default:
+			unimplemented(); // type matching error
+		}
+
+		if (error) {
+			chord_off();
+			return *std::move(error);
+		}
+	}
+
+	chord_off();
+	return Value{};
+}
+
 void Interpreter::register_builtin_functions()
 {
 	auto &global = *Env::global;
@@ -362,34 +458,6 @@ error:
 	global.force_define("bpm", &ctx_read_write_property<&Context::bpm>);
 	global.force_define("oct", &ctx_read_write_property<&Context::octave>);
 
-	global.force_define("par", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
-		Try(ensure_midi_connection_available(i, Midi_Connection_Type::Output, "par"));
-
-		assert(args.size() >= 1, "par only makes sense for at least one argument"); // TODO(assert)
-		if (args.size() == 1) {
-			Try(i.play(std::move(args.front()).chord));
-			return Value{};
-		}
-
-		auto &ctx = i.context_stack.back();
-		auto chord = std::move(args.front()).chord;
-		std::transform(chord.notes.begin(), chord.notes.end(), chord.notes.begin(), [&](Note note) { return ctx.fill(note); });
-
-		for (auto const& note : chord.notes) {
-			i.midi_connection->send_note_on(0, *note.into_midi_note(), 127);
-		}
-
-		for (auto it = std::next(args.begin()); it != args.end(); ++it) {
-			Try(i.play(std::move(*it).chord));
-		}
-
-		for (auto const& note : chord.notes) {
-			i.midi_connection->send_note_off(0, *note.into_midi_note(), 127);
-		}
-
-		return Value{};
-	});
-
 	global.force_define("note_on", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
 		using Channel_Note_Velocity = Shape<Value::Type::Number, Value::Type::Number, Value::Type::Number>;
 		using Channel_Music_Velocity = Shape<Value::Type::Number, Value::Type::Music, Value::Type::Number>;
@@ -478,40 +546,11 @@ error:
 		return Value{};
 	});
 
-	{
-		constexpr auto pgmchange = +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
-			using Program = Shape<Value::Type::Number>;
-			using Channel_Program = Shape<Value::Type::Number, Value::Type::Number>;
+	global.force_define("par", builtin_par);
 
-			if (Program::typecheck(args)) {
-				auto [program] = Program::move_from(args);
-				i.midi_connection->send_program_change(0, program.as_int());
-				return Value{};
-			}
-
-			if (Channel_Program::typecheck(args)) {
-				auto [chan, program] = Channel_Program::move_from(args);
-				i.midi_connection->send_program_change(chan.as_int(), program.as_int());
-				return Value{};
-			}
-
-			return Error {
-				.details = errors::Unsupported_Types_For {
-					.type = errors::Unsupported_Types_For::Function,
-					.name = "program_change",
-					.possibilities = {
-						"(number) -> nil",
-						"(number, number) -> nil",
-					}
-				},
-				.location = {}
-			};
-		};
-
-		global.force_define("instrument",     pgmchange);
-		global.force_define("pgmchange",      pgmchange);
-		global.force_define("program_change", pgmchange);
-	}
+	global.force_define("instrument",     builtin_program_change);
+	global.force_define("pgmchange",      builtin_program_change);
+	global.force_define("program_change", builtin_program_change);
 
 	global.force_define("ceil",  apply_numeric_transform<&Number::ceil>);
 	global.force_define("floor", apply_numeric_transform<&Number::floor>);
