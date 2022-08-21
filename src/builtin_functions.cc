@@ -139,6 +139,40 @@ static Result<Array> into_flat_array(Interpreter &i, std::vector<Value> args)
 	return into_flat_array(i, std::span(args));
 }
 
+template<auto> struct Number_Method_Name;
+template<> struct Number_Method_Name<&Number::floor> { static constexpr auto value = "floor"; };
+template<> struct Number_Method_Name<&Number::ceil>  { static constexpr auto value = "ceil"; };
+template<> struct Number_Method_Name<&Number::round> { static constexpr auto value = "round"; };
+
+template<auto Method>
+static Result<Value> apply_numeric_transform(Interpreter &i, std::vector<Value> args)
+{
+	using N = Shape<Value::Type::Number>;
+	if (N::typecheck(args)) {
+		return Value::from((std::get<0>(N::move_from(args)).*Method)());
+	}
+
+	auto array = Try(into_flat_array(i, std::span(args)));
+
+	for (Value &arg : array.elements) {
+		if (arg.type != Value::Type::Number)
+			goto invalid_argument_type;
+		arg.n = (arg.n.*Method)();
+	}
+	return Value::from(std::move(array));
+
+invalid_argument_type:
+	return Error {
+		.details = errors::Unsupported_Types_For {
+			.type = errors::Unsupported_Types_For::Function,
+			.name = Number_Method_Name<Method>::value,
+			.possibilities = {
+				"(number | array of number ...) -> number",
+			}
+		},
+	};
+}
+
 void Interpreter::register_builtin_functions()
 {
 	auto &global = *Env::global;
@@ -442,4 +476,8 @@ error:
 		global.force_define("pgmchange",      pgmchange);
 		global.force_define("program_change", pgmchange);
 	}
+
+	global.force_define("ceil",  apply_numeric_transform<&Number::ceil>);
+	global.force_define("floor", apply_numeric_transform<&Number::floor>);
+	global.force_define("round", apply_numeric_transform<&Number::round>);
 }
