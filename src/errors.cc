@@ -155,7 +155,7 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 	error_heading(os, err.location, Error_Level::Error, short_description);
 
 	auto const loc = err.location;
-	auto const print_error_line = [&] {
+	auto const print_error_line = [&] (std::optional<Location> loc) {
 		if (loc) {
 			Lines::the.print(os, std::string(loc->filename), loc->line, loc->line);
 			os << '\n';
@@ -167,7 +167,7 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 			os << "I cannot '" << err.name << "' due to lack of MIDI " << (err.is_input ? "input" : "output") << "connection\n";
 			os << "\n";
 
-			print_error_line();
+			print_error_line(loc);
 
 			os << "You can connect to given MIDI device by specifing port when running musique command like:\n";
 			os << (err.is_input ? "  --input" : "  --output") << " PORT\n";
@@ -178,7 +178,7 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 			os << "I can't find it in surrounding scope or in one of parent's scopes\n";
 			os << "\n";
 
-			print_error_line();
+			print_error_line(loc);
 
 			os << "Variables can only be references in scope (block) where they been created\n";
 			os << "or from parent blocks to variable block\n";
@@ -189,7 +189,7 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 			os << "  Character printed: '" << utf8::Print{err.invalid_character} << "'\n";
 			os << "\n";
 
-			print_error_line();
+			print_error_line(loc);
 
 			os << "Musique only accepts characters that are unicode letters or ascii numbers and punctuation\n";
 		},
@@ -199,7 +199,7 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 			constexpr auto Min = std::numeric_limits<decltype(Number::num)>::min();
 			os << "I tried to parse numeric literal, but I failed.\n\n";
 
-			print_error_line();
+			print_error_line(loc);
 
 			if (err.reason == std::errc::result_out_of_range) {
 				os << "Declared number is outside of valid range of numbers that can be represented.\n";
@@ -212,7 +212,7 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 			os << "  Token type: " << ut.type << '\n';
 			os << "  Token source: " << ut.source << "\n\n";
 
-			print_error_line();
+			print_error_line(loc);
 
 			os << pretty::begin_comment << "This error is considered an internal one. It should not be displayed to the end user.\n";
 			os << "\n";
@@ -223,7 +223,7 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 		[&](errors::Expected_Expression_Separator_Before const& err) {
 			os << "I failed to parse following code, due to missing semicolon before it!\n\n";
 
-			print_error_line();
+			print_error_line(loc);
 
 			if (err.what == "var") {
 				os << "If you want to create variable inside expression try wrapping them inside parentheses like this:\n";
@@ -234,7 +234,7 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 		[&](errors::Literal_As_Identifier const& err) {
 			os << "I expected an identifier in " << err.context << ", but found" << (err.type_name.empty() ? "" : " ") << err.type_name << " value = '" << err.source << "'\n\n";
 
-			print_error_line();
+			print_error_line(loc);
 
 			if (err.type_name == "chord") {
 				os << "Try renaming to different name or appending with something that is not part of chord literal like 'x'\n";
@@ -252,7 +252,7 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 				{
 					os << "I tried to call function '" << err.name << "' but you gave me wrong types for it!\n";
 
-					print_error_line();
+					print_error_line(loc);
 
 					os << "Make sure that all values matches one of supported signatures listed below!\n";
 					os << '\n';
@@ -267,7 +267,7 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 					os << "I tried and failed to evaluate operator '" << err.name << "' due to values with wrong types provided\n";
 					os << "Make sure that both values matches one of supported signatures listed below!\n";
 					os << '\n';
-					print_error_line();
+					print_error_line(loc);
 
 
 					if (err.name == "+") { os << "Addition only supports:\n"; }
@@ -285,7 +285,7 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 			os << "Value of type " << err.type << " cannot be called.\n";
 			os << "\n";
 
-			print_error_line();
+			print_error_line(loc);
 
 			os << "Only values of this types can be called:\n";
 			os << "  - musical values like c, c47, (c&g) can be called to provide octave and duration\n";
@@ -299,9 +299,21 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 			os << "when correct code for such expression would be [4;3]\n";
 			os << pretty::end;
 		},
+		[&](errors::Unexpected_Empty_Source const& err) {
+			switch (err.reason) {
+			break; case errors::Unexpected_Empty_Source::Block_Without_Closing_Bracket:
+				os << "Reached end of input when waiting for closing of a block ']'\n";
+				os << "Expected block end after:\n\n";
+				print_error_line(loc);
+
+				if (err.start) {
+					os << "Which was introduced by block starting here:\n\n";
+					print_error_line(err.start);
+				}
+			}
+		},
 		[&](errors::Undefined_Operator const&)               { unimplemented(); },
 		[&](errors::Unexpected_Keyword const&)               { unimplemented(); },
-		[&](errors::Unexpected_Empty_Source const&)          { unimplemented(); }
 	}, err.details);
 
 	return os;

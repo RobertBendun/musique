@@ -272,8 +272,11 @@ Result<Ast> Parser::parse_atomic_expression()
 						}
 					}
 					return Error {
-						.details = errors::Unexpected_Empty_Source {},
-						.location = {}
+						.details = errors::Unexpected_Empty_Source {
+							.reason = errors::Unexpected_Empty_Source::Block_Without_Closing_Bracket,
+							.start = opening.location
+						},
+						.location = tokens.back().location
 					};
 				}
 				consume();
