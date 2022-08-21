@@ -457,7 +457,7 @@ struct Lines
 	void add_file(std::string filename, std::string_view source);
 
 	/// Add single line into file (REPL usage)
-	void add_line(std::string const& filename, std::string_view source);
+	void add_line(std::string const& filename, std::string_view source, unsigned line_number);
 
 	/// Print selected region
 	void print(std::ostream& os, std::string const& file, unsigned first_line, unsigned last_line) const;
@@ -604,7 +604,7 @@ struct Parser
 
 	/// Parses whole source code producing Ast or Error
 	/// using Parser structure internally
-	static Result<Ast> parse(std::string_view source, std::string_view filename);
+	static Result<Ast> parse(std::string_view source, std::string_view filename, unsigned line_number = 0);
 
 	/// Parse sequence, collection of expressions
 	Result<Ast> parse_sequence();

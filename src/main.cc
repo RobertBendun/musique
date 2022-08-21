@@ -17,6 +17,7 @@ namespace fs = std::filesystem;
 
 static bool ast_only_mode = false;
 static bool enable_repl = false;
+static unsigned repl_line_number = 1;
 
 #define Ignore(Call) do { auto const ignore_ ## __LINE__ = (Call); (void) ignore_ ## __LINE__; } while(0)
 
@@ -150,7 +151,7 @@ struct Runner
 	/// Run given source
 	Result<void> run(std::string_view source, std::string_view filename, bool output = false)
 	{
-		auto ast = Try(Parser::parse(source, filename));
+		auto ast = Try(Parser::parse(source, filename, repl_line_number));
 
 		if (ast_only_mode) {
 			dump(ast);
@@ -264,8 +265,9 @@ static Result<void> Main(std::span<char const*> args)
 
 	for (auto const& [is_file, argument] : runnables) {
 		if (!is_file) {
-			Lines::the.add_line("<arguments>", argument);
+			Lines::the.add_line("<arguments>", argument, repl_line_number);
 			Try(runner.run(argument, "<arguments>"));
+			repl_line_number++;
 			continue;
 		}
 		auto path = argument;
@@ -286,6 +288,7 @@ static Result<void> Main(std::span<char const*> args)
 	}
 
 	if (runnables.empty() || enable_repl) {
+		repl_line_number = 1;
 		enable_repl = true;
 		bestlineSetCompletionCallback(completion);
 		for (;;) {
@@ -317,12 +320,13 @@ static Result<void> Main(std::span<char const*> args)
 				continue;
 			}
 
-			Lines::the.add_line("<repl>", raw);
+			Lines::the.add_line("<repl>", raw, repl_line_number);
 			auto result = runner.run(raw, "<repl>", true);
 			if (not result.has_value()) {
 				std::cout << std::flush;
 				std::cerr << result.error() << std::flush;
 			}
+			repl_line_number++;
 			// We don't free input line since there could be values that still relay on it
 		}
 	}

@@ -21,9 +21,12 @@ void Lines::add_file(std::string filename, std::string_view source)
 	}
 }
 
-void Lines::add_line(std::string const& filename, std::string_view source)
+void Lines::add_line(std::string const& filename, std::string_view source, unsigned line_number)
 {
-	lines[filename].push_back(source);
+	assert(line_number != 0, "Line number = 0 is invalid");
+	if (lines[filename].size() <= line_number)
+		lines[filename].resize(line_number);
+	lines[filename][line_number - 1] = source;
 }
 
 void Lines::print(std::ostream &os, std::string const& filename, unsigned first_line, unsigned last_line) const

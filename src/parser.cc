@@ -44,10 +44,11 @@ static Result<std::vector<Ast>> parse_many(
 	std::optional<Token::Type> separator,
 	At_Least at_least);
 
-Result<Ast> Parser::parse(std::string_view source, std::string_view filename)
+Result<Ast> Parser::parse(std::string_view source, std::string_view filename, unsigned line_number)
 {
 	Lexer lexer{source};
 	lexer.location.filename = filename;
+	lexer.location.line = line_number;
 	Parser parser;
 
 	for (;;) {

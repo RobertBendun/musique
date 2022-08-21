@@ -312,7 +312,12 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 				}
 			}
 		},
-		[&](errors::Undefined_Operator const&)               { unimplemented(); },
+		[&](errors::Undefined_Operator const& err) {
+			os << "I encountered '" << err.op <<  "' that looks like operator but it isn't one.\n";
+			os << '\n';
+
+			print_error_line(loc);
+		},
 		[&](errors::Unexpected_Keyword const&)               { unimplemented(); },
 	}, err.details);
 
