@@ -210,14 +210,6 @@ static auto builtin_program_change(Interpreter &i, std::vector<Value> args) -> R
 	};
 }
 
-static Result<void> action_play(Interpreter &i, Value v)
-{
-	if (v.type == Value::Type::Music) {
-		Try(i.play(std::move(v).chord));
-	}
-	return {};
-}
-
 /// Plays sequentialy notes walking into arrays and evaluation blocks
 ///
 /// @invariant default_action is play one
@@ -238,6 +230,12 @@ static inline Result<void> sequential_play(Interpreter &i, Value v)
 		;
 	}
 
+	return {};
+}
+
+static Result<void> action_play(Interpreter &i, Value v)
+{
+	Try(sequential_play(i, std::move(v)));
 	return {};
 }
 

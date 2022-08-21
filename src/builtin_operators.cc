@@ -132,13 +132,45 @@ static Result<Value> comparison_operator(Interpreter&, std::vector<Value> args)
 	return Value::from(Binary_Predicate{}(args.front(), args.back()));
 }
 
+static Result<Value> multiplication_operator(Interpreter &i, std::vector<Value> args)
+{
+	using MN = Shape<Value::Type::Music, Value::Type::Number>;
+	using NM = Shape<Value::Type::Number, Value::Type::Music>;
+
+	Number repeat; Chord what; bool typechecked = false;
+
+	// TODO add automatic symetry resolution for cases like this
+	if (NM::typecheck(args))      { typechecked = true; std::tie(repeat, what) = NM::move_from(args); }
+	else if (MN::typecheck(args)) { typechecked = true; std::tie(what, repeat) = MN::move_from(args); }
+
+	if (typechecked) {
+		return Value::from(Array {
+			.elements = std::vector<Value>(
+				repeat.floor().as_int(), Value::from(std::move(what))
+			)
+		});
+	}
+
+	// If binary_operator returns an error that lists all possible overloads
+	// of this operator we must inject overloads that we provided above
+	auto result = binary_operator<std::multiplies<>, '*'>(i, std::move(args));
+	if (!result.has_value()) {
+		auto &details = result.error().details;
+		if (auto p = std::get_if<errors::Unsupported_Types_For>(&details)) {
+			p->possibilities.push_back("(repeat: number, what: music) -> array of music");
+			p->possibilities.push_back("(what: music, repeat: number) -> array of music");
+		}
+	}
+	return result;
+}
+
 using Operator_Entry = std::tuple<char const*, Intrinsic>;
 
 /// Operators definition table
 static constexpr auto Operators = std::array {
 	Operator_Entry { "+", plus_minus_operator<std::plus<>> },
 	Operator_Entry { "-", plus_minus_operator<std::minus<>> },
-	Operator_Entry { "*", binary_operator<std::multiplies<>, '*'> },
+	Operator_Entry { "*", multiplication_operator },
 	Operator_Entry { "/", binary_operator<std::divides<>, '/'> },
 
 	Operator_Entry { "<",  comparison_operator<std::less<>> },
