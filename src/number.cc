@@ -191,50 +191,45 @@ parse_fractional:
 	return result.simplify();
 }
 
+namespace impl
+{
+	enum class Rounding_Mode { Ceil, Floor, Round };
+
+	static Number round(Number result, Rounding_Mode rm)
+	{
+		if (result.den <= -1 || result.den >= 1) {
+			if (auto const r = result.num % result.den; r != 0) {
+				auto const sign = (result.num < 0) xor (result.den < 0) ? -1 : 1;
+
+				if (rm == Rounding_Mode::Round)
+					rm = r * 2 >= result.den ? Rounding_Mode::Ceil : Rounding_Mode::Floor;
+
+				if (rm == Rounding_Mode::Floor) result.num -= sign * r;
+				if (rm == Rounding_Mode::Ceil)  result.num += sign * r;
+
+				result.num /= result.den;
+				result.den = 1;
+			} else {
+				result.simplify_inplace();
+			}
+		}
+		return result;
+	}
+}
+
 Number Number::floor() const
 {
-	auto result = *this;
-	if (den <= -1 || den >= 1) {
-		if (auto const r = result.num % result.den; r != 0) {
-			result.num += ((num < 0) xor (den < 0) ? 1 : -1) * r;
-			result.num /= result.den;
-			result.den = 1;
-		} else {
-			result.simplify_inplace();
-		}
-	}
-	return result;
+	return impl::round(*this, impl::Rounding_Mode::Floor);
 }
 
 Number Number::ceil()  const
 {
-	auto result = *this;
-	if (den <= -1 || den >= 1) {
-		if (auto const r = result.num % result.den; r != 0) {
-			result.num += ((num < 0) xor (den < 0) ? -1 : 1) * r;
-			result.num /= result.den;
-			result.den = 1;
-		} else {
-			result.simplify_inplace();
-		}
-	}
-	return result;
+	return impl::round(*this, impl::Rounding_Mode::Ceil);
 }
 
 Number Number::round() const
 {
-	auto result = *this;
-	if (den <= -1 || den >= 1) {
-		if (auto const r = result.num % result.den; r != 0) {
-			auto const dir = r * 2 >= result.den ? -1 : 1;
-			result.num += ((num < 0) xor (den < 0) ? dir : -dir) * r;
-			result.num /= result.den;
-			result.den = 1;
-		} else {
-			result.simplify_inplace();
-		}
-	}
-	return result;
+	return impl::round(*this, impl::Rounding_Mode::Round);
 }
 
 Number Number::inverse() const
