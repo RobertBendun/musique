@@ -61,34 +61,6 @@ static inline Result<void> create_chord(std::vector<Note> &chord, Interpreter &i
 	return {};
 }
 
-template<Iterable T>
-static inline Result<void> builtin_play(Interpreter &interpreter, T args)
-{
-	for (auto i = 0u; i < args.size(); ++i) {
-		Value arg;
-		if constexpr (With_Index_Method<T>) {
-			arg = Try(args.index(interpreter, i));
-		} else {
-			arg = std::move(args[i]);
-		}
-
-		switch (arg.type) {
-		case Value::Type::Array:
-		case Value::Type::Block:
-			Try(builtin_play(interpreter, std::move(arg)));
-			break;
-
-		case Value::Type::Music:
-			Try(interpreter.play(arg.chord));
-			break;
-
-		default:
-			assert(false, "this type does not support playing");
-		}
-	}
-
-	return {};
-}
 
 template<auto Mem_Ptr>
 Result<Value> ctx_read_write_property(Interpreter &interpreter, std::vector<Value> args)
@@ -269,6 +241,29 @@ static inline Result<void> sequential_play(Interpreter &i, Value v)
 	return {};
 }
 
+template<With_Index_Operator Container = std::vector<Value>>
+static inline Result<Value> builtin_play(Interpreter &i, Container args)
+{
+	Try(ensure_midi_connection_available(i, Midi_Connection_Type::Output, "play"));
+	auto previous_action = std::exchange(i.default_action, action_play);
+	i.context_stack.push_back(i.context_stack.back());
+
+	auto const finally = [&] {
+		i.default_action = std::move(previous_action);
+		i.context_stack.pop_back();
+	};
+
+	for (auto &el : args) {
+		if (std::optional<Error> error = sequential_play(i, std::move(el))) {
+			finally();
+			return *std::move(error);
+		}
+	}
+
+	finally();
+	return {};
+}
+
 static Result<Value> builtin_par(Interpreter &i, std::vector<Value> args) {
 	Try(ensure_midi_connection_available(i, Midi_Connection_Type::Output, "par"));
 
@@ -287,38 +282,12 @@ static Result<Value> builtin_par(Interpreter &i, std::vector<Value> args) {
 		i.midi_connection->send_note_on(0, *note.into_midi_note(), 127);
 	}
 
-	auto previous_action = std::exchange(i.default_action, action_play);
-	i.context_stack.push_back(i.context_stack.back());
+	auto result = builtin_play(i, std::span(args).subspan(1));
 
-	auto const chord_off = [&] {
-		for (auto const& note : chord.notes) {
-			i.midi_connection->send_note_off(0, *note.into_midi_note(), 127);
-		}
-		i.default_action = std::move(previous_action);
-		i.context_stack.pop_back();
-	};
-
-	for (auto it = std::next(args.begin()); it != args.end(); ++it) {
-		std::optional<Error> error = std::nullopt;
-		switch (it->type) {
-		break;
-		case Value::Type::Music:
-		case Value::Type::Array:
-		case Value::Type::Block:
-			error = sequential_play(i, *it);
-
-		break; default:
-			unimplemented(); // type matching error
-		}
-
-		if (error) {
-			chord_off();
-			return *std::move(error);
-		}
+	for (auto const& note : chord.notes) {
+		i.midi_connection->send_note_off(0, *note.into_midi_note(), 127);
 	}
-
-	chord_off();
-	return Value{};
+	return result;
 }
 
 void Interpreter::register_builtin_functions()
@@ -383,10 +352,7 @@ error:
 		return Value::from(Number(args.front().size()));
 	});
 
-	global.force_define("play", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
-		Try(builtin_play(i, std::move(args)));
-		return Value{};
-	});
+	global.force_define("play", builtin_play);
 
 	global.force_define("flat", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
 		return Value::from(Try(into_flat_array(i, std::move(args))));
