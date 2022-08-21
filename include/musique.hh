@@ -5,6 +5,7 @@
 #include <concepts>
 #include <cstdint>
 #include <cstring>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <ostream>
@@ -955,6 +956,8 @@ struct Interpreter
 	/// Context stack. `constext_stack.back()` is a current context.
 	/// There is always at least one context
 	std::vector<Context> context_stack;
+
+	std::function<Result<void>(Interpreter&, Value)> default_action;
 
 	struct Incoming_Midi_Callbacks;
 	std::unique_ptr<Incoming_Midi_Callbacks> callbacks;

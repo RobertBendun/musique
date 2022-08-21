@@ -62,7 +62,7 @@ static inline Result<void> create_chord(std::vector<Note> &chord, Interpreter &i
 }
 
 template<Iterable T>
-static inline Result<void> play_notes(Interpreter &interpreter, T args)
+static inline Result<void> builtin_play(Interpreter &interpreter, T args)
 {
 	for (auto i = 0u; i < args.size(); ++i) {
 		Value arg;
@@ -75,7 +75,7 @@ static inline Result<void> play_notes(Interpreter &interpreter, T args)
 		switch (arg.type) {
 		case Value::Type::Array:
 		case Value::Type::Block:
-			Try(play_notes(interpreter, std::move(arg)));
+			Try(builtin_play(interpreter, std::move(arg)));
 			break;
 
 		case Value::Type::Music:
@@ -238,6 +238,17 @@ static auto builtin_program_change(Interpreter &i, std::vector<Value> args) -> R
 	};
 }
 
+static Result<void> action_play(Interpreter &i, Value v)
+{
+	if (v.type == Value::Type::Music) {
+		Try(i.play(std::move(v).chord));
+	}
+	return {};
+}
+
+/// Plays sequentialy notes walking into arrays and evaluation blocks
+///
+/// @invariant default_action is play one
 static inline Result<void> sequential_play(Interpreter &i, Value v)
 {
 	switch (v.type) {
@@ -246,7 +257,7 @@ static inline Result<void> sequential_play(Interpreter &i, Value v)
 			Try(sequential_play(i, std::move(el)));
 
 	break; case Value::Type::Block:
-		unimplemented(); // waits for eval support
+		Try(sequential_play(i, Try(i.eval(std::move(v).blk.body))));
 
 	break; case Value::Type::Music:
 		return i.play(v.chord);
@@ -270,16 +281,21 @@ static Result<Value> builtin_par(Interpreter &i, std::vector<Value> args) {
 	// Create chord that should sustain during playing of all other notes
 	auto &ctx = i.context_stack.back();
 	auto chord = std::move(args.front()).chord;
-	std::transform(chord.notes.begin(), chord.notes.end(), chord.notes.begin(), [&](Note note) { return ctx.fill(note); });
+	std::for_each(chord.notes.begin(), chord.notes.end(), [&](Note &note) { note = ctx.fill(note); });
 
 	for (auto const& note : chord.notes) {
 		i.midi_connection->send_note_on(0, *note.into_midi_note(), 127);
 	}
 
+	auto previous_action = std::exchange(i.default_action, action_play);
+	i.context_stack.push_back(i.context_stack.back());
+
 	auto const chord_off = [&] {
 		for (auto const& note : chord.notes) {
 			i.midi_connection->send_note_off(0, *note.into_midi_note(), 127);
 		}
+		i.default_action = std::move(previous_action);
+		i.context_stack.pop_back();
 	};
 
 	for (auto it = std::next(args.begin()); it != args.end(); ++it) {
@@ -368,7 +384,7 @@ error:
 	});
 
 	global.force_define("play", +[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
-		Try(play_notes(i, std::move(args)));
+		Try(builtin_play(i, std::move(args)));
 		return Value{};
 	});
 

@@ -142,8 +142,12 @@ Result<Value> Interpreter::eval(Ast &&ast)
 	case Ast::Type::Sequence:
 		{
 			Value v;
-			for (auto &a : ast.arguments)
+			bool first = true;
+			for (auto &a : ast.arguments) {
+				if (!first && default_action) Try(default_action(*this, v));
 				v = Try(eval(std::move(a)));
+				first = false;
+			}
 			return v;
 		}
 
