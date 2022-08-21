@@ -317,6 +317,27 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 			os << '\n';
 
 			print_error_line(loc);
+
+			static constexpr auto Operators = std::array {
+				"and", "or",
+				"==", "!=", "<", ">", "<=", ">=",
+				"+", "+=", "-", "-=", "*", "*=", "/", "/=",
+				"&", "&=", "."
+			};
+
+			os << pretty::begin_comment;
+			os << "Operators that look familiar to one above:\n";
+			os << "  ";
+
+			for (auto op : Operators) {
+				for (auto c : err.op) {
+					if (std::string_view(op).find(c) != std::string_view::npos) {
+						os << op << ' ';
+						break;
+					}
+				}
+			}
+			os << '\n' << pretty::end;
 		},
 		[&](errors::Unexpected_Keyword const&)               { unimplemented(); },
 	}, err.details);
