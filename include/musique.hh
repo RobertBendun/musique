@@ -297,6 +297,17 @@ struct [[nodiscard("This value may contain critical error, so it should NOT be i
 		}
 	}
 
+	/// Fill error location if it's empty and we have an error
+	inline Result<T> with_location(Location location) &&
+	{
+		if (!Storage::has_value()) {
+			if (auto& target = Storage::error().location; !target || target == Location{}) {
+				target = location;
+			}
+		}
+		return *this;
+	}
+
 	inline tl::expected<T, Error> to_expected() &&
 	{
 		return *static_cast<Storage*>(this);

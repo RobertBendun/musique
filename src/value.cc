@@ -168,11 +168,8 @@ Result<Value> Value::operator()(Interpreter &i, std::vector<Value> args)
 			return *this;
 		}
 	default:
-		// TODO Fill location
 		return Error {
-			.details = errors::Not_Callable {
-				.type = type_name(type)
-			},
+			.details = errors::Not_Callable { .type = type_name(type) },
 			.location = std::nullopt,
 		};
 	}

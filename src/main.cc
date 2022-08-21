@@ -53,6 +53,17 @@ static std::string_view pop(std::span<char const*> &span)
 	std::exit(1);
 }
 
+void print_repl_help()
+{
+	std::cout <<
+		"List of all available commands of Musique interactive mode:\n"
+		":exit - quit interactive mode\n"
+		":help - prints this help message\n"
+		":!<command> - allows for execution of any shell command\n"
+		":clear - clears screen\n"
+		;
+}
+
 /// Trim spaces from left an right
 static void trim(std::string_view &s)
 {
@@ -301,6 +312,7 @@ static Result<void> Main(std::span<char const*> args)
 				if (command == "exit") { break; }
 				if (command == "clear") { std::cout << "\x1b[1;1H\x1b[2J" << std::flush; continue; }
 				if (command.starts_with('!')) { Ignore(system(command.data() + 1)); continue; }
+				if (command == "help") { print_repl_help(); continue; }
 				std::cerr << "musique: error: unrecognized REPL command '" << command << '\'' << std::endl;
 				continue;
 			}

@@ -156,8 +156,9 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 
 	auto const loc = err.location;
 	auto const print_error_line = [&] {
-		if (loc->filename != "") {
+		if (loc) {
 			Lines::the.print(os, std::string(loc->filename), loc->line, loc->line);
+			os << '\n';
 		}
 	};
 
@@ -179,7 +180,6 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 
 			print_error_line();
 
-			os << "\n";
 			os << "Variables can only be references in scope (block) where they been created\n";
 			os << "or from parent blocks to variable block\n";
 		},
@@ -202,7 +202,7 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 			print_error_line();
 
 			if (err.reason == std::errc::result_out_of_range) {
-				os << "\nDeclared number is outside of valid range of numbers that can be represented.\n";
+				os << "Declared number is outside of valid range of numbers that can be represented.\n";
 				os << "Only numbers in range [" << Min << ", " << Max << "] are supported\n";
 			}
 		},
@@ -214,7 +214,7 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 
 			print_error_line();
 
-			os << pretty::begin_comment << "\nThis error is considered an internal one. It should not be displayed to the end user.\n";
+			os << pretty::begin_comment << "This error is considered an internal one. It should not be displayed to the end user.\n";
 			os << "\n";
 			os << "This error message is temporary and will be replaced by better one in the future\n";
 			os << pretty::end;
@@ -226,7 +226,7 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 			print_error_line();
 
 			if (err.what == "var") {
-				os << "\nIf you want to create variable inside expression try wrapping them inside parentheses like this:\n";
+				os << "If you want to create variable inside expression try wrapping them inside parentheses like this:\n";
 				os << "    10 + (var i = 20)\n";
 			}
 		},
@@ -237,7 +237,7 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 			print_error_line();
 
 			if (err.type_name == "chord") {
-				os << "\nTry renaming to different name or appending with something that is not part of chord literal like 'x'\n";
+				os << "Try renaming to different name or appending with something that is not part of chord literal like 'x'\n";
 
 				os << pretty::begin_comment <<
 					"\nMusical notation names are reserved for chord and note notations,\n"
@@ -251,6 +251,9 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 			case errors::Unsupported_Types_For::Function:
 				{
 					os << "I tried to call function '" << err.name << "' but you gave me wrong types for it!\n";
+
+					print_error_line();
+
 					os << "Make sure that all values matches one of supported signatures listed below!\n";
 					os << '\n';
 
@@ -264,6 +267,8 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 					os << "I tried and failed to evaluate operator '" << err.name << "' due to values with wrong types provided\n";
 					os << "Make sure that both values matches one of supported signatures listed below!\n";
 					os << '\n';
+					print_error_line();
+
 
 					if (err.name == "+") { os << "Addition only supports:\n"; }
 					else { os << "Operator '" << err.name << "' only supports:\n"; }
@@ -276,7 +281,24 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 			}
 		},
 
-		[&](errors::Not_Callable const&)                     { unimplemented(); },
+		[&](errors::Not_Callable const& err) {
+			os << "Value of type " << err.type << " cannot be called.\n";
+			os << "\n";
+
+			print_error_line();
+
+			os << "Only values of this types can be called:\n";
+			os << "  - musical values like c, c47, (c&g) can be called to provide octave and duration\n";
+			os << "  - blocks can be called to compute their body like this: [i | i + 1] 3\n";
+			os << "  - builtin functions like if, par, floor\n";
+			os << "\n";
+
+			os << pretty::begin_comment;
+			os << "Parhaps you forgot to include semicolon between successive elements?\n";
+			os << "Common problem is writing [4 3] as list with elements 4 and 3,\n";
+			os << "when correct code for such expression would be [4;3]\n";
+			os << pretty::end;
+		},
 		[&](errors::Undefined_Operator const&)               { unimplemented(); },
 		[&](errors::Unexpected_Keyword const&)               { unimplemented(); },
 		[&](errors::Unexpected_Empty_Source const&)          { unimplemented(); }

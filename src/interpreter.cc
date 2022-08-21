@@ -87,18 +87,20 @@ Result<Value> Interpreter::eval(Ast &&ast)
 
 				Value *v = env->find(std::string(lhs.token.source));
 				assert(v, "Cannot resolve variable: "s + std::string(lhs.token.source)); // TODO(assert)
-				return *v = Try(eval(std::move(rhs)));
+				return *v = Try(eval(std::move(rhs)).with_location(ast.token.location));
 			}
 
 			if (ast.token.source == "and" || ast.token.source == "or") {
 				auto lhs = std::move(ast.arguments.front());
 				auto rhs = std::move(ast.arguments.back());
 
-				auto result = Try(eval(std::move(lhs)));
+				auto lhs_loc = lhs.location, rhs_loc = rhs.location;
+
+				auto result = Try(eval(std::move(lhs)).with_location(std::move(lhs_loc)));
 				if (ast.token.source == "or" ? result.truthy() : result.falsy()) {
 					return result;
 				} else {
-					return eval(std::move(rhs));
+					return eval(std::move(rhs)).with_location(rhs_loc);
 				}
 			}
 
@@ -115,12 +117,15 @@ Result<Value> Interpreter::eval(Ast &&ast)
 
 					auto lhs = std::move(ast.arguments.front());
 					auto rhs = std::move(ast.arguments.back());
+					auto const rhs_loc = rhs.location;
 					assert(lhs.type == Ast::Type::Literal && lhs.token.type == Token::Type::Symbol,
 						"Currently LHS of assigment must be an identifier"); // TODO(assert)
 
 					Value *v = env->find(std::string(lhs.token.source));
 					assert(v, "Cannot resolve variable: "s + std::string(lhs.token.source)); // TODO(assert)
-					return *v = Try(op->second(*this, { *v, Try(eval(std::move(rhs))) }));
+					return *v = Try(op->second(*this, {
+						*v, Try(eval(std::move(rhs)).with_location(rhs_loc))
+					}).with_location(ast.token.location));
 				}
 
 				return Error {
@@ -132,10 +137,11 @@ Result<Value> Interpreter::eval(Ast &&ast)
 			std::vector<Value> values;
 			values.reserve(ast.arguments.size());
 			for (auto& a : ast.arguments) {
-				values.push_back(Try(eval(std::move(a))));
+				auto const a_loc = a.location;
+				values.push_back(Try(eval(std::move(a)).with_location(a_loc)));
 			}
 
-			return op->second(*this, std::move(values));
+			return op->second(*this, std::move(values)).with_location(ast.token.location);
 		}
 		break;
 
@@ -153,6 +159,7 @@ Result<Value> Interpreter::eval(Ast &&ast)
 
 	case Ast::Type::Call:
 		{
+			auto call_location = ast.arguments.front().location;
 			Value func = Try(eval(std::move(ast.arguments.front())));
 
 			std::vector<Value> values;
@@ -160,7 +167,8 @@ Result<Value> Interpreter::eval(Ast &&ast)
 			for (auto& a : std::span(ast.arguments).subspan(1)) {
 				values.push_back(Try(eval(std::move(a))));
 			}
-			return std::move(func)(*this, std::move(values));
+			return std::move(func)(*this, std::move(values))
+				.with_location(std::move(call_location));
 		}
 
 	case Ast::Type::Variable_Declaration:
