@@ -506,13 +506,13 @@ static usize precedense(std::string_view op)
 	//  '.' since it have own precedense rules and is not binary expression but its own kind of expression
 	//
 	//  Exclusion of them is marked by subtracting total number of excluded operators.
-	static_assert(Operators_Count - 1 == 13, "Ensure that all operators have defined precedense below");
+	static_assert(Operators_Count - 1 == 14, "Ensure that all operators have defined precedense below");
 
 	if (one_of(op, "or")) return 100;
 	if (one_of(op, "and")) return 150;
 	if (one_of(op, "<", ">", "<=", ">=", "==", "!=")) return 200;
 	if (one_of(op, "+", "-")) return 300;
-	if (one_of(op, "*", "/", "&")) return 400;
+	if (one_of(op, "*", "/", "%", "&")) return 400;
 
 	unreachable();
 }

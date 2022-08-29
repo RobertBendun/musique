@@ -436,7 +436,7 @@ struct Token
 };
 
 static constexpr usize Keywords_Count  =  6;
-static constexpr usize Operators_Count = 14;
+static constexpr usize Operators_Count = 15;
 
 std::string_view type_name(Token::Type type);
 
@@ -685,6 +685,8 @@ struct Number
 	Number& operator*=(Number const& rhs);
 	Number  operator/(Number const& rhs) const;
 	Number& operator/=(Number const& rhs);
+	Number  operator%(Number const& rhs) const;
+	Number& operator%=(Number const& rhs);
 
 	Number floor() const; ///< Return number rounded down to nearest integer
 	Number ceil()  const; ///< Return number rounded up to nearest integer

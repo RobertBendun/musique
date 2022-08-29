@@ -119,6 +119,26 @@ Number& Number::operator/=(Number const& rhs)
    	return *this;
 }
 
+
+Number  Number::operator%(Number const& rhs) const
+{
+	return Number(*this) %= rhs;
+}
+
+Number& Number::operator%=(Number const& rhs)
+{
+	simplify_inplace();
+	auto [rnum, rden] = rhs.simplify();
+
+	if (den == 1 && rden == 1) {
+		num %= rnum;
+	} else {
+		assert(false, "Modulo for fractions is not supported");
+	}
+
+	return *this;
+}
+
 std::ostream& operator<<(std::ostream& os, Number const& n)
 {
 	return n.den == 1

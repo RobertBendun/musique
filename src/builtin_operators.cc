@@ -172,6 +172,7 @@ static constexpr auto Operators = std::array {
 	Operator_Entry { "-", plus_minus_operator<std::minus<>> },
 	Operator_Entry { "*", multiplication_operator },
 	Operator_Entry { "/", binary_operator<std::divides<>, '/'> },
+	Operator_Entry { "%", binary_operator<std::modulus<>, '%'> },
 
 	Operator_Entry { "<",  comparison_operator<std::less<>> },
 	Operator_Entry { ">",  comparison_operator<std::greater<>> },
