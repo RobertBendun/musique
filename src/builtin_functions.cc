@@ -349,12 +349,24 @@ static Result<Value> builtin_primes(Interpreter&, std::vector<Value> args)
 	return Error {
 		.details = errors::Unsupported_Types_For {
 			.type = errors::Unsupported_Types_For::Function,
-			.name = "primes",
+			.name = "nprimes",
 			.possibilities = {
 				"(number) -> array of number"
 			}
 		},
 	};
+}
+
+static Result<Value> builtin_for(Interpreter &i, std::vector<Value> args)
+{
+	if (is_indexable(args[0].type)) {
+		for (size_t n = 0; n < args[0].size(); ++n) {
+			Try(args[1](i, { Try(args[0].index(i, n)) }));
+		}
+		return Value{};
+	}
+
+	unimplemented();
 }
 
 void Interpreter::register_builtin_functions()
@@ -609,5 +621,6 @@ error:
 	global.force_define("up",    builtin_range<Range_Direction::Up>);
 	global.force_define("down",  builtin_range<Range_Direction::Down>);
 
-	global.force_define("primes", builtin_primes);
+	global.force_define("nprimes", builtin_primes);
+	global.force_define("for", builtin_for);
 }
