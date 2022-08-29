@@ -288,6 +288,75 @@ static Result<Value> builtin_par(Interpreter &i, std::vector<Value> args) {
 	return result;
 }
 
+// based on https://math.stackexchange.com/a/3678200
+static inline size_t upper_sieve_bound_to_yield_n_primes(size_t n_primes)
+{
+	if (n_primes < 4) { return 10; }
+
+	float n = n_primes;
+	float xprev = 0;
+	float x = n * std::log(n);
+	float const max_diff = 0.5;
+
+	while (x - xprev > max_diff) {
+		xprev = x;
+		x = n*std::log(x);
+	}
+
+	return std::ceil(x);
+}
+
+/// Generate n primes
+static Result<Value> builtin_primes(Interpreter&, std::vector<Value> args)
+{
+	using N = Shape<Value::Type::Number>;
+
+	if (N::typecheck(args)) {
+		// Better sieve could be Sieve of Atkin, but it's more complicated
+		// so for now we would use Eratosthenes one.
+		auto [n_frac] = N::move_from(args);
+		if (n_frac.simplify_inplace(); n_frac.num <= 1) {
+			return Value::from(Array{});
+		}
+		size_t n = n_frac.floor().as_int();
+
+		// Would preallocation be faster? Needs to be tested.
+		// Using approximation of prime-counting formula pi(n) ≈ x / ln(x)
+		size_t const approx_prime_count = n / std::log(float(n));
+		std::vector<Value> results;
+		results.reserve(approx_prime_count);
+
+		// False means we have prime here
+		auto const sieve_size = upper_sieve_bound_to_yield_n_primes(n);
+		std::vector<bool> sieve(sieve_size, false);
+
+		for (uint i = 2; i*i < sieve.size(); ++i) {
+			if (sieve[i] == false) {
+				for (uint j = i * i; j < sieve.size(); j += i) {
+					sieve[j] = true;
+				}
+			}
+		}
+
+		for (uint i = 2; i < sieve.size() && results.size() != n; ++i) {
+			if (!sieve[i]) {
+				results.push_back(Value::from(Number(i)));
+			}
+		}
+		return Value::from(Array { .elements = results });
+	}
+
+	return Error {
+		.details = errors::Unsupported_Types_For {
+			.type = errors::Unsupported_Types_For::Function,
+			.name = "primes",
+			.possibilities = {
+				"(number) -> array of number"
+			}
+		},
+	};
+}
+
 void Interpreter::register_builtin_functions()
 {
 	auto &global = *Env::global;
@@ -539,4 +608,6 @@ error:
 	global.force_define("range", builtin_range<Range_Direction::Up>);
 	global.force_define("up",    builtin_range<Range_Direction::Up>);
 	global.force_define("down",  builtin_range<Range_Direction::Down>);
+
+	global.force_define("primes", builtin_primes);
 }
