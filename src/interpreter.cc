@@ -217,8 +217,12 @@ void Interpreter::leave_scope()
 Result<void> Interpreter::play(Chord chord)
 {
 	Try(ensure_midi_connection_available(*this, Midi_Connection_Type::Output, "play"));
-
 	auto &ctx = context_stack.back();
+
+	if (chord.notes.size() == 0) {
+		std::this_thread::sleep_for(ctx.length_to_duration(ctx.length));
+		return {};
+	}
 
 	// Fill all notes that don't have octave or length with defaults
 	std::transform(chord.notes.begin(), chord.notes.end(), chord.notes.begin(), [&](Note note) { return ctx.fill(note); });
