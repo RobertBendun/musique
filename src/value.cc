@@ -213,8 +213,9 @@ bool Value::falsy() const
 
 bool Value::operator==(Value const& other) const
 {
-	if (type != other.type)
+	if (type != other.type) {
 		return false;
+	}
 
 	switch (type) {
 	case Type::Nil:       return true;

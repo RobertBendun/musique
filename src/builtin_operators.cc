@@ -119,9 +119,25 @@ static Result<Value> binary_operator(Interpreter& interpreter, std::vector<Value
 }
 
 template<typename Binary_Predicate>
-static Result<Value> equality_operator(Interpreter&, std::vector<Value> args)
+static Result<Value> equality_operator(Interpreter &interpreter, std::vector<Value> args)
 {
 	assert(args.size() == 2, "(in)Equality only allows for 2 operands"); // TODO(assert)
+
+	if (is_indexable(args[1].type) && !is_indexable(args[0].type)) {
+		std::swap(args[1], args[0]);
+		goto vectorized;
+	}
+
+	if (is_indexable(args[0].type) && !is_indexable(args[1].type)) {
+	vectorized:
+		std::vector<Value> result;
+		result.reserve(args[0].size());
+		for (auto i = 0u; i < args[0].size(); ++i) {
+			result.push_back(Value::from(Try(args[0].index(interpreter, i)) == args[1]));
+		}
+		return Value::from(Array { std::move(result) });
+	}
+
 	return Value::from(Binary_Predicate{}(std::move(args.front()), std::move(args.back())));
 }
 
@@ -184,9 +200,29 @@ static constexpr auto Operators = std::array {
 
 	Operator_Entry { ".",
 		+[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
-			assert(args.size() == 2, "Operator . requires two arguments"); // TODO(assert)
-			assert(args.back().type == Value::Type::Number, "Only numbers can be used for indexing"); // TODO(assert)
-			return std::move(args.front()).index(i, std::move(args.back()).n.as_int());
+			assert(is_indexable(args[0].type), "One can only index was is indexable"); // TODO(assert)
+																																								 //
+			if (args.size() == 2 && args[1].type == Value::Type::Number) {
+				return std::move(args.front()).index(i, std::move(args.back()).n.as_int());
+			}
+
+			if (args.size() == 2 && is_indexable(args[1].type)) {
+				std::vector<Value> result;
+				for (size_t n = 0; n < args[1].size(); ++n) {
+					auto const v = Try(args[1].index(i, n));
+					switch (v.type) {
+					break; case Value::Type::Number:
+						result.push_back(Try(args[0].index(i, v.n.as_int())));
+
+					break; case Value::Type::Bool: default:
+						if (v.truthy()) {
+							result.push_back(Try(args[0].index(i, n)));
+						}
+					}
+				}
+				return Value::from(Array { result });
+			}
+			unimplemented();
 		}
 	},
 
