@@ -366,7 +366,15 @@ static Result<Value> builtin_for(Interpreter &i, std::vector<Value> args)
 		return Value{};
 	}
 
-	unimplemented();
+	return Error {
+		.details = errors::Unsupported_Types_For {
+			.type = errors::Unsupported_Types_For::Function,
+			.name = "for",
+			.possibilities = {
+				"(array, callback) -> nil",
+			},
+		},
+	};
 }
 
 void Interpreter::register_builtin_functions()
