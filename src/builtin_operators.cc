@@ -200,29 +200,44 @@ static constexpr auto Operators = std::array {
 
 	Operator_Entry { ".",
 		+[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
-			assert(is_indexable(args[0].type), "One can only index was is indexable"); // TODO(assert)
-																																								 //
-			if (args.size() == 2 && args[1].type == Value::Type::Number) {
-				return std::move(args.front()).index(i, std::move(args.back()).n.as_int());
-			}
+			if (args.size() == 2 && is_indexable(args[0].type)) {
+				if (args[1].type == Value::Type::Number) {
+					return std::move(args.front()).index(i, std::move(args.back()).n.as_int());
+				}
 
-			if (args.size() == 2 && is_indexable(args[1].type)) {
-				std::vector<Value> result;
-				for (size_t n = 0; n < args[1].size(); ++n) {
-					auto const v = Try(args[1].index(i, n));
-					switch (v.type) {
-					break; case Value::Type::Number:
-						result.push_back(Try(args[0].index(i, v.n.as_int())));
+				if (args[1].type == Value::Type::Bool) {
+					return std::move(args.front()).index(i, args.back().b ? 1 : 0);
+				}
 
-					break; case Value::Type::Bool: default:
-						if (v.truthy()) {
-							result.push_back(Try(args[0].index(i, n)));
+				if (is_indexable(args[1].type)) {
+					std::vector<Value> result;
+					for (size_t n = 0; n < args[1].size(); ++n) {
+						auto const v = Try(args[1].index(i, n));
+						switch (v.type) {
+						break; case Value::Type::Number:
+							result.push_back(Try(args[0].index(i, v.n.as_int())));
+
+						break; case Value::Type::Bool: default:
+							if (v.truthy()) {
+								result.push_back(Try(args[0].index(i, n)));
+							}
 						}
 					}
+					return Value::from(Array { result });
 				}
-				return Value::from(Array { result });
 			}
-			unimplemented();
+
+			return Error {
+				.details = errors::Unsupported_Types_For {
+					.type = errors::Unsupported_Types_For::Operator,
+					.name = ".",
+					.possibilities = {
+						"array . bool -> bool",
+						"array . number -> any",
+						"array . (array of numbers) -> array",
+					},
+				},
+			};
 		}
 	},
 
