@@ -145,6 +145,7 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 		[](errors::internal::Unexpected_Token const&)           { return "Unexpected token"; },
 		[](errors::Expected_Expression_Separator_Before const&) { return "Missing semicolon"; },
 		[](errors::Literal_As_Identifier const&)                { return "Literal used in place of an identifier"; },
+		[](errors::Out_Of_Range const&)                         { return "Index out of range"; },
 		[](errors::Unsupported_Types_For const& type)           {
 			return type.type == errors::Unsupported_Types_For::Function
 				? "Function called with wrong arguments"
@@ -339,6 +340,18 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 			}
 			os << '\n' << pretty::end;
 		},
+
+		[&](errors::Out_Of_Range const& err) {
+			if (err.size == 0) {
+				os << "Can't get " << err.required_index << " element out of empty collection\n";
+			} else {
+				os << "Can't get " << err.required_index << " element from collection with only " << err.size << " elements\n";
+			}
+
+			os << '\n';
+			print_error_line(loc);
+		},
+
 		[&](errors::Unexpected_Keyword const&)               { unimplemented(); },
 	}, err.details);
 

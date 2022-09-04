@@ -348,16 +348,25 @@ Result<Value> Block::operator()(Interpreter &i, std::vector<Value> arguments)
 	return result;
 }
 
+/// Helper that produces error when trying to access container with too few elements for given index
+static inline Result<void> guard_index(unsigned index, unsigned size)
+{
+	if (index < size) return {};
+	return Error {
+		.details = errors::Out_Of_Range { .required_index = index, .size = size }
+	};
+}
+
 // TODO Add memoization
 Result<Value> Block::index(Interpreter &i, unsigned position)
 {
 	assert(parameters.size() == 0, "cannot index into block with parameters (for now)");
 	if (body.type != Ast::Type::Sequence) {
-		assert(position == 0, "Out of range"); // TODO(assert)
+		Try(guard_index(position, 1));
 		return i.eval((Ast)body);
 	}
 
-	assert(position < body.arguments.size(), "Out of range"); // TODO(assert)
+	Try(guard_index(position, body.arguments.size()));
 	return i.eval((Ast)body.arguments[position]);
 }
 
@@ -368,7 +377,7 @@ usize Block::size() const
 
 Result<Value> Array::index(Interpreter &, unsigned position)
 {
-	assert(position < elements.size(), "Out of range"); // TODO(assert)
+	Try(guard_index(position, elements.size()));
 	return elements[position];
 }
 

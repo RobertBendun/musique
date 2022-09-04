@@ -166,6 +166,16 @@ namespace errors
 		std::string name;
 	};
 
+	/// When user tries to get element from collection with index higher then collection size
+	struct Out_Of_Range
+	{
+		/// Index that was required by the user
+		size_t required_index;
+
+		/// Size of accessed collection
+		size_t size;
+	};
+
 	/// Collection of messages that are considered internal and should not be printed to the end user.
 	namespace internal
 	{
@@ -191,6 +201,7 @@ namespace errors
 		Missing_Variable,
 		Not_Callable,
 		Operation_Requires_Midi_Connection,
+		Out_Of_Range,
 		Undefined_Operator,
 		Unexpected_Empty_Source,
 		Unexpected_Keyword,
