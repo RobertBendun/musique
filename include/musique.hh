@@ -140,7 +140,7 @@ namespace errors
 	struct Unsupported_Types_For
 	{
 		/// Type of operation
-		enum { Operator, Function } type;
+		enum Type { Operator, Function } type;
 
 		/// Name of operation
 		std::string_view name;
