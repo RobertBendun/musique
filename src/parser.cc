@@ -70,6 +70,19 @@ Result<Ast> Parser::parse(std::string_view source, std::string_view filename, un
 				.location = parser.peek()->location
 			};
 		}
+
+		if (parser.expect(Token::Type::Close_Paren) || parser.expect(Token::Type::Close_Block)) {
+			auto const tok = parser.consume();
+			return Error {
+				.details = errors::Closing_Token_Without_Opening {
+					.type = tok.type == Token::Type::Close_Paren
+						? errors::Closing_Token_Without_Opening::Paren
+						: errors::Closing_Token_Without_Opening::Block
+				},
+				.location = tok.location
+			};
+		}
+
 		errors::all_tokens_were_not_parsed(std::span(parser.tokens).subspan(parser.token_id));
 	}
 

@@ -176,6 +176,14 @@ namespace errors
 		size_t size;
 	};
 
+	struct Closing_Token_Without_Opening
+	{
+		enum {
+			Block = ']',
+			Paren = ')'
+		} type;
+	};
+
 	/// Collection of messages that are considered internal and should not be printed to the end user.
 	namespace internal
 	{
@@ -195,6 +203,7 @@ namespace errors
 
 	/// All possible error types
 	using Details = std::variant<
+		Closing_Token_Without_Opening,
 		Expected_Expression_Separator_Before,
 		Failed_Numeric_Parsing,
 		Literal_As_Identifier,

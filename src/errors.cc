@@ -146,6 +146,11 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 		[](errors::Expected_Expression_Separator_Before const&) { return "Missing semicolon"; },
 		[](errors::Literal_As_Identifier const&)                { return "Literal used in place of an identifier"; },
 		[](errors::Out_Of_Range const&)                         { return "Index out of range"; },
+		[](errors::Closing_Token_Without_Opening const& err)    {
+			return err.type == errors::Closing_Token_Without_Opening::Block
+				? "Block closing without opening"
+				: "Closing parentheses without opening";
+		},
 		[](errors::Unsupported_Types_For const& type)           {
 			return type.type == errors::Unsupported_Types_For::Function
 				? "Function called with wrong arguments"
@@ -352,6 +357,17 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 			print_error_line(loc);
 		},
 
+		[&](errors::Closing_Token_Without_Opening const& err) {
+			if (err.type ==	errors::Closing_Token_Without_Opening::Block) {
+				os << "Found strange block closing ']' without previous block opening '['\n";
+			} else {
+				os << "Found strange closing ')' without previous '('\n";
+			}
+
+			os << '\n';
+			print_error_line(loc);
+		},
+
 		[&](errors::Unexpected_Keyword const&)               { unimplemented(); },
 	}, err.details);
 
@@ -366,6 +382,8 @@ void errors::all_tokens_were_not_parsed(std::span<Token> tokens)
 	for (auto const& token : tokens) {
 		std::cerr << token << '\n';
 	}
+
+	encourage_contact(std::cerr);
 
 	std::exit(1);
 }
