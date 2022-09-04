@@ -161,7 +161,7 @@ Result<Ast> Parser::parse_rhs_of_infix_expression(Ast lhs)
 	assert(not expect(Token::Type::Operator, "."), "This should be handled by parse_index_expression");
 	auto op = consume();
 
-	if (precedense(lhs.token.source) > precedense(op.source)) {
+	if (precedense(lhs.token.source) >= precedense(op.source)) {
 		lhs.arguments.emplace_back(std::move(rhs));
 		Ast ast;
 		ast.location = op.location;
