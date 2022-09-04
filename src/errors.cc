@@ -146,6 +146,15 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 		[](errors::Expected_Expression_Separator_Before const&) { return "Missing semicolon"; },
 		[](errors::Literal_As_Identifier const&)                { return "Literal used in place of an identifier"; },
 		[](errors::Out_Of_Range const&)                         { return "Index out of range"; },
+		[](errors::Arithmetic const& err)                       {
+			switch (err.type) {
+			case errors::Arithmetic::Division_By_Zero: return "Division by 0";
+			case errors::Arithmetic::Fractional_Modulo: return "Modulo with fractions";
+			case errors::Arithmetic::Unable_To_Calculate_Modular_Multiplicative_Inverse:
+				return "Missing modular inverse";
+			default: unreachable();
+			}
+		},
 		[](errors::Closing_Token_Without_Opening const& err)    {
 			return err.type == errors::Closing_Token_Without_Opening::Block
 				? "Block closing without opening"
@@ -366,6 +375,32 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 
 			os << '\n';
 			print_error_line(loc);
+		},
+
+		[&](errors::Arithmetic const& err) {
+			switch (err.type) {
+			break; case errors::Arithmetic::Division_By_Zero:
+				os << "Tried to divide by 0 which is undefined operation in math\n";
+				os << "\n";
+				print_error_line(loc);
+
+			break; case errors::Arithmetic::Fractional_Modulo:
+				os << "Tried to calculate modulo with fractional modulus which is not defined\n";
+				os << "\n";
+
+				print_error_line(loc);
+
+				os << pretty::begin_comment;
+				os << "Example code that could raise this error:\n";
+				os << "  1 % (1/2)\n";
+				os << pretty::end;
+
+			break; case errors::Arithmetic::Unable_To_Calculate_Modular_Multiplicative_Inverse:
+				os << "Tried to calculate fraction in modular space.\n";
+				os << "\n";
+
+				print_error_line(loc);
+			}
 		},
 
 		[&](errors::Unexpected_Keyword const&)               { unimplemented(); },

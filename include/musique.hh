@@ -184,6 +184,16 @@ namespace errors
 		} type;
 	};
 
+	struct Arithmetic
+	{
+		enum Type
+		{
+			Division_By_Zero,
+			Fractional_Modulo,
+			Unable_To_Calculate_Modular_Multiplicative_Inverse
+		} type;
+	};
+
 	/// Collection of messages that are considered internal and should not be printed to the end user.
 	namespace internal
 	{
@@ -203,6 +213,7 @@ namespace errors
 
 	/// All possible error types
 	using Details = std::variant<
+		Arithmetic,
 		Closing_Token_Without_Opening,
 		Expected_Expression_Separator_Before,
 		Failed_Numeric_Parsing,
@@ -456,7 +467,7 @@ struct Token
 };
 
 static constexpr usize Keywords_Count  =  6;
-static constexpr usize Operators_Count = 15;
+static constexpr usize Operators_Count = 16;
 
 std::string_view type_name(Token::Type type);
 
@@ -703,17 +714,15 @@ struct Number
 	Number& operator-=(Number const& rhs);
 	Number  operator*(Number const& rhs) const;
 	Number& operator*=(Number const& rhs);
-	Number  operator/(Number const& rhs) const;
-	Number& operator/=(Number const& rhs);
-	Number  operator%(Number const& rhs) const;
-	Number& operator%=(Number const& rhs);
+	Result<Number> operator/(Number const& rhs) const;
+	Result<Number> operator%(Number const& rhs) const;
 
 	Number floor() const; ///< Return number rounded down to nearest integer
 	Number ceil()  const; ///< Return number rounded up to nearest integer
 	Number round() const; ///< Return number rounded to nearest integer
 
-	Number inverse()     const; ///< Return number raised to power -1
-	Number pow(Number n) const; ///< Return number raised to power `n`.
+	Result<Number> inverse()     const; ///< Return number raised to power -1
+	Result<Number> pow(Number n) const; ///< Return number raised to power `n`.
 
 	/// Parses source contained by token into a Number instance
 	static Result<Number> from(Token token);

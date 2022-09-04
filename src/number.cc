@@ -106,37 +106,72 @@ Number& Number::operator*=(Number const& rhs)
    	return *this;
 }
 
-Number Number::operator/(Number const& rhs) const
+Result<Number> Number::operator/(Number const& rhs) const
 {
-  	return Number{num * rhs.den, den * rhs.num}.simplify();
+	if (rhs.num == 0) {
+		return Error {
+			.details = errors::Arithmetic {
+				.type = errors::Arithmetic::Division_By_Zero
+			}
+		};
+	}
+	return Number{num * rhs.den, den * rhs.num}.simplify();
 }
 
-Number& Number::operator/=(Number const& rhs)
+inline auto modular_inverse(Number::value_type a, Number::value_type n)
+	-> Result<Number::value_type>
 {
-   	num *= rhs.den;
-   	den *= rhs.num;
-   	simplify_inplace();
-   	return *this;
-}
+	using N = Number::value_type;
+	N t = 0, newt = 1;
+	N r = n, newr = a;
 
-
-Number  Number::operator%(Number const& rhs) const
-{
-	return Number(*this) %= rhs;
-}
-
-Number& Number::operator%=(Number const& rhs)
-{
-	simplify_inplace();
-	auto [rnum, rden] = rhs.simplify();
-
-	if (den == 1 && rden == 1) {
-		num %= rnum;
-	} else {
-		assert(false, "Modulo for fractions is not supported");
+	while (newr != 0) {
+		auto q = r / newr;
+		t = std::exchange(newt, t - q * newt);
+		r = std::exchange(newr, r - q * newr);
 	}
 
-	return *this;
+	if (r > 1) {
+		return Error {
+			.details = errors::Arithmetic {
+				.type = errors::Arithmetic::Unable_To_Calculate_Modular_Multiplicative_Inverse
+			}
+		};
+	}
+
+	return t < 0 ? t + n : t;
+}
+
+
+Result<Number> Number::operator%(Number const& rhs) const
+{
+	if (rhs.num == 0) {
+		return Error {
+			.details = errors::Arithmetic {
+				.type = errors::Arithmetic::Division_By_Zero
+			}
+		};
+	}
+
+	auto ret = simplify();
+	auto [rnum, rden] = rhs.simplify();
+
+	if (rden != 1) {
+		return Error {
+			.details = errors::Arithmetic {
+				.type = errors::Arithmetic::Fractional_Modulo
+			}
+		};
+	}
+
+	if (ret.den == 1) {
+		ret.num %= rnum;
+		return ret;
+	}
+
+	return Number(
+		(Try(modular_inverse(ret.den, rnum)) * ret.num) % rnum
+	);
 }
 
 std::ostream& operator<<(std::ostream& os, Number const& n)
@@ -252,16 +287,22 @@ Number Number::round() const
 	return impl::round(*this, impl::Rounding_Mode::Round);
 }
 
-Number Number::inverse() const
+Result<Number> Number::inverse() const
 {
-	assert(num != 0, "Cannot take inverse of fraction with 0 in denominator");
+	if (num == 0) {
+		return Error {
+			.details = errors::Arithmetic {
+				.type = errors::Arithmetic::Division_By_Zero
+			}
+		};
+	}
 	return { den, num };
 }
 
 namespace impl
 {
 	// Raise Number to integer power helper
-	static inline Number pow(Number const& x, decltype(Number::num) n)
+	static inline Result<Number> pow(Number const& x, decltype(Number::num) n)
 	{
 		// We simply raise numerator and denominator to required power
 		// and if n is negative we take inverse.
@@ -273,11 +314,11 @@ namespace impl
 
 		for (auto i = n; i != 0; --i) result.num *= x.num;
 		for (auto i = n; i != 0; --i) result.den *= x.den;
-		return flip ? result.inverse() : result;
+		return flip ? Try(result.inverse()) : result;
 	}
 }
 
-Number Number::pow(Number n) const
+Result<Number> Number::pow(Number n) const
 {
 	n.simplify_inplace();
 
@@ -289,9 +330,5 @@ Number Number::pow(Number n) const
 	// Hard case, we raise this to fractional power.
 	// Essentialy finding n.den root of (x to n.num power).
 	// We need to protect ourselfs against even roots of negative numbers.
-	// TODO Implement this case properly.
-	//
-	// TODO(assert) <- taking power is not always doable so this operation
-	//   should produce error not crash with assertion failure in the future.
 	unimplemented();
 }

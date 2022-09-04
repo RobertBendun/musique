@@ -87,7 +87,6 @@ static Result<Value> plus_minus_operator(Interpreter &interpreter, std::vector<V
 	};
 }
 
-
 template<typename Binary_Operation, char ...Chars>
 static Result<Value> binary_operator(Interpreter& interpreter, std::vector<Value> args)
 {
@@ -97,7 +96,11 @@ static Result<Value> binary_operator(Interpreter& interpreter, std::vector<Value
 
 	if (NN::typecheck(args)) {
 		auto [lhs, rhs] = NN::move_from(args);
-		return Value::from(Binary_Operation{}(lhs, rhs));
+		if constexpr (is_template_v<Result, decltype(Binary_Operation{}(lhs, rhs))>) {
+			return Value::from(Try(Binary_Operation{}(lhs, rhs)));
+		} else {
+			return Value::from(Binary_Operation{}(lhs, rhs));
+		}
 	}
 
 	if (may_be_vectorized(args)) {
@@ -182,6 +185,14 @@ static Result<Value> multiplication_operator(Interpreter &i, std::vector<Value> 
 
 using Operator_Entry = std::tuple<char const*, Intrinsic>;
 
+struct pow_operator
+{
+	inline Result<Number> operator()(Number lhs, Number rhs)
+	{
+		return lhs.pow(rhs);
+	}
+};
+
 /// Operators definition table
 static constexpr auto Operators = std::array {
 	Operator_Entry { "+", plus_minus_operator<std::plus<>> },
@@ -189,6 +200,7 @@ static constexpr auto Operators = std::array {
 	Operator_Entry { "*", multiplication_operator },
 	Operator_Entry { "/", binary_operator<std::divides<>, '/'> },
 	Operator_Entry { "%", binary_operator<std::modulus<>, '%'> },
+	Operator_Entry { "**", binary_operator<pow_operator, '*', '*'> },
 
 	Operator_Entry { "<",  comparison_operator<std::less<>> },
 	Operator_Entry { ">",  comparison_operator<std::greater<>> },
