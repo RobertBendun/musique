@@ -136,7 +136,14 @@ static Result<Value> equality_operator(Interpreter &interpreter, std::vector<Val
 		std::vector<Value> result;
 		result.reserve(args[0].size());
 		for (auto i = 0u; i < args[0].size(); ++i) {
-			result.push_back(Value::from(Try(args[0].index(interpreter, i)) == args[1]));
+			result.push_back(
+				Value::from(
+					Binary_Predicate{}(
+						Try(args[0].index(interpreter, i)),
+						args[1]
+					)
+				)
+			);
 		}
 		return Value::from(Array { std::move(result) });
 	}

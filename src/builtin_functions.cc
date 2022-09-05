@@ -746,6 +746,36 @@ static Result<Value> builtin_incoming(Interpreter &i, std::vector<Value> args)
 	return Value{};
 }
 
+/// Interleaves arguments
+static Result<Value> builtin_mix(Interpreter &i, std::vector<Value> args)
+{
+	std::vector<Value> result;
+
+	std::unordered_map<std::size_t, std::size_t> indicies;
+
+	size_t awaiting_containers = std::count_if(args.begin(), args.end(), [](Value const& v) { return is_indexable(v.type); });
+
+	// Algorithm description:
+	// Repeat until all arguments were exhausted:
+	//   For each argument:
+	//     If it can be iterated then add current element to the list and move to the next one.
+	//       If next element cannot be retrived mark container as exhausted and start from beginning
+	//     Otherwise append element to the list
+	do {
+		for (size_t idx = 0; idx < args.size(); ++idx) {
+			if (auto &arg = args[idx]; is_indexable(arg.type)) {
+				result.push_back(Try(arg.index(i, indicies[idx]++ % arg.size())));
+				if (indicies[idx] == arg.size())
+					awaiting_containers--;
+			} else {
+				result.push_back(arg);
+			}
+		}
+	} while (awaiting_containers);
+
+	return Value::from(std::move(result));
+}
+
 void Interpreter::register_builtin_functions()
 {
 	auto &global = *Env::global;
@@ -764,6 +794,7 @@ void Interpreter::register_builtin_functions()
 	global.force_define("len",            builtin_len);
 	global.force_define("max",            builtin_max);
 	global.force_define("min",            builtin_min);
+	global.force_define("mix",            builtin_mix);
 	global.force_define("note_off",       builtin_note_off);
 	global.force_define("note_on",        builtin_note_on);
 	global.force_define("nprimes",        builtin_primes);
