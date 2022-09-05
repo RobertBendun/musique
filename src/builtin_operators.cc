@@ -254,9 +254,17 @@ static constexpr auto Operators = std::array {
 	},
 
 	Operator_Entry { "&",
-		+[](Interpreter&, std::vector<Value> args) -> Result<Value> {
-			using Chord_Chord = Shape<Value::Type::Music, Value::Type::Music>;
+		+[](Interpreter& i, std::vector<Value> args) -> Result<Value> {
+			constexpr auto guard = Guard<2> {
+				.name = "&",
+				.possibilities = {
+					"(array, array) -> array",
+					"(music, music) -> music",
+				},
+				.type = errors::Unsupported_Types_For::Operator
+			};
 
+			using Chord_Chord = Shape<Value::Type::Music, Value::Type::Music>;
 			if (Chord_Chord::typecheck(args)) {
 				auto [lhs, rhs] = Chord_Chord::move_from(args);
 				auto &l = lhs.notes;
@@ -269,16 +277,14 @@ static constexpr auto Operators = std::array {
 				return Value::from(lhs);
 			}
 
-			return Error {
-				.details = errors::Unsupported_Types_For {
-					.type = errors::Unsupported_Types_For::Operator,
-					.name = "&",
-					.possibilities = {
-						"(music, music) -> music",
-					}
-				},
-				.location = {}
-			};
+			auto result = Array {};
+			for (auto&& array : args) {
+				Try(guard(is_indexable, array));
+				for (auto n = 0u; n < array.size(); ++n) {
+					result.elements.push_back(Try(array.index(i, n)));
+				}
+			}
+			return Value::from(std::move(result));
 		}
 	},
 };

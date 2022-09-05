@@ -180,8 +180,14 @@ Result<Value> builtin_range(Interpreter&, std::vector<Value> args)
 	}
 
 	Array array;
-	for (; start < stop; start += step) {
-		array.elements.push_back(Value::from(start));
+	if constexpr (dir == Range_Direction::Up) {
+		for (; start < stop; start += step) {
+			array.elements.push_back(Value::from(start));
+		}
+	} else {
+		for (; start < stop; start += step) {
+			array.elements.push_back(Value::from(stop - start - Number(1)));
+		}
 	}
 	return Value::from(std::move(array));
 }
