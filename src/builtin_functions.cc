@@ -111,6 +111,7 @@ static Result<Array> into_flat_array(Interpreter &i, std::vector<Value> args)
 	return into_flat_array(i, std::span(args));
 }
 
+
 /// Helper to convert method to it's name
 template<auto> struct Number_Method_Name;
 template<> struct Number_Method_Name<&Number::floor> { static constexpr auto value = "floor"; };
@@ -466,8 +467,8 @@ static Result<Value> builtin_update(Interpreter &i, std::vector<Value> args)
 
 	if (Lazy_And_Number::typecheck_front(args)) {
 		auto [v, index] = Lazy_And_Number::move_from(args);
-		auto array = Try(into_flat_array(i, { Value::from(std::move(v)) }));
-		array.elements[index.as_int()] = std::move(args.back());
+		auto array = Try(flatten(i, { Value::from(std::move(v)) }));
+		array[index.as_int()] = std::move(args.back());
 		return Value::from(std::move(array));
 	}
 
@@ -500,41 +501,41 @@ static Result<Value> builtin_flat(Interpreter &i, std::vector<Value> args)
 static Result<Value> builtin_shuffle(Interpreter &i, std::vector<Value> args)
 {
 	static std::mt19937 rnd{std::random_device{}()};
-	auto array = Try(into_flat_array(i, std::move(args)));
-	std::shuffle(array.elements.begin(), array.elements.end(), rnd);
+	auto array = Try(flatten(i, std::move(args)));
+	std::shuffle(array.begin(), array.end(), rnd);
 	return Value::from(std::move(array));
 }
 
 /// Permute arguments
 static Result<Value> builtin_permute(Interpreter &i, std::vector<Value> args)
 {
-	auto array = Try(into_flat_array(i, std::move(args)));
-	std::next_permutation(array.elements.begin(), array.elements.end());
+	auto array = Try(flatten(i, std::move(args)));
+	std::next_permutation(array.begin(), array.end());
 	return Value::from(std::move(array));
 }
 
 /// Sort arguments
 static Result<Value> builtin_sort(Interpreter &i, std::vector<Value> args)
 {
-	auto array = Try(into_flat_array(i, std::move(args)));
-	std::sort(array.elements.begin(), array.elements.end());
+	auto array = Try(flatten(i, std::move(args)));
+	std::sort(array.begin(), array.end());
 	return Value::from(std::move(array));
 }
 
 /// Reverse arguments
 static Result<Value> builtin_reverse(Interpreter &i, std::vector<Value> args)
 {
-	auto array = Try(into_flat_array(i, std::move(args)));
-	std::reverse(array.elements.begin(), array.elements.end());
+	auto array = Try(flatten(i, std::move(args)));
+	std::reverse(array.begin(), array.end());
 	return Value::from(std::move(array));
 }
 
 /// Get minimum of arguments
 static Result<Value> builtin_min(Interpreter &i, std::vector<Value> args)
 {
-	auto array = Try(into_flat_array(i, std::move(args)));
-	auto min = std::min_element(array.elements.begin(), array.elements.end());
-	if (min == array.elements.end())
+	auto array = Try(flatten(i, std::move(args)));
+	auto min = std::min_element(array.begin(), array.end());
+	if (min == array.end())
 		return Value{};
 	return *min;
 }
@@ -542,9 +543,9 @@ static Result<Value> builtin_min(Interpreter &i, std::vector<Value> args)
 /// Get maximum of arguments
 static Result<Value> builtin_max(Interpreter &i, std::vector<Value> args)
 {
-	auto array = Try(into_flat_array(i, std::move(args)));
-	auto max = std::max_element(array.elements.begin(), array.elements.end());
-	if (max == array.elements.end())
+	auto array = Try(flatten(i, std::move(args)));
+	auto max = std::max_element(array.begin(), array.end());
+	if (max == array.end())
 		return Value{};
 	return *max;
 }
@@ -563,10 +564,10 @@ static Result<Value> builtin_partition(Interpreter &i, std::vector<Value> args)
 
 	auto predicate = std::move(args.front());
 	Try(guard(is_callable, predicate));
-	auto array = Try(into_flat_array(i, std::span(args).subspan(1)));
+	auto array = Try(flatten(i, std::span(args).subspan(1)));
 
 	Array tuple[2] = {};
-	for (auto &value : array.elements) {
+	for (auto &value : array) {
 		tuple[Try(predicate(i, { std::move(value) })).truthy()].elements.push_back(std::move(value));
 	}
 
@@ -589,13 +590,13 @@ static Result<Value> builtin_rotate(Interpreter &i, std::vector<Value> args)
 	}
 
 	auto offset = std::move(args.front()).n.as_int();
-	auto array = Try(into_flat_array(i, std::span(args).subspan(1)));
+	auto array = Try(flatten(i, std::span(args).subspan(1)));
 	if (offset > 0) {
-		offset = offset % array.elements.size();
-		std::rotate(array.elements.begin(), array.elements.begin() + offset, array.elements.end());
+		offset = offset % array.size();
+		std::rotate(array.begin(), array.begin() + offset, array.end());
 	} else if (offset < 0) {
-		offset = -offset % array.elements.size();
-		std::rotate(array.elements.rbegin(), array.elements.rbegin() + offset, array.elements.rend());
+		offset = -offset % array.size();
+		std::rotate(array.rbegin(), array.rbegin() + offset, array.rend());
 	}
 	return Value::from(std::move(array));
 }

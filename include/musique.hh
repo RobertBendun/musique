@@ -833,14 +833,15 @@ struct Value
 	/// Using Explicit_Bool to prevent from implicit casts
 	static Value from(Explicit_Bool b);
 
-	static Value from(Number n);           ///< Create value of type number holding provided number
-	static Value from(std::string s);      ///< Create value of type symbol holding provided symbol
-	static Value from(std::string_view s); ///< Create value of type symbol holding provided symbol
-	static Value from(char const* s);      ///< Create value of type symbol holding provided symbol
-	static Value from(Block &&l);          ///< Create value of type block holding provided block
-	static Value from(Array &&array);      ///< Create value of type array holding provided array
-	static Value from(Note n);             ///< Create value of type music holding provided note
-	static Value from(Chord chord);        ///< Create value of type music holding provided chord
+	static Value from(Array &&array);              ///< Create value of type array holding provided array
+	static Value from(Block &&l);                  ///< Create value of type block holding provided block
+	static Value from(Chord chord);                ///< Create value of type music holding provided chord
+	static Value from(Note n);                     ///< Create value of type music holding provided note
+	static Value from(Number n);                   ///< Create value of type number holding provided number
+	static Value from(char const* s);              ///< Create value of type symbol holding provided symbol
+	static Value from(std::string s);              ///< Create value of type symbol holding provided symbol
+	static Value from(std::string_view s);         ///< Create value of type symbol holding provided symbol
+	static Value from(std::vector<Value> &&array); ///< Create value of type array holding provided array
 
 	enum class Type
 	{
@@ -1093,5 +1094,9 @@ static constexpr bool is_callable(Value::Type type)
 {
 	return type == Value::Type::Block || type == Value::Type::Intrinsic;
 }
+
+/// Flattens one layer: `[[[1], 2], 3]` becomes `[[1], 2, 3]`
+Result<std::vector<Value>> flatten(Interpreter &i, std::span<Value>);
+Result<std::vector<Value>> flatten(Interpreter &i, std::vector<Value>);
 
 #endif

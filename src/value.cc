@@ -130,6 +130,14 @@ Value Value::from(Array &&array)
 	return v;
 }
 
+Value Value::from(std::vector<Value> &&array)
+{
+	Value v;
+	v.type = Type::Array;
+	v.array = Array { .elements = std::move(array) };
+	return v;
+}
+
 Value Value::from(Note n)
 {
 	Value v;
@@ -493,4 +501,24 @@ std::ostream& operator<<(std::ostream& os, Chord const& chord)
 			os << "; ";
 	}
 	return os << ']';
+}
+
+Result<std::vector<Value>> flatten(Interpreter &interpreter, std::span<Value> args)
+{
+	std::vector<Value> result;
+	for (auto &x : args) {
+		if (is_indexable(x.type)) {
+			for (usize i = 0; i < x.size(); ++i) {
+				result.push_back(Try(x.index(interpreter, i)));
+			}
+		} else {
+			result.push_back(std::move(x));
+		}
+	}
+	return result;
+}
+
+Result<std::vector<Value>> flatten(Interpreter &i, std::vector<Value> args)
+{
+	return flatten(i, std::span(args));
 }
