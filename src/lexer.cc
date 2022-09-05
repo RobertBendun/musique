@@ -1,4 +1,5 @@
 #include <musique.hh>
+#include <musique_internal.hh>
 
 #include <iomanip>
 
@@ -277,3 +278,9 @@ std::string_view type_name(Token::Type type)
 	}
 	unreachable();
 }
+
+std::size_t std::hash<Token>::operator()(Token const& token) const
+{
+	return hash_combine(std::hash<std::string_view>{}(token.source), size_t(token.type));
+}
+

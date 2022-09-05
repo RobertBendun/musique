@@ -1,4 +1,6 @@
 #include <musique.hh>
+#include <musique_internal.hh>
+
 #include <cmath>
 #include <numeric>
 #include <charconv>
@@ -331,4 +333,10 @@ Result<Number> Number::pow(Number n) const
 	// Essentialy finding n.den root of (x to n.num power).
 	// We need to protect ourselfs against even roots of negative numbers.
 	unimplemented();
+}
+
+std::size_t std::hash<Number>::operator()(Number const& value) const
+{
+	std::hash<Number::value_type> h;
+	return hash_combine(h(value.num), h(value.den));
 }

@@ -1099,4 +1099,9 @@ static constexpr bool is_callable(Value::Type type)
 Result<std::vector<Value>> flatten(Interpreter &i, std::span<Value>);
 Result<std::vector<Value>> flatten(Interpreter &i, std::vector<Value>);
 
+template<> struct std::hash<Token>  { std::size_t operator()(Token  const&) const; };
+template<> struct std::hash<Ast>    { std::size_t operator()(Ast    const&) const; };
+template<> struct std::hash<Number> { std::size_t operator()(Number const&) const; };
+template<> struct std::hash<Value>  { std::size_t operator()(Value  const&) const; };
+
 #endif

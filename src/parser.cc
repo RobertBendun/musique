@@ -1,5 +1,8 @@
 #include <musique.hh>
+#include <musique_internal.hh>
+
 #include <iostream>
+#include <numeric>
 
 static Ast wrap_if_several(std::vector<Ast> &&ast, Ast(*wrapper)(std::vector<Ast>));
 
@@ -615,4 +618,13 @@ void dump(Ast const& tree, unsigned indent)
 	if (indent == 0) {
 		std::cout << std::flush;
 	}
+}
+
+std::size_t std::hash<Ast>::operator()(Ast const& value) const
+{
+	auto h = std::hash<Token>{}(value.token);
+	h = std::accumulate(value.arguments.begin(), value.arguments.end(), h, [this](size_t h, Ast const& node) {
+		return hash_combine(h, operator()(node));
+	});
+	return hash_combine(size_t(value.type), h);
 }

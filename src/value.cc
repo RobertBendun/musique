@@ -1,4 +1,7 @@
 #include <musique.hh>
+#include <musique_internal.hh>
+
+#include <numeric>
 
 /// Finds numeric value of note. This form is later used as in
 /// note to midi resolution in formula octave * 12 + note_index
@@ -521,4 +524,32 @@ Result<std::vector<Value>> flatten(Interpreter &interpreter, std::span<Value> ar
 Result<std::vector<Value>> flatten(Interpreter &i, std::vector<Value> args)
 {
 	return flatten(i, std::span(args));
+}
+
+std::size_t std::hash<Value>::operator()(Value const& value) const
+{
+	size_t value_hash = 0;
+	switch (value.type) {
+	break; case Value::Type::Nil:       value_hash = 0;
+	break; case Value::Type::Number:    value_hash = std::hash<Number>{}(value.n);
+	break; case Value::Type::Symbol:    value_hash = std::hash<std::string>{}(value.s);
+	break; case Value::Type::Bool:      value_hash = std::hash<bool>{}(value.b);
+	break; case Value::Type::Intrinsic: value_hash = ptrdiff_t(value.intr);
+	break; case Value::Type::Block:     value_hash = hash_combine(std::hash<Ast>{}(value.blk.body), value.blk.parameters.size());
+
+	break; case Value::Type::Array:
+		value_hash = std::accumulate(value.array.elements.begin(), value.array.elements.end(), value_hash, [this](size_t h, Value const& v) {
+			return hash_combine(h, operator()(v));
+		});
+
+	break; case Value::Type::Music:
+		value_hash = std::accumulate(value.chord.notes.begin(), value.chord.notes.end(), value_hash, [](size_t h, Note const& n) {
+			h = hash_combine(h, n.base);
+			h = hash_combine(h, std::hash<std::optional<Number>>{}(n.length));
+			h = hash_combine(h, std::hash<std::optional<i8>>{}(n.octave));
+			return h;
+		});
+	}
+
+	return hash_combine(value_hash, size_t(value.type));
 }

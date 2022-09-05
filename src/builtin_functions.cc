@@ -4,6 +4,7 @@
 #include <random>
 #include <memory>
 #include <iostream>
+#include <unordered_set>
 
 void Interpreter::register_callbacks()
 {
@@ -601,6 +602,48 @@ static Result<Value> builtin_rotate(Interpreter &i, std::vector<Value> args)
 	return Value::from(std::move(array));
 }
 
+/// Returns unique collection of arguments
+static Result<Value> builtin_unique(Interpreter &i, std::vector<Value> args)
+{
+	auto array = Try(flatten(i, args));
+	std::unordered_set<Value> seen;
+
+	std::vector<Value> result;
+	for (auto &el : array) {
+		if (!seen.contains(el)) {
+			seen.insert(el);
+			result.push_back(std::move(el));
+		}
+	}
+	return Value::from(std::move(result));
+}
+
+/// Returns arguments with all successive copies eliminated
+static Result<Value> builtin_uniq(Interpreter &i, std::vector<Value> args)
+{
+	auto array = Try(flatten(i, args));
+
+	std::optional<Value> previous;
+	std::vector<Value> result;
+
+	for (auto &el : array) {
+		if (previous && *previous == el)
+			continue;
+		result.push_back(el);
+		previous = std::move(el);
+	}
+	return Value::from(std::move(result));
+}
+
+static Result<Value> builtin_hash(Interpreter&, std::vector<Value> args)
+{
+	return Value::from(Number(
+		std::accumulate(args.cbegin(), args.cend(), size_t(0), [](size_t h, Value const& v) {
+			return hash_combine(h, std::hash<Value>{}(v));
+		})
+	));
+}
+
 /// Build chord from arguments
 static Result<Value> builtin_chord(Interpreter &i, std::vector<Value> args)
 {
@@ -714,6 +757,7 @@ void Interpreter::register_builtin_functions()
 	global.force_define("flat",           builtin_flat);
 	global.force_define("floor",          apply_numeric_transform<&Number::floor>);
 	global.force_define("for",            builtin_for);
+	global.force_define("hash",           builtin_hash);
 	global.force_define("if",             builtin_if);
 	global.force_define("incoming",       builtin_incoming);
 	global.force_define("instrument",     builtin_program_change);
@@ -738,6 +782,8 @@ void Interpreter::register_builtin_functions()
 	global.force_define("sort",           builtin_sort);
 	global.force_define("try",            builtin_try);
 	global.force_define("typeof",         builtin_typeof);
+	global.force_define("uniq",           builtin_uniq);
+	global.force_define("unique",         builtin_unique);
 	global.force_define("up",             builtin_range<Range_Direction::Up>);
 	global.force_define("update",         builtin_update);
 }

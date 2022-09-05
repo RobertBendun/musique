@@ -97,4 +97,7 @@ struct Interpreter::Incoming_Midi_Callbacks
 enum class Midi_Connection_Type { Output, Input };
 Result<void> ensure_midi_connection_available(Interpreter&, Midi_Connection_Type, std::string_view operation_name);
 
+constexpr std::size_t hash_combine(std::size_t lhs, std::size_t rhs) {
+	return lhs ^= rhs + 0x9e3779b9 + (lhs << 6) + (lhs >> 2);
+}
 #endif
