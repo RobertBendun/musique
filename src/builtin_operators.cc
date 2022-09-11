@@ -49,8 +49,10 @@ static Result<Value> plus_minus_operator(Interpreter &interpreter, std::vector<V
 	if (MN::typecheck(args)) {
 		auto [chord, offset] = MN::move_from(args);
 		for (auto &note : chord.notes) {
-			note.base = Binary_Operation{}(note.base, offset.as_int());
-			note.simplify_inplace();
+			if (note.base) {
+				*note.base = Binary_Operation{}(*note.base, offset.as_int());
+				note.simplify_inplace();
+			}
 		}
 		return Value::from(std::move(chord));
 	}
@@ -58,8 +60,10 @@ static Result<Value> plus_minus_operator(Interpreter &interpreter, std::vector<V
 	if (NM::typecheck(args)) {
 		auto [offset, chord] = NM::move_from(args);
 		for (auto &note : chord.notes) {
-			note.base = Binary_Operation{}(offset.as_int(), note.base);
-			note.simplify_inplace();
+			if (note.base) {
+				*note.base = Binary_Operation{}(*note.base, offset.as_int());
+				note.simplify_inplace();
+			}
 		}
 		return Value::from(std::move(chord));
 	}

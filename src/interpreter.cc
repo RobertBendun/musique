@@ -234,7 +234,9 @@ Result<void> Interpreter::play(Chord chord)
 
 	// Turn all notes on
 	for (auto const& note : chord.notes) {
-		midi_connection->send_note_on(0, *note.into_midi_note(), 127);
+		if (note.base) {
+			midi_connection->send_note_on(0, *note.into_midi_note(), 127);
+		}
 	}
 
 	// Turn off each note at right time
@@ -243,7 +245,9 @@ Result<void> Interpreter::play(Chord chord)
 			max_time -= *note.length;
 			std::this_thread::sleep_for(ctx.length_to_duration(*note.length));
 		}
-		midi_connection->send_note_off(0, *note.into_midi_note(), 127);
+		if (note.base) {
+			midi_connection->send_note_off(0, *note.into_midi_note(), 127);
+		}
 	}
 
 	return {};

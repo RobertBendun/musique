@@ -50,7 +50,7 @@ static inline Result<void> create_chord(std::vector<Note> &chord, Interpreter &i
 			break;
 
 		case Value::Type::Music:
-			std::move(arg.chord.notes.begin(), arg.chord.notes.end(), std::back_inserter(chord));
+			std::copy_if(arg.chord.notes.begin(), arg.chord.notes.end(), std::back_inserter(chord), [](Note const& n) { return bool(n.base); });
 			break;
 
 		default:
@@ -294,13 +294,17 @@ static Result<Value> builtin_par(Interpreter &i, std::vector<Value> args) {
 	std::for_each(chord.notes.begin(), chord.notes.end(), [&](Note &note) { note = ctx.fill(note); });
 
 	for (auto const& note : chord.notes) {
-		i.midi_connection->send_note_on(0, *note.into_midi_note(), 127);
+		if (note.base) {
+			i.midi_connection->send_note_on(0, *note.into_midi_note(), 127);
+		}
 	}
 
 	auto result = builtin_play(i, std::span(args).subspan(1));
 
 	for (auto const& note : chord.notes) {
-		i.midi_connection->send_note_off(0, *note.into_midi_note(), 127);
+		if (note.base) {
+			i.midi_connection->send_note_off(0, *note.into_midi_note(), 127);
+		}
 	}
 	return result;
 }

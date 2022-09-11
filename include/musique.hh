@@ -761,11 +761,12 @@ struct Block
 	usize size() const;
 };
 
-/// Representation of musical note
+/// Representation of musical note or musical pause
 struct Note
 {
 	/// Base of a note, like `c` (=0), `c#` (=1) `d` (=2)
-	i32 base;
+	/// Or nullopt where there is no note - case when we have pause
+	std::optional<i32> base = std::nullopt;
 
 	/// Octave in MIDI acceptable range (from -1 to 9 inclusive)
 	std::optional<i8> octave = std::nullopt;

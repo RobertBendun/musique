@@ -17,14 +17,13 @@ constexpr u8 note_index(u8 note)
 	case 'h':  return 11;
 	case 'b':  return 11;
 	}
-	// This should be unreachable since parser limits what character can pass as notes
-	// but just to be sure return special value
-	return -1;
+	// Parser should limit range of characters that is called with this function
+	unreachable();
 }
 
 #include <iostream>
 
-constexpr std::string_view note_index_to_string(auto note_index)
+constexpr std::string_view note_index_to_string(int note_index)
 {
 	note_index %= 12;
 	if (note_index < 0) {
@@ -411,12 +410,17 @@ std::ostream& operator<<(std::ostream& os, Array const& v)
 
 std::optional<Note> Note::from(std::string_view literal)
 {
+	if (literal.starts_with('p')) {
+		return Note {};
+	}
+
 	if (auto const base = note_index(literal[0]); base != u8(-1)) {
 		Note note { .base = base };
+
 		while (literal.remove_prefix(1), not literal.empty()) {
 			switch (literal.front()) {
-			case '#': case 's': ++note.base; break;
-			case 'b': case 'f': --note.base; break;
+			case '#': case 's': ++*note.base; break;
+			case 'b': case 'f': --*note.base; break;
 			default:  return note;
 			}
 		}
@@ -432,27 +436,37 @@ std::optional<u8> Note::into_midi_note() const
 
 u8 Note::into_midi_note(i8 default_octave) const
 {
+	assert(bool(this->base), "Pause don't translate into MIDI");
 	auto const octave = this->octave.has_value() ? *this->octave : default_octave;
 	// octave is in range [-1, 9] where Note { .base = 0, .octave = -1 } is midi note 0
-	return (octave + 1) * 12 + base;
+	return (octave + 1) * 12 + *base;
 }
 
 void Note::simplify_inplace()
 {
-	if (octave) {
-		octave = std::clamp(*octave + int(base / 12), -1, 9);
-		if ((base %= 12) < 0) {
-			base = 12 + base;
+	if (base && octave) {
+		octave = std::clamp(*octave + int(*base / 12), -1, 9);
+		if ((*base %= 12) < 0) {
+			base = 12 + *base;
 		}
 	}
 }
 
 std::partial_ordering Note::operator<=>(Note const& rhs) const
 {
-	if (octave.has_value() == rhs.octave.has_value()) {
-		if (octave.has_value())
-			return (12 * *octave) + base <=> (12 * *rhs.octave) + rhs.base;
-		return base <=> rhs.base;
+	if (base.has_value() == rhs.base.has_value()) {
+		if (!base.has_value()) {
+			if (length.has_value() == rhs.length.has_value() && length.has_value()) {
+				return *length <=> *rhs.length;
+			}
+			return std::partial_ordering::unordered;
+		}
+
+		if (octave.has_value() == rhs.octave.has_value()) {
+			if (octave.has_value())
+				return (12 * *octave) + *base <=> (12 * *rhs.octave) + *rhs.base;
+			return *base <=> *rhs.base;
+		}
 	}
 	return std::partial_ordering::unordered;
 }
@@ -460,9 +474,13 @@ std::partial_ordering Note::operator<=>(Note const& rhs) const
 std::ostream& operator<<(std::ostream& os, Note note)
 {
 	note.simplify_inplace();
-	os << note_index_to_string(note.base);
-	if (note.octave) {
-		os << ":oct=" << int(*note.octave);
+	if (note.base) {
+		os << note_index_to_string(*note.base);
+		if (note.octave) {
+			os << ":oct=" << int(*note.octave);
+		}
+	} else {
+		os << "p";
 	}
 	if (note.length) {
 		os << ":len=" << *note.length;
@@ -544,7 +562,7 @@ std::size_t std::hash<Value>::operator()(Value const& value) const
 
 	break; case Value::Type::Music:
 		value_hash = std::accumulate(value.chord.notes.begin(), value.chord.notes.end(), value_hash, [](size_t h, Note const& n) {
-			h = hash_combine(h, n.base);
+			h = hash_combine(h, std::hash<std::optional<int>>{}(n.base));
 			h = hash_combine(h, std::hash<std::optional<Number>>{}(n.length));
 			h = hash_combine(h, std::hash<std::optional<i8>>{}(n.octave));
 			return h;

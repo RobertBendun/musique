@@ -531,6 +531,9 @@ static usize precedense(std::string_view op)
 	if (one_of(op, "*", "/", "%", "&")) return 400;
 	if (one_of(op, "**")) return 500;
 
+
+	std::cerr << op << std::endl;
+
 	unreachable();
 }
 
