@@ -135,8 +135,18 @@ auto Lexer::next_token() -> Result<std::variant<Token, End_Of_File>>
 		return Token { Token::Type::Chord, finish(), token_location };
 	}
 
-	// Lex symbol
 	using namespace std::placeholders;
+
+	// Lex quoted symbol
+	if (consume_if('\'')) {
+		for (auto predicate = std::bind(unicode::is_identifier, _1, unicode::First_Character::No);
+				consume_if(predicate) || consume_if(Valid_Operator_Chars);) {}
+
+		Token t = { Token::Type::Symbol, finish(), token_location };
+		return t;
+	}
+
+	// Lex symbol
 	if (consume_if(std::bind(unicode::is_identifier, _1, unicode::First_Character::Yes))) {
 	symbol_lexing:
 		for (auto predicate = std::bind(unicode::is_identifier, _1, unicode::First_Character::No);

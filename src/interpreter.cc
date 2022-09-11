@@ -55,7 +55,11 @@ Result<Value> Interpreter::eval(Ast &&ast)
 		case Token::Type::Symbol:
 			{
 				if (ast.token.source.starts_with('\'')) {
-					return Value::from(std::move(ast.token.source).substr(1));
+					if (auto op = operators.find(std::string(ast.token.source.substr(1))); op != operators.end()) {
+						return Value(op->second);
+					} else {
+						return Value::from(std::move(ast.token.source).substr(1));
+					}
 				}
 
 				auto name = std::string(ast.token.source);

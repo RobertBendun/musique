@@ -402,6 +402,43 @@ static Result<Value> builtin_for(Interpreter &i, std::vector<Value> args)
 	return result;
 }
 
+/// Fold container
+static Result<Value> builtin_fold(Interpreter &interpreter, std::vector<Value> args) {
+	constexpr auto guard = Guard<2> {
+		.name = "fold",
+		.possibilities = {
+			"(array, callback) -> any",
+			"(array, init, callback) -> any"
+		}
+	};
+
+	Value array, init, callback;
+	switch (args.size()) {
+	break; case 2:
+		array    = std::move(args[0]);
+		callback = std::move(args[1]);
+		if (array.size() != 0) {
+			init = Try(array.index(interpreter, 0));
+		}
+	break; case 3:
+		array    = std::move(args[0]);
+		init     = std::move(args[1]);
+		callback = std::move(args[2]);
+	break; default:
+		return guard.yield_error();
+	}
+
+	Try(guard(is_indexable, array));
+	Try(guard(is_callable, callback));
+
+	for (auto i = 0u; i < array.size(); ++i) {
+		auto element = Try(array.index(interpreter, i));
+		init = Try(callback(interpreter, { std::move(init), std::move(element) }));
+	}
+
+	return init;
+}
+
 /// Execute blocks depending on condition
 static Result<Value> builtin_if(Interpreter &i, std::vector<Value> args)  {
 	constexpr auto guard = Guard<2> {
@@ -790,6 +827,7 @@ void Interpreter::register_builtin_functions()
 	global.force_define("down",           builtin_range<Range_Direction::Down>);
 	global.force_define("flat",           builtin_flat);
 	global.force_define("floor",          apply_numeric_transform<&Number::floor>);
+	global.force_define("fold",           builtin_fold);
 	global.force_define("for",            builtin_for);
 	global.force_define("hash",           builtin_hash);
 	global.force_define("if",             builtin_if);
