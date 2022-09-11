@@ -64,3 +64,45 @@
 
 * `permute args` – permutuje `args`:
 	- `args` – lista obiektów;
+
+* `pgmchange args` – analogicznie do `instrument args`;
+
+* `play args` – gra `args`:
+	- `args` – mogą być to pojedyncze nuty, listy nut oraz bloki kodu zwracające nuty (nuty analogicznie jak w `chord notes`);
+
+* `program_change args` – analogicznie do `instrument args`;
+
+* `range args` – zwraca listę wartości liczbowych w podanych w `args` zakresie:
+	- `args` – postać `stop`, `start stop` lub `start stop step`;
+
+* `reverse args` – odwraca kolejność elementów `args`;
+	- `args` – powinna być to lista;
+
+* `rotate args` – przenosi na koniec listy wskazaną ilość elementów:
+	- `args` – musi być postaci `liczba lista`;
+
+* `round value` – zaokrągla wartość zgodnie z reguałmi matematyki:
+	- `value` – musi być to wartość liczbowa;
+
+* `shuffle args` – tasuje elementy `args`:
+	- `args` – powinna być to lista;
+
+* `sort args` – sortuje elementy `args`:
+	- `args` – powinna być to lista;
+
+* `try args` – próbuje wykonać wszystkie bloki kodu poza ostatnim, a jeżeli w trakcie tej próby natrafi na błąd, wykonuje ostatni blok:
+	- `args` – musi być to co najmniej jeden blok kodu Musique;
+
+* `typeof variable` – zwraca typ wskazanej `variable`;
+
+* `uniq args` – zwraca elementy list, z której usunięto elementy powtórzone:
+	- `args` – powinna być to lista;
+
+* `unique args` – zwraca listę elementów, z której usunięto powtórzenia:
+	- `args` – powinna być to lista;
+
+* `up value` – analogicznie do `down value`;
+
+* `update args` – aktualizuje element listy do nowej wartości:
+	- `args` – postaci `lista indeks wartość` lub `blok indeks wartość`;
+
