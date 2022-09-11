@@ -4,7 +4,7 @@
 	-`value` musi być liczbą całkowitą, domyślnie `120`;
 
 * `ceil value` – operacja podobna do matematycznej funkcji podłogi (zaokrąglenie liczby do pierwszej liczby całkowitej mniejszej lub równej tej liczbie);
-	- `value` – musi być to zmienna o typie Number lub lista takich zmiennych;
+	- `value` – musi być to wartość o typie Number lub lista takich wartości;
 
 * `chord (notes)` – konstruuje akord z `notes`:
 	- `notes` – `notes` definiowane są następująco: `(<litera_nuty> <numer_oktawy> <czas_trwania>)`:
@@ -24,13 +24,14 @@
 
 * `hash vect` – standardowa funkcja haszująca, zwraca jeden hash połączonych wartości z `vect`: 
 	- `vect` - kontener wartości, mogą być dowolnego typu;
-* `if cond [if_false] [if_true]` – wyrażenie warunkowe: jeżeli `cond` będzie fałszem, zostanie wykonany kod z `[if_false]`, w przeciwnym wypadku wykonany zostanie kod z `[if_true]`;
+
+* `if cond [if_true] [if_false]` – wyrażenie warunkowe: jeżeli `cond` będzie prawdą, zostanie wykonany kod z `[if_true]`, w przeciwnym wypadku wykonany zostanie kod z `[if_false]` – fragment `[if_false]` jest opcjonalny;
 
 * `incoming args` – pozwala na rozpatrzenie przychodzących komunikatów MIDI (`note_on` i `note_off`), odpowiednio;
-	- `args` – konstrukcja `(komunikat, nuta)`;
+	- `args` – konstrukcja `komunikat, nuta`;
 
 * `instrument args` – pozwala na zmianę instrumentu:
-	- `args` – może przyjmować sam numer programu, lub parę `(numer_programu, kanał)`;
+	- `args` – może przyjmować sam numer programu, lub parę `numer_programu, kanał`;
 
 * `len args` – zwraca długość kontenera `args`, a jeżeli `args` nie jest indeksowalne zwraca długość trwania dźwięku;
 
@@ -38,7 +39,8 @@
 
 * `min args` – zwraca minimum z `args`;
 
-* `mix args` – #TODO
+* `mix args` – algorytmicznie miesza wszystkie elementy z `args`:
+	- `args` – lista elementów, może być listą z zagnieżdżeniami;
 
 * `note_off args` – w zależności od kształtu `args`:
 	- jeżeli `args` są w postaci `(kanał, nuta)` – wyłącza nutę na danym kanale:
