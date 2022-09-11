@@ -71,7 +71,7 @@
 * `pgmchange args` – analogicznie do `instrument args`;
 
 * `play args` – gra `args`:
-	- `args` – mogą być to pojedyncze nuty, tablicy nut oraz bloki kodu zwracające nuty (nuty analogicznie jak w `chord notes`);
+	- `args` – mogą być to pojedyncze nuty, tablica nut oraz bloki kodu (nuty analogicznie jak w `chord notes`);
 
 * `program_change args` – analogicznie do `instrument args`;
 
