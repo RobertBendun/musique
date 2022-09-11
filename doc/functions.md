@@ -4,7 +4,7 @@
 	-`value` musi być liczbą całkowitą, domyślnie `120`;
 
 * `ceil value` – operacja podobna do matematycznej funkcji podłogi (zaokrąglenie liczby do pierwszej liczby całkowitej mniejszej lub równej tej liczbie);
-	- `value` – musi być to wartość o typie Number lub lista takich wartości;
+	- `value` – musi być to wartość o typie Number lub tablica takich wartości;
 
 * `chord (notes)` – konstruuje akord z `notes`:
 	- `notes` – `notes` definiowane są następująco: `(<litera_nuty> <numer_oktawy> <czas_trwania>)`:
@@ -13,11 +13,14 @@
 * `down value` – sekwencyjnie zwraca liczby całkowite, począwszy od `value` do 0:
 	- `value` – musi być liczbą całkowitą;
 
-* `flat args` – łączy `args` w listę bez zagnieżdżeń (tzn. "odpakowuje" zawartość zagnieżdżonych list i zawiera je w pojedyńczej tabeli):
-	- `args` - lista, w tym lista z zagnieżdżeniami;
+* `flat args` – łączy `args` w tablicę bez zagnieżdżeń (tzn. "odpakowuje" zawartość zagnieżdżonych tablic i zawiera je w pojedyńczej tabeli):
+	- `args` - tablica, w tym tablica z zagnieżdżeniami;
 
 * `floor value` – operacja podobna do matematycznej funkcji podłogi (zaokrąglenie liczby do pierwszej liczby całkowitej większej lub równej tej liczbie);
-	- `value` – musi być to zmienna o typie Number lub lista takich zmiennych;
+	- `value` – musi być to zmienna o typie Number lub tablica takich zmiennych;
+
+* `fold args` – używa elementów tablicy jako argumentów podanej funkcji:
+	- `args` – postaci `tablica funkcja` lub `tablica wartość_startowa funkcja`;
 
 * `for vect` – iteruje po elementach wektora `vect`:
 	- `vect` - kontener wartości, musi posiadać typ Vector;
@@ -33,14 +36,14 @@
 * `instrument args` – pozwala na zmianę instrumentu:
 	- `args` – może przyjmować sam numer programu, lub parę `numer_programu, kanał`;
 
-* `len args` – zwraca długość kontenera `args`, a jeżeli `args` nie jest indeksowalne zwraca długość trwania dźwięku;
+* `len args` – zwraca długość kontenera `args`, a jeżeli `args` nie jest wektorem ustawia domyślną długość trwania dźwięku, domyślnie ćwierćnuta;
 
 * `max args` – zwraca maksimum z `args`;
 
 * `min args` – zwraca minimum z `args`;
 
 * `mix args` – algorytmicznie miesza wszystkie elementy z `args`:
-	- `args` – lista elementów, może być listą z zagnieżdżeniami;
+	- `args` – tablica elementów, może być tablicą z zagnieżdżeniami;
 
 * `note_off args` – w zależności od kształtu `args`:
 	- jeżeli `args` są w postaci `(kanał, nuta)` – wyłącza nutę na danym kanale:
@@ -53,56 +56,56 @@
 * `nprimes value` – generuje `value` kolejnych liczb pierwszych:
 	- `value` – musi być typu Number;
 
-* `oct value` – podobnie do `bpm value`;
+* `oct value` – analogicznie do `bpm value`, wartość domyślna to 4;
 
 * `par args` – gra współbieżnie pierwszy dźwięk z `args` z pozostałymi dźwiękami z `args`:
 	- `args` – postać `(note, ...)`, powinien być rozmiaru co najmniej 2:
 		- `note` – postać podobna do `notes` z `chords notes`;
 
 * `partition args` – dzieli `args` na dwie grupy wedle danej funkcji:
-	- `args` – powinno przyjąć formę `(funkcja, lista())`
+	- `args` – powinno przyjąć formę `(funkcja, tablica())`
 
 * `permute args` – permutuje `args`:
-	- `args` – lista obiektów;
+	- `args` – tablica obiektów;
 
 * `pgmchange args` – analogicznie do `instrument args`;
 
 * `play args` – gra `args`:
-	- `args` – mogą być to pojedyncze nuty, listy nut oraz bloki kodu zwracające nuty (nuty analogicznie jak w `chord notes`);
+	- `args` – mogą być to pojedyncze nuty, tablicy nut oraz bloki kodu zwracające nuty (nuty analogicznie jak w `chord notes`);
 
 * `program_change args` – analogicznie do `instrument args`;
 
-* `range args` – zwraca listę wartości liczbowych w podanych w `args` zakresie:
+* `range args` – zwraca tablicę wartości liczbowych w podanych w `args` zakresie:
 	- `args` – postać `stop`, `start stop` lub `start stop step`;
 
 * `reverse args` – odwraca kolejność elementów `args`;
-	- `args` – powinna być to lista;
+	- `args` – powinna być to tablica;
 
-* `rotate args` – przenosi na koniec listy wskazaną ilość elementów:
-	- `args` – musi być postaci `liczba lista`;
+* `rotate args` – przenosi na koniec tablicy wskazaną ilość elementów:
+	- `args` – musi być postaci `liczba tablica`;
 
 * `round value` – zaokrągla wartość zgodnie z reguałmi matematyki:
 	- `value` – musi być to wartość liczbowa;
 
 * `shuffle args` – tasuje elementy `args`:
-	- `args` – powinna być to lista;
+	- `args` – powinna być to tablica;
 
 * `sort args` – sortuje elementy `args`:
-	- `args` – powinna być to lista;
+	- `args` – powinna być to tablica;
 
 * `try args` – próbuje wykonać wszystkie bloki kodu poza ostatnim, a jeżeli w trakcie tej próby natrafi na błąd, wykonuje ostatni blok:
 	- `args` – musi być to co najmniej jeden blok kodu Musique;
 
 * `typeof variable` – zwraca typ wskazanej `variable`;
 
-* `uniq args` – zwraca elementy list, z której usunięto elementy powtórzone:
-	- `args` – powinna być to lista;
+* `uniq args` – zwraca tablicę elementów, z której usunięto następujące po sobie powtórzenia:
+	- `args` – powinna być to tablica;
 
-* `unique args` – zwraca listę elementów, z której usunięto powtórzenia:
-	- `args` – powinna być to lista;
+* `unique args` – zwraca tablicę elementów, z której usunięto powtórzenia:
+	- `args` – powinna być to tablica;
 
 * `up value` – analogicznie do `down value`;
 
-* `update args` – aktualizuje element listy do nowej wartości:
-	- `args` – postaci `lista indeks wartość` lub `blok indeks wartość`;
+* `update args` – aktualizuje element tablicy do nowej wartości:
+	- `args` – postaci `tablica indeks wartość`;
 
