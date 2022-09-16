@@ -2,14 +2,9 @@
 #include <musique_internal.hh>
 
 /// Intrinsic implementation primitive to ease operation vectorization
-/// @invariant args.size() == 2
-Result<Value> vectorize(auto &&operation, Interpreter &interpreter, std::vector<Value> args)
+Result<Value> vectorize(auto &&operation, Interpreter &interpreter, Value lhs, Value rhs)
 {
-	assert(args.size() == 2, "Vectorization primitive only supports two arguments");
 	Array array;
-
-	auto lhs = std::move(args.front());
-	auto rhs = std::move(args.back());
 
 	if (is_indexable(lhs.type) && !is_indexable(rhs.type)) {
 		Array array;
@@ -25,6 +20,26 @@ Result<Value> vectorize(auto &&operation, Interpreter &interpreter, std::vector<
 			Try(operation(interpreter, { lhs, Try(rhs.index(interpreter, i)) })));
 	}
 	return Value::from(std::move(array));
+}
+
+/// Intrinsic implementation primitive to ease operation vectorization
+/// @invariant args.size() == 2
+Result<Value> vectorize(auto &&operation, Interpreter &interpreter, std::vector<Value> args)
+{
+	assert(args.size() == 2, "Vectorization primitive only supports two arguments");
+	return vectorize(std::move(operation), interpreter, std::move(args.front()), std::move(args.back()));
+}
+
+
+std::optional<Value> symetric(Value::Type t1, Value::Type t2, Value &lhs, Value &rhs, auto binary_predicate)
+{
+	if (lhs.type == t1 && rhs.type == t2) {
+		return binary_predicate(std::move(lhs), std::move(rhs));
+	} else if (lhs.type == t2 && rhs.type == t1) {
+		return binary_predicate(std::move(rhs), std::move(lhs));
+	} else {
+		return std::nullopt;
+	}
 }
 
 /// Creates implementation of plus/minus operator that support following operations:
@@ -95,40 +110,39 @@ template<typename Binary_Operation, char ...Chars>
 static Result<Value> binary_operator(Interpreter& interpreter, std::vector<Value> args)
 {
 	static constexpr char Name[] = { Chars..., '\0' };
-
-	using NN = Shape<Value::Type::Number, Value::Type::Number>;
-
-	if (NN::typecheck(args)) {
-		auto [lhs, rhs] = NN::move_from(args);
-		if constexpr (is_template_v<Result, decltype(Binary_Operation{}(lhs, rhs))>) {
-			return Value::from(Try(Binary_Operation{}(lhs, rhs)));
-		} else {
-			return Value::from(Binary_Operation{}(lhs, rhs));
-		}
+	if (args.empty()) {
+		return Value::from(Number(1));
 	}
-
-	if (may_be_vectorized(args)) {
-		return vectorize(binary_operator<Binary_Operation, Chars...>, interpreter, args);
-	}
-
-	return Error {
-		.details = errors::Unsupported_Types_For {
-			.type = errors::Unsupported_Types_For::Operator,
-			.name = Name,
-			.possibilities = {
-				"(number, number) -> number",
-				"(array, number) -> array",
-				"(number, array) -> array"
+	auto init = std::move(args.front());
+	return algo::fold(std::span(args).subspan(1), std::move(init),
+		[&interpreter](Value lhs, Value &rhs) -> Result<Value> {
+			if (lhs.type == Value::Type::Number && rhs.type == Value::Type::Number) {
+				return wrap_value(Binary_Operation{}(std::move(lhs).n, std::move(rhs).n));
 			}
-		},
-		.location = {}, // TODO fill location
-	};
+
+			if (is_indexable(lhs.type) != is_indexable(rhs.type)) {
+				return vectorize(binary_operator<Binary_Operation, Chars...>, interpreter, std::move(lhs), std::move(rhs));
+			}
+
+			return errors::Unsupported_Types_For {
+				.type = errors::Unsupported_Types_For::Operator,
+				.name = Name,
+				.possibilities = {
+					"(number, number) -> number",
+					"(array, number) -> array",
+					"(number, array) -> array"
+				}
+			};
+		}
+	);
 }
 
 template<typename Binary_Predicate>
-static Result<Value> equality_operator(Interpreter &interpreter, std::vector<Value> args)
+static Result<Value> comparison_operator(Interpreter &interpreter, std::vector<Value> args)
 {
-	assert(args.size() == 2, "(in)Equality only allows for 2 operands"); // TODO(assert)
+	if (args.size() != 2) {
+		return Value::from(algo::pairwise_all(std::move(args), Binary_Predicate{}));
+	}
 
 	if (is_indexable(args[1].type) && !is_indexable(args[0].type)) {
 		std::swap(args[1], args[0]);
@@ -155,43 +169,39 @@ static Result<Value> equality_operator(Interpreter &interpreter, std::vector<Val
 	return Value::from(Binary_Predicate{}(std::move(args.front()), std::move(args.back())));
 }
 
-template<typename Binary_Predicate>
-static Result<Value> comparison_operator(Interpreter&, std::vector<Value> args)
-{
-	assert(args.size() == 2, "Operator handler cannot accept any shape different then 2 arguments");
-	return Value::from(Binary_Predicate{}(args.front(), args.back()));
-}
-
 static Result<Value> multiplication_operator(Interpreter &i, std::vector<Value> args)
 {
-	using MN = Shape<Value::Type::Music, Value::Type::Number>;
-	using NM = Shape<Value::Type::Number, Value::Type::Music>;
-
-	Number repeat; Chord what; bool typechecked = false;
-
-	// TODO add automatic symetry resolution for cases like this
-	if (NM::typecheck(args))      { typechecked = true; std::tie(repeat, what) = NM::move_from(args); }
-	else if (MN::typecheck(args)) { typechecked = true; std::tie(what, repeat) = MN::move_from(args); }
-
-	if (typechecked) {
-		return Value::from(Array {
-			.elements = std::vector<Value>(
-				repeat.floor().as_int(), Value::from(std::move(what))
-			)
-		});
+	if (args.empty()) {
+		return Value::from(Number(1));
 	}
 
-	// If binary_operator returns an error that lists all possible overloads
-	// of this operator we must inject overloads that we provided above
-	auto result = binary_operator<std::multiplies<>, '*'>(i, std::move(args));
-	if (!result.has_value()) {
-		auto &details = result.error().details;
-		if (auto p = std::get_if<errors::Unsupported_Types_For>(&details)) {
-			p->possibilities.push_back("(repeat: number, what: music) -> array of music");
-			p->possibilities.push_back("(what: music, repeat: number) -> array of music");
+	auto init = std::move(args.front());
+	return algo::fold(std::span(args).subspan(1), std::move(init), [&i](Value lhs, Value &rhs) -> Result<Value> {
+		{
+			auto result = symetric(Value::Type::Number, Value::Type::Music, lhs, rhs, [](Value lhs, Value rhs) {
+				return Value::from(Array {
+					.elements = std::vector<Value>(lhs.n.floor().as_int(), std::move(rhs))
+				});
+			});
+
+			if (result.has_value()) {
+				return *std::move(result);
+			}
 		}
-	}
-	return result;
+
+		// If binary_operator returns an error that lists all possible overloads
+		// of this operator we must inject overloads that we provided above
+		auto result = binary_operator<std::multiplies<>, '*'>(i, { std::move(lhs), std::move(rhs) });
+		if (!result.has_value()) {
+			auto &details = result.error().details;
+			if (auto p = std::get_if<errors::Unsupported_Types_For>(&details)) {
+				p->possibilities.push_back("(repeat: number, what: music) -> array of music");
+				p->possibilities.push_back("(what: music, repeat: number) -> array of music");
+			}
+		}
+
+		return result;
+	});
 }
 
 using Operator_Entry = std::tuple<char const*, Intrinsic>;
@@ -213,13 +223,12 @@ static constexpr auto Operators = std::array {
 	Operator_Entry { "%", binary_operator<std::modulus<>, '%'> },
 	Operator_Entry { "**", binary_operator<pow_operator, '*', '*'> },
 
+	Operator_Entry { "!=", comparison_operator<std::not_equal_to<>> },
 	Operator_Entry { "<",  comparison_operator<std::less<>> },
-	Operator_Entry { ">",  comparison_operator<std::greater<>> },
 	Operator_Entry { "<=", comparison_operator<std::less_equal<>> },
+	Operator_Entry { "==", comparison_operator<std::equal_to<>> },
+	Operator_Entry { ">",  comparison_operator<std::greater<>> },
 	Operator_Entry { ">=", comparison_operator<std::greater_equal<>> },
-
-	Operator_Entry { "==", equality_operator<std::equal_to<>> },
-	Operator_Entry { "!=", equality_operator<std::not_equal_to<>> },
 
 	Operator_Entry { ".",
 		+[](Interpreter &i, std::vector<Value> args) -> Result<Value> {

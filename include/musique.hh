@@ -318,6 +318,15 @@ struct [[nodiscard("This value may contain critical error, so it should NOT be i
 	{
 	}
 
+	template<typename Arg>
+	requires requires (Arg a) {
+		{ Error { .details = std::move(a) } };
+	}
+	inline Result(Arg a)
+		: Storage(tl::unexpected(Error { .details = std::move(a) }))
+	{
+	}
+
 	// Internal function used for definition of Try macro
 	inline auto value() &&
 	{
