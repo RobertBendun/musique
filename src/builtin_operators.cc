@@ -206,13 +206,9 @@ static Result<Value> multiplication_operator(Interpreter &i, std::vector<Value> 
 
 using Operator_Entry = std::tuple<char const*, Intrinsic>;
 
-struct pow_operator
-{
-	inline Result<Number> operator()(Number lhs, Number rhs)
-	{
-		return lhs.pow(rhs);
-	}
-};
+using power = decltype([](Number lhs, Number rhs) -> Result<Number> {
+	return lhs.pow(rhs);
+});
 
 /// Operators definition table
 static constexpr auto Operators = std::array {
@@ -221,7 +217,7 @@ static constexpr auto Operators = std::array {
 	Operator_Entry { "*", multiplication_operator },
 	Operator_Entry { "/", binary_operator<std::divides<>, '/'> },
 	Operator_Entry { "%", binary_operator<std::modulus<>, '%'> },
-	Operator_Entry { "**", binary_operator<pow_operator, '*', '*'> },
+	Operator_Entry { "**", binary_operator<power, '*', '*'> },
 
 	Operator_Entry { "!=", comparison_operator<std::not_equal_to<>> },
 	Operator_Entry { "<",  comparison_operator<std::less<>> },

@@ -379,8 +379,15 @@ static Result<std::vector<Ast>> parse_many(
 	std::vector<Ast> trees;
 	Result<Ast> expr;
 
-	if (at_least == At_Least::Zero && p.token_id >= p.tokens.size())
+	// Consume random separators laying before sequence. This was added to prevent
+	// an error when input is only expression separator ";"
+	while (separator && at_least == At_Least::Zero && p.expect(*separator)) {
+		p.consume();
+	}
+
+	if (at_least == At_Least::Zero && p.token_id >= p.tokens.size()) {
 		return {};
+	}
 
 	while ((expr = (p.*parser)()).has_value()) {
 		trees.push_back(std::move(expr).value());
@@ -524,6 +531,7 @@ static usize precedense(std::string_view op)
 	//  Exclusion of them is marked by subtracting total number of excluded operators.
 	static_assert(Operators_Count - 1 == 15, "Ensure that all operators have defined precedense below");
 
+	if (one_of(op, "=")) return 0;
 	if (one_of(op, "or")) return 100;
 	if (one_of(op, "and")) return 150;
 	if (one_of(op, "<", ">", "<=", ">=", "==", "!=")) return 200;
