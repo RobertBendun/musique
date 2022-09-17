@@ -1,0 +1,79 @@
+----------------------------------------------
+"Für Elise in A Minor" by Ludwig van Beethoven
+----------------------------------------------
+oct 5; bpm 72; len (1/16);
+
+var subsection1 = [ n |
+  sim (a 4 en) (a 2 e 3 a 3);
+  play [oct 4; c e a];
+
+  sim (b 4 en) (e 2 e 3 g# 3);
+  play [oct 4; e g# b];
+
+  sim (c 5 en) (a 2 e 3 a 3);
+  play (e 4 e 5 d# 5);
+
+  play (e d# e b 4 d c);
+
+  sim (a 4 en) (a 2 e 3 a 3);
+  play (c 4 e 4 a 4);
+
+  sim (b 4 en) (e 2 e 3 g# 3);
+  play (d 4 c 5 b 4);
+];
+
+var section1 = [ n |
+  play (e d#);
+  play (e d# e b 4 d c);
+
+  subsection1 0;
+
+  if (n == 1)
+    [ sim (a 4 qn) (a 2 e 3 a 3); ]
+    [ sim (a 4 en) (a 2 e 3 a 3)
+    ; play (b 4 c 5 d 5)
+    ]
+];
+
+var section2 = [ n |
+  sim (e 5 den) (c 3 g 3 c 4);
+  play (g 4 f e);
+
+  sim (d 5 den) (g 2 g 3 b 4);
+  play (f 4 e d);
+
+  sim (c 5 den) (a 2 e 3 a 3);
+  play (e 4 d c);
+
+  sim (b 4 en) (e 2 e 3 e 4);
+  play (e 4 e 5 e 4 e 4 e 5 e 6 d# 5 e 5 d# 5 e 5 en);
+
+  play (d# e d# e d#);
+  play (e d# e b 4 d c);
+
+  subsection1 0;
+
+  if (n == 1)
+    [ sim (a 4 en) (a 2 e 3 a 3)
+    ; play (b 4 c 5 d 5)
+    ]
+];
+
+section1 1;
+section1 2;
+section2 1;
+
+sim (a 4 en p    e8  4 f7 4 e38 4)
+    (a 2 e 3 a 3 a#2 3 a3 3 g35 3);
+
+sim (c 5 qn f 5 dsn e 5 tn)
+    (f 3 a 3 c 4 a 3 c 4 a 3);
+
+sim (e 5 en d 5 en a# 5 dsn a 5 tn)
+    (f 3 a# 3 d 4 a# 3 d 4 a# 3);
+
+sim (a g f e d c)
+    (f 3 a# 3 d 4 a# 3 d 4 a# 3);
+
+sim (a# 4 a 4 a 4 tn g 4 tn a 4 tn a# 4 tn)
+    (f 3 a 3 c 4 a 3 c 4 a 3);
