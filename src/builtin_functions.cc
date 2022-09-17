@@ -5,6 +5,8 @@
 #include <memory>
 #include <iostream>
 #include <unordered_set>
+#include <chrono>
+#include <thread>
 
 void Interpreter::register_callbacks()
 {
@@ -307,6 +309,107 @@ static Result<Value> builtin_par(Interpreter &i, std::vector<Value> args) {
 		}
 	}
 	return result;
+}
+
+/// Plays each argument simultaneously
+static Result<Value> builtin_sim(Interpreter &interpreter, std::vector<Value> args)
+{
+	// Simplest solution that will allow arbitrary code will be to clone Interpreter
+	// and execute code recording all messages that are beeing sent. Then sort it
+	// accordingly and start playing. Unfortuanatelly this solution will not respect
+	// cause and effect chains - [play c; say 42; play d] will first say 42,
+	// then play c and d
+	//
+	// The next solution is to run code in multithreaded context, making sure that
+	// all operations will be locked accordingly. This would require support from
+	// parser to well behave under multithreaded environment which now cannot be
+	// guaranteeed.
+	//
+	// The final solution which is only partially working is to traverse arguments
+	// in this function and build a schedule that will be executed
+
+	// 1. Resolve all notes from arguments to tracks
+
+	std::vector<std::vector<Chord>> tracks(args.size());
+
+	struct {
+		Interpreter &interpreter;
+
+		Result<void> operator()(std::vector<Chord> &track, Value &arg)
+		{
+			if (arg.type == Value::Type::Music) {
+				track.push_back(std::move(arg).chord);
+				return {};
+			}
+
+			if (is_indexable(arg.type)) {
+				for (auto i = 0u; i < arg.size(); ++i) {
+					auto value = Try(arg.index(interpreter, i));
+					Try((*this)(track, value));
+				}
+				return {};
+			}
+
+			unimplemented();
+		}
+	} append { interpreter };
+
+	for (auto i = 0u; i < args.size(); ++i) {
+		Try(append(tracks[i], args[i]));
+	}
+
+	// 2. Translate tracks of notes into one timeline with on and off messages
+	struct Instruction
+	{
+		Number when;
+		enum { On, Off } action;
+		uint8_t note;
+	};
+	std::vector<Instruction> schedule;
+
+	auto const& ctx = interpreter.context_stack.back();
+
+	for (auto const& track : tracks) {
+		auto passed_time = Number(0);
+
+		for (auto const& chord : track) {
+			auto chord_length = Number(0);
+			for (auto &note : chord.notes) {
+				auto n = ctx.fill(note);
+				auto const length = n.length.value();
+
+				if (note.base) {
+					auto const midi_note = n.into_midi_note().value();
+					schedule.push_back({ .when = passed_time,          .action = Instruction::On,  .note = midi_note });
+					schedule.push_back({ .when = passed_time + length, .action = Instruction::Off, .note = midi_note });
+				}
+
+				chord_length = std::max(n.length.value(), chord_length);
+			}
+			passed_time += chord_length;
+		}
+	}
+
+	// 3. Sort timeline so events will be played at right time
+	std::sort(schedule.begin(), schedule.end(), [](Instruction const& lhs, Instruction const& rhs) {
+		return lhs.when < rhs.when;
+	});
+
+	// 4. Play according to timeline
+	auto start_time = std::chrono::duration<float>(0);
+	for (auto const& instruction : schedule) {
+		auto const dur = ctx.length_to_duration({instruction.when});
+		if (start_time < dur) {
+			std::this_thread::sleep_for(dur - start_time);
+			start_time = dur;
+		}
+		switch (instruction.action) {
+		break; case Instruction::On:  interpreter.midi_connection->send_note_on(0, instruction.note, 127);
+		break; case Instruction::Off: interpreter.midi_connection->send_note_off(0, instruction.note, 127);
+		}
+	}
+
+	return Value{};
 }
 
 /// Calculate upper bound for sieve that has to yield n primes
@@ -852,6 +955,7 @@ void Interpreter::register_builtin_functions()
 	global.force_define("rotate",         builtin_rotate);
 	global.force_define("round",          apply_numeric_transform<&Number::round>);
 	global.force_define("shuffle",        builtin_shuffle);
+	global.force_define("sim",            builtin_sim);
 	global.force_define("sort",           builtin_sort);
 	global.force_define("try",            builtin_try);
 	global.force_define("typeof",         builtin_typeof);

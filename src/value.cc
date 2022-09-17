@@ -487,8 +487,10 @@ Chord Chord::from(std::string_view source)
 	source.remove_prefix(1 + (source[1] == '#'));
 	chord.notes.push_back(*std::move(note));
 
-	for (char digit : source) {
-		chord.notes.push_back(Note { .base = u8(digit - '0') });
+	if (note->base) {
+		for (char digit : source) {
+			chord.notes.push_back(Note { .base = note->base.value() + i32(digit - '0') });
+		}
 	}
 
 	return chord;
