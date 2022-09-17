@@ -811,6 +811,9 @@ struct Chord
 	static Chord from(std::string_view source);
 
 	bool operator==(Chord const&) const = default;
+
+	/// Fill length and octave or sequence multiple chords
+	Result<Value> operator()(Interpreter &i, std::vector<Value> args);
 };
 
 std::ostream& operator<<(std::ostream& os, Chord const& chord);

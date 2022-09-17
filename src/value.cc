@@ -161,22 +161,7 @@ Result<Value> Value::operator()(Interpreter &i, std::vector<Value> args)
 	switch (type) {
 	case Type::Intrinsic: return intr(i, std::move(args));
 	case Type::Block:     return blk(i, std::move(args));
-	case Type::Music:
-		{
-			assert(args.size() == 1 || args.size() == 2, "music value can be called only in form note <octave> [<length>]"); // TODO(assert)
-			assert(args[0].type == Type::Number, "expected octave to be a number"); // TODO(assert)
-
-			assert(args.size() == 2 ? args[1].type == Type::Number : true, "expected length to be a number"); // TODO(assert)
-			for (auto &note : chord.notes) {
-				note.octave = args[0].n.as_int();
-				if (args.size() == 2) {
-					note.length = args[1].n;
-				}
-				note.simplify_inplace();
-			}
-
-			return *this;
-		}
+	case Type::Music:     return chord(i, std::move(args));
 	default:
 		return Error {
 			.details = errors::Not_Callable { .type = type_name(type) },
@@ -507,6 +492,51 @@ Chord Chord::from(std::string_view source)
 	}
 
 	return chord;
+}
+
+Result<Value> Chord::operator()(Interpreter&, std::vector<Value> args)
+{
+	std::vector<Value> array;
+	Chord *current = this;
+	enum State {
+		Waiting_For_Octave,
+		Waiting_For_Length,
+		Waiting_For_Note
+	} state = Waiting_For_Octave;
+
+	for (auto &arg : args) {
+		if (arg.type == Value::Type::Number) {
+			switch (state) {
+			break; case Waiting_For_Octave:
+				std::for_each(current->notes.begin(), current->notes.end(),
+					[&arg](Note &n) { n.octave = arg.n.floor().as_int(); });
+				state = Waiting_For_Length;
+				continue;
+
+			break; case Waiting_For_Length:
+				std::for_each(current->notes.begin(), current->notes.end(),
+					[&arg](Note &n) { n.length = arg.n; });
+				state = Waiting_For_Note;
+				continue;
+
+			default:
+				unimplemented();
+			}
+		}
+
+		if (arg.type == Value::Type::Music) {
+			if (array.empty()) {
+				array.push_back(Value::from(std::move(*current)));
+			}
+			array.push_back(std::move(arg));
+			current = &array.back().chord;
+			state = Waiting_For_Octave;
+		}
+	}
+
+	return array.empty()
+		? Value::from(*current)
+		: Value::from(Array{array});
 }
 
 std::ostream& operator<<(std::ostream& os, Chord const& chord)
