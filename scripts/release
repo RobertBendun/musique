@@ -27,7 +27,7 @@ lowdown -s doc/functions.md -m "title:Lista funkcji języka Musique" -o "$Target
 
 echo "Copy source code"
 
-git clone --quiet --depth=1 "$(git remote -v | awk '{ print $2 }' | head -n1)" "$Target"/source_code
+git clone --recursive --quiet --depth=1 "$(git remote -v | awk '{ print $2 }' | head -n1)" "$Target"/source_code
 rm -rf "$Target"/source_code/.git
 
 echo "Boundle it all up"

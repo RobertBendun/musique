@@ -9,4 +9,4 @@ DEBUG_FLAGS=-O0 -ggdb -fsanitize=undefined -DDebug
 CXX=g++
 
 LDFLAGS=-L./lib/midi/
-LDLIBS=-lmidi-alsa -lasound -lpthread
+LDLIBS=-lmidi-alsa -lasound -lpthread -static-libgcc -static-libstdc++
