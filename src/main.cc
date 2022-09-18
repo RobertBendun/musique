@@ -50,6 +50,10 @@ static std::string_view pop(std::span<char const*> &span)
 		"\n"
 		"    --ast\n"
 		"      prints ast for given code\n"
+		"\n"
+		"Thanks to:\n"
+		"  Sy Brand, https://sybrand.ink/, creator of tl::expected https://github.com/TartanLlama/expected\n"
+		"  Justine Tunney, https://justinetunney.com, creator of bestline readline library https://github.com/jart/bestline\n"
 		;
 	std::exit(1);
 }
