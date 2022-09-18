@@ -40,8 +40,10 @@ clean:
 release: bin/musique
 	scripts/release
 
+install: bin/musique
+	scripts/install
 
 
-.PHONY: clean doc doc-open all test unit-tests release
+.PHONY: clean doc doc-open all test unit-tests release install
 
 $(shell mkdir -p bin/debug/tests)

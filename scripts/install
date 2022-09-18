@@ -1,0 +1,8 @@
+#!/bin/sh
+
+set -xe
+
+mkdir -p /usr/local/bin
+cp -f bin/musique /usr/local/bin
+chmod 755 /usr/local/bin/musique
+echo "Musique installed."
