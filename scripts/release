@@ -21,6 +21,8 @@ echo "Copy bin/musique, examples, license and documentation"
 cp bin/musique "$Target"/
 cp LICENSE "$Target"/LICENSE
 cp -r examples  "$Target"/examples
+sed "s/bin\/musique/musique/g" scripts/install > "$Target"/install.sh
+chmod 0755 "$Target"/install.sh
 
 lowdown -s doc/overview.md  -m "title:Omówienie języka Musique"     -o "$Target"/overview.html
 lowdown -s doc/functions.md -m "title:Lista funkcji języka Musique" -o "$Target"/functions.html
