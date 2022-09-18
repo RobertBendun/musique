@@ -5,6 +5,20 @@ Interpreter języka Musique. Możliwy do wykorzystywania jako:
 - biblioteka interpretera języka dołączana do innego projektu (podobnie jak Lua);
 - REPL działający w systemie GNU/Linux + ALSA wykonujący język Musique.
 
+## Wymagane pakiety systemowe
+
+Do poprawnego skompilowania i uruchomienia interpretera języka Musique należy posiadać zainstalowane następujące pakiety (lub ich odpowiedniki) – dla systemu GNU/Linux Ubuntu Desktop 22.04 są to:
+
+- `build-essential` – pakiet zawierający podstawowe narzędzia do pracy z kodem źródłowym, takie jak m.in. kompilator;
+- `libasound2-dev` – pakiet zawierający biblioteki programistyczne pakietu `libasound2`.
+
+Można je zainstalować korzystając z polecenia:
+
+```
+$ sudo apt update
+$ sudo apt install -y build-essential libasound2-dev
+```
+
 ## Budowanie interpretera
 
 Jeśli nie posiadasz zależności `lib/midi` to:
