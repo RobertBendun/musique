@@ -2,7 +2,9 @@
 
 set -xe
 
-mkdir -p /usr/local/bin
-cp -f bin/musique /usr/local/bin
-chmod 755 /usr/local/bin/musique
+BINDIR=/usr/local/bin
+
+mkdir -p "$BINDIR"
+cp -f bin/musique "$BINDIR"
+chmod 755 "$BINDIR"/musique
 echo "Musique installed."
