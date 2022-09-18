@@ -21,12 +21,19 @@ A następnie zbuduj interpreter:
 $ make bin/musique
 ```
 
+Żeby zainstalować interpreter języka Musique w systemie, należy dodatkowo wykonać polecenie:
+
+```
+# make install
+```
+
+*Uwaga*: powyższe polecenie instalacyjne musi zostać wykonane jako uprzywilejowany użytkownik (np. wykorzystując polecenie `sudo`).
+
 ## Dostępne komendy
 
 - `make` - Buduje interpreter `bin/musique` (tryb release)
 - `make debug` - Buduje interpreter `bin/debug/musique` (tryb debug)
 - `make clean` - Usuwa reprodukowalne elementy projektu (automatycznie stworzone pliki binarne czy raporty)
-
 ### Dokumentacja
 
 - `make doc` - Tworzy `doc/build/html/` zawierający dokumentację projektu
