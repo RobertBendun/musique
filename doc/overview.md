@@ -17,24 +17,32 @@ Interpreter posiada historię poprzednich poleceń, którą można przechodzić 
 
 Uruchom wyłącznie tryb interaktywny:
 
-```
+```console
 $ musique
 > play c e g
 ```
 
-Uruchom plik `examples/ode-to-joy.mq`, który odgrywa "Odę do radości":
+Uruchom plik `examples/ode-to-joy.mq`, który odgrywa "Odę do radości", grając go na porcie 14 MIDI:
 
+```console
+$ musique --output 14 examples/ode-to-joy.mq
 ```
-$ musique examples/ode-to-joy.mq
+
+by wylistować porty użyj:
+
+```console
+$ musique --list
 ```
 
 Uruchom plik `examples/factorial.mq`, który wypisuje kolejne wartości silni, ale też tryb interaktywny, w którym wykorzystamy definicje z pliku:
 
 ```
-$ musique examples/factorial.mq
+$ musique examples/factorial.mq --interactive
 > factorial 5
 120
 ```
+
+Możesz zbadać listę parametrów oferowanych przez `musique` poprzez `musique -h`
 
 ## Podstawowe koncepty
 
