@@ -1,9 +1,10 @@
 ----------------------------------------------
 "Für Elise in A Minor" by Ludwig van Beethoven
+WIP implemntation
 ----------------------------------------------
 oct 5; bpm 72; len (1/16);
 
-subsection1 := [ n |
+subsection1 := [
   sim (a 4 en) (a 2 e 3 a 3);
   play [oct 4; c e a];
 
@@ -26,7 +27,7 @@ section1 := [ n |
   play (e d#);
   play (e d# e b 4 d c);
 
-  subsection1 0;
+  call subsection1;
 
   if (n == 1)
     [ sim (a 4 qn) (a 2 e 3 a 3); ]
@@ -51,7 +52,7 @@ section2 := [ n |
   play (d# e d# e d#);
   play (e d# e b 4 d c);
 
-  subsection1 0;
+  call subsection1;
 
   if (n == 1)
     [ sim (a 4 en) (a 2 e 3 a 3)

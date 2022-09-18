@@ -156,7 +156,7 @@ enum class Range_Direction { Up, Down };
 
 /// Create range according to direction and specification, similar to python
 template<Range_Direction dir>
-Result<Value> builtin_range(Interpreter&, std::vector<Value> args)
+static Result<Value> builtin_range(Interpreter&, std::vector<Value> args)
 {
 	using N   = Shape<Value::Type::Number>;
 	using NN  = Shape<Value::Type::Number, Value::Type::Number>;
@@ -920,11 +920,33 @@ static Result<Value> builtin_mix(Interpreter &i, std::vector<Value> args)
 	return Value::from(std::move(result));
 }
 
+/// Call operator. Calls first argument with remaining arguments
+static Result<Value> builtin_call(Interpreter &i, std::vector<Value> args)
+{
+	auto const guard = Guard<1> {
+		.name = "call",
+		.possibilities = {
+			"(function, ...args) -> any"
+		}
+	};
+
+	if (args.size() == 0) {
+		return guard.yield_error();
+	}
+
+	auto callable = args.front();
+	Try(guard(is_callable, callable));
+	args.erase(args.begin());
+
+	return callable(i, std::move(args));
+}
+
 void Interpreter::register_builtin_functions()
 {
 	auto &global = *Env::global;
 
 	global.force_define("bpm",            ctx_read_write_property<&Context::bpm>);
+	global.force_define("call",           builtin_call);
 	global.force_define("ceil",           apply_numeric_transform<&Number::ceil>);
 	global.force_define("chord",          builtin_chord);
 	global.force_define("down",           builtin_range<Range_Direction::Down>);

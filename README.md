@@ -68,7 +68,7 @@ $ make bin/musique
 Skopiuj plik [etc/editor/musique.vim](etc/editor/musique.vim) do folderu `syntax` wewnątrz twojej konfiguracji Vima (Neovima). Np:
 
 ```console
-$ cp etc/editor/musique.vim ~/.config/nvim/syntax/
+$ cp editor/musique.vim ~/.config/nvim/syntax/
 ```
 
 Następnie musisz dodać ustawienie typu pliku na podstawie rozszerzenia wewnątrz twojej konfiguracji:

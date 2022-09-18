@@ -37,6 +37,11 @@ doc-open: doc
 clean:
 	rm -rf bin coverage
 
-.PHONY: clean doc doc-open all test unit-tests
+release: bin/musique
+	scripts/release
+
+
+
+.PHONY: clean doc doc-open all test unit-tests release
 
 $(shell mkdir -p bin/debug/tests)

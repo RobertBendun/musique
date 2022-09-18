@@ -8,3 +8,5 @@ doc/source/api
 __pycache__
 drafts.cc
 .cache
+release_*
+*.zip

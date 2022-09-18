@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+
+set -e -o pipefail
+
+Suffix="$(date +"%Y-%m-%d")"
+Target="release_$Suffix"
+
+
+if [ -d "$Target" ]; then
+	rm -rf "$Target"
+fi
+
+mkdir -p "$Target"
+
+if ! [ -f bin/musique ]; then
+	make bin/musique
+fi
+
+echo "Copy bin/musique, examples, license and documentation"
+
+cp bin/musique "$Target"/
+cp LICENSE "$Target"/LICENSE
+cp -r examples  "$Target"/examples
+
+lowdown -s doc/overview.md  -m "title:Omówienie języka Musique"     -o "$Target"/overview.html
+lowdown -s doc/functions.md -m "title:Lista funkcji języka Musique" -o "$Target"/functions.html
+
+echo "Copy source code"
+
+git clone --quiet --depth=1 "$(git remote -v | awk '{ print $2 }' | head -n1)" "$Target"/source_code
+rm -rf "$Target"/source_code/.git
+
+echo "Boundle it all up"
+
+zip -q -r "musique_$Suffix.zip" "$Target"/*

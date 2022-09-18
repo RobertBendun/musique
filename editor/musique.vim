@@ -8,8 +8,8 @@ if exists("b:current_syntax")
 	finish
 endif
 
-syn keyword musiqueVariableDeclaration var
-syn keyword musiqueOperators * + - / < <= == >= > != .
+syn keyword musiqueVariableDeclaration :=
+syn keyword musiqueOperators * + - / < <= == >= > != . ** and or
 
 syn match musiqueParameterSplitter display "|"
 syn match musiqueExpressionDelimiter display ";"
@@ -18,7 +18,7 @@ syn match musiqueInteger display "[0-9][0-9_]*"
 
 syn keyword musiqueConstant true false nil
 
-syn keyword musiqueDefaultBuiltins if len play permute par shuffle chord bpm oct note_on note_off flat update
+syn keyword musiqueDefaultBuiltins bpm call ceil chord down flat floor fold for hash if incoming instrument len max min mix note_off note_on nprimes oct par partition permute pgmchange play program_change range reverse rotate round shuffle sim sort try typeof uniq unique up update
 syn keyword musiqueLinuxBuiltins say
 
 syn match musiqueComment "--.*$"
