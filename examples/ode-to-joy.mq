@@ -1,5 +1,5 @@
-var C = chord (c 3 1) (g 3 1) (c 4 1);
-var G = chord (g 3 1) (d 4 1) (g 4 1);
+C := chord (c 3 1) (g 3 1) (c 4 1);
+G := chord (g 3 1) (d 4 1) (g 4 1);
 
 oct 5;
 par C e e f g;

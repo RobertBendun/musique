@@ -1,4 +1,4 @@
-var map = [fn array | var result = []; for array [v | result = result & [fn v] ]; result];
-var drop = [n arr | arr.(range n (len arr))];
-var take = [n arr | arr.(up n)];
-var filter = [predicate arr | arr.(map predicate arr)];
+map    := [fn array | var result = []; for array [v | result = result & [fn v] ]; result];
+drop   := [n arr | arr.(range n (len arr))];
+take   := [n arr | arr.(up n)];
+filter := [predicate arr | arr.(map predicate arr)];

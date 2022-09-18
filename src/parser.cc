@@ -26,14 +26,14 @@ constexpr auto Literal_Keywords = std::array {
 	"true"sv,
 };
 
-static_assert(Keywords_Count == Literal_Keywords.size() + 3, "Ensure that all literal keywords are listed");
+static_assert(Keywords_Count == Literal_Keywords.size() + 2, "Ensure that all literal keywords are listed");
 
 constexpr auto Operator_Keywords = std::array {
 	"and"sv,
 	"or"sv
 };
 
-static_assert(Keywords_Count == Operator_Keywords.size() + 4, "Ensure that all keywords that are operators are listed here");
+static_assert(Keywords_Count == Operator_Keywords.size() + 3, "Ensure that all keywords that are operators are listed here");
 
 enum class At_Least : bool
 {
@@ -67,13 +67,6 @@ Result<Ast> Parser::parse(std::string_view source, std::string_view filename, un
 	auto const result = parser.parse_sequence();
 
 	if (result.has_value() && parser.token_id < parser.tokens.size()) {
-		if (parser.expect(Token::Type::Keyword, "var")) {
-			return Error {
-				.details = errors::Expected_Expression_Separator_Before { .what = "var" },
-				.location = parser.peek()->location
-			};
-		}
-
 		if (parser.expect(Token::Type::Close_Paren) || parser.expect(Token::Type::Close_Block)) {
 			auto const tok = parser.consume();
 			return Error {
@@ -100,7 +93,7 @@ Result<Ast> Parser::parse_sequence()
 
 Result<Ast> Parser::parse_expression()
 {
-	if (expect(Token::Type::Keyword, "var")) {
+	if (expect(Token::Type::Symbol, Token::Type::Operator, ":=")) {
 		return parse_variable_declaration();
 	}
 	return parse_infix_expression();
@@ -108,10 +101,7 @@ Result<Ast> Parser::parse_expression()
 
 Result<Ast> Parser::parse_variable_declaration()
 {
-	assert(expect(Token::Type::Keyword, "var"), "Parser::parse_variable_declaration must be called only on expressions that starts with 'var'");
-	auto var = consume();
-
-	auto lvalue = parse_many(*this, &Parser::parse_identifier, std::nullopt, At_Least::One);
+	auto lvalue = parse_identifier();
 	if (not lvalue.has_value()) {
 		auto details = lvalue.error().details;
 		if (auto ut = std::get_if<errors::internal::Unexpected_Token>(&details); ut) {
@@ -127,13 +117,9 @@ Result<Ast> Parser::parse_variable_declaration()
 		return std::move(lvalue).error();
 	}
 
-
-	if (expect(Token::Type::Operator, "=")) {
-		consume();
-		return Ast::variable_declaration(var.location, *std::move(lvalue), Try(parse_expression()));
-	}
-
-	return Ast::variable_declaration(var.location, *std::move(lvalue), std::nullopt);
+	assert(expect(Token::Type::Operator, ":="), "This function should always be called with valid sequence");
+	consume();
+	return Ast::variable_declaration(lvalue->location, { *std::move(lvalue) }, Try(parse_expression()));
 }
 
 Result<Ast> Parser::parse_infix_expression()
@@ -436,6 +422,14 @@ bool Parser::expect(Token::Type type, std::string_view lexeme) const
 	return token_id < tokens.size() && tokens[token_id].type == type && tokens[token_id].source == lexeme;
 }
 
+bool Parser::expect(Token::Type t1, Token::Type t2, std::string_view lexeme_for_t2) const
+{
+	return token_id+1 < tokens.size()
+		&& tokens[token_id].type == t1
+		&& tokens[token_id+1].type == t2
+		&& tokens[token_id+1].source == lexeme_for_t2;
+}
+
 // Don't know if it's a good idea to defer parsing of literal values up to value creation, which is current approach.
 // This may create unexpected performance degradation during program evaluation.
 Ast Ast::literal(Token token)
@@ -529,9 +523,10 @@ static usize precedense(std::string_view op)
 	//  '.' since it have own precedense rules and is not binary expression but its own kind of expression
 	//
 	//  Exclusion of them is marked by subtracting total number of excluded operators.
-	static_assert(Operators_Count - 1 == 15, "Ensure that all operators have defined precedense below");
+	static_assert(Operators_Count - 1 == 16, "Ensure that all operators have defined precedense below");
 
-	if (one_of(op, "=")) return 0;
+	if (one_of(op, ":=")) return 0;
+	if (one_of(op, "=")) return 10;
 	if (one_of(op, "or")) return 100;
 	if (one_of(op, "and")) return 150;
 	if (one_of(op, "<", ">", "<=", ">=", "==", "!=")) return 200;

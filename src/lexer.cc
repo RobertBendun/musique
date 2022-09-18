@@ -15,7 +15,6 @@ constexpr auto Keywords = std::array {
 	"false"sv,
 	"nil"sv,
 	"true"sv,
-	"var"sv,
 	"and"sv,
 	"or"sv
 };

@@ -1,10 +1,10 @@
 #include <musique.hh>
 #include <musique_internal.hh>
+#include <functional>
 
 /// Intrinsic implementation primitive to ease operation vectorization
-Result<Value> vectorize(auto &&operation, Interpreter &interpreter, Value lhs, Value rhs)
+static Result<Value> vectorize(auto &&operation, Interpreter &interpreter, Value lhs, Value rhs)
 {
-	Array array;
 
 	if (is_indexable(lhs.type) && !is_indexable(rhs.type)) {
 		Array array;
@@ -15,6 +15,7 @@ Result<Value> vectorize(auto &&operation, Interpreter &interpreter, Value lhs, V
 		return Value::from(std::move(array));
 	}
 
+	Array array;
 	for (auto i = 0u; i < rhs.size(); ++i) {
 		array.elements.push_back(
 			Try(operation(interpreter, { lhs, Try(rhs.index(interpreter, i)) })));
@@ -24,19 +25,39 @@ Result<Value> vectorize(auto &&operation, Interpreter &interpreter, Value lhs, V
 
 /// Intrinsic implementation primitive to ease operation vectorization
 /// @invariant args.size() == 2
-Result<Value> vectorize(auto &&operation, Interpreter &interpreter, std::vector<Value> args)
+static Result<Value> vectorize(auto &&operation, Interpreter &interpreter, std::vector<Value> args)
 {
 	assert(args.size() == 2, "Vectorization primitive only supports two arguments");
 	return vectorize(std::move(operation), interpreter, std::move(args.front()), std::move(args.back()));
 }
 
-
-std::optional<Value> symetric(Value::Type t1, Value::Type t2, Value &lhs, Value &rhs, auto binary_predicate)
+/// Helper simlifiing implementation of symetric binary operations.
+///
+/// Calls binary if values matches types any permutation of {t1, t2}, always in shape (t1, t2)
+inline std::optional<Value> symetric(Value::Type t1, Value::Type t2, Value &lhs, Value &rhs, auto binary)
 {
 	if (lhs.type == t1 && rhs.type == t2) {
-		return binary_predicate(std::move(lhs), std::move(rhs));
+		return binary(std::move(lhs), std::move(rhs));
 	} else if (lhs.type == t2 && rhs.type == t1) {
-		return binary_predicate(std::move(rhs), std::move(lhs));
+		return binary(std::move(rhs), std::move(lhs));
+	} else {
+		return std::nullopt;
+	}
+}
+
+/// Helper simlifiing implementation of symetric binary operations.
+///
+/// Calls binary if values matches predicates in any permutation; always with shape (p1, p2)
+inline auto symetric(
+	std::predicate<Value::Type> auto&& p1,
+	std::predicate<Value::Type> auto&& p2,
+	Value &lhs, Value &rhs,
+	auto binary) -> std::optional<decltype(binary(std::move(lhs), std::move(rhs)))>
+{
+	if (p1(lhs.type) && p2(rhs.type)) {
+		return binary(std::move(lhs), std::move(rhs));
+	} else if (p2(lhs.type) && p1(rhs.type)) {
+		return binary(std::move(rhs), std::move(lhs));
 	} else {
 		return std::nullopt;
 	}
@@ -49,61 +70,49 @@ std::optional<Value> symetric(Value::Type t1, Value::Type t2, Value &lhs, Value 
 template<typename Binary_Operation>
 static Result<Value> plus_minus_operator(Interpreter &interpreter, std::vector<Value> args)
 {
-	static_assert(std::is_same_v<Binary_Operation, std::plus<>> || std::is_same_v<Binary_Operation, std::minus<>>,
-		"Error reporting depends on only one of this two types beeing provided");
-
-	using NN = Shape<Value::Type::Number, Value::Type::Number>;
-	using MN = Shape<Value::Type::Music,  Value::Type::Number>;
-	using NM = Shape<Value::Type::Number, Value::Type::Music>;
-
-	if (NN::typecheck(args)) {
-		auto [a, b] = NN::move_from(args);
-		return Value::from(Binary_Operation{}(std::move(a), std::move(b)));
+	if (args.empty()) {
+		return Value::from(Number(0));
 	}
 
-	if (MN::typecheck(args)) {
-		auto [chord, offset] = MN::move_from(args);
-		for (auto &note : chord.notes) {
-			if (note.base) {
-				*note.base = Binary_Operation{}(*note.base, offset.as_int());
-				note.simplify_inplace();
-			}
+	Value init = args.front();
+	return algo::fold(std::span(args).subspan(1), std::move(init), [&interpreter](Value lhs, Value &rhs) -> Result<Value> {
+		if (lhs.type == Value::Type::Number && rhs.type == Value::Type::Number) {
+			return Value::from(Binary_Operation{}(std::move(lhs).n, std::move(rhs).n));
 		}
-		return Value::from(std::move(chord));
-	}
 
-	if (NM::typecheck(args)) {
-		auto [offset, chord] = NM::move_from(args);
-		for (auto &note : chord.notes) {
-			if (note.base) {
-				*note.base = Binary_Operation{}(*note.base, offset.as_int());
-				note.simplify_inplace();
+		auto result = symetric(Value::Type::Music, Value::Type::Number, lhs, rhs, [](Value lhs, Value rhs) {
+			for (auto &note : lhs.chord.notes) {
+				if (note.base) {
+					*note.base = Binary_Operation{}(*note.base, rhs.n.as_int());
+					note.simplify_inplace();
+				}
 			}
+			return lhs;
+		});
+		if (result.has_value()) {
+			return *std::move(result);
 		}
-		return Value::from(std::move(chord));
-	}
 
-	if (may_be_vectorized(args)) {
-		return vectorize(plus_minus_operator<Binary_Operation>, interpreter, std::move(args));
-	}
+		if (is_indexable(lhs.type) != is_indexable(rhs.type)) {
+			return vectorize(plus_minus_operator<Binary_Operation>, interpreter, std::move(lhs), std::move(rhs));
+		}
 
-	// TODO Limit possibilities based on provided types
-	static_assert(std::is_same_v<std::plus<>, Binary_Operation> || std::is_same_v<std::minus<>, Binary_Operation>,
-			"Error message printing only supports operators given above");
-	return Error {
-		.details = errors::Unsupported_Types_For {
-			.type = errors::Unsupported_Types_For::Operator,
-			.name = std::is_same_v<std::plus<>, Binary_Operation> ? "+" : "-",
-			.possibilities = {
-				"(number, number) -> number",
-				"(music, number) -> music",
-				"(number, music) -> music",
-				"(array, number|music) -> array",
-				"(number|music, array) -> array",
+		static_assert(std::is_same_v<std::plus<>, Binary_Operation> || std::is_same_v<std::minus<>, Binary_Operation>,
+				"Error message printing only supports operators given above");
+		return Error {
+			.details = errors::Unsupported_Types_For {
+				.type = errors::Unsupported_Types_For::Operator,
+				.name = std::is_same_v<std::plus<>, Binary_Operation> ? "+" : "-",
+				.possibilities = {
+					"(number, number) -> number",
+					"(music, number) -> music",
+					"(number, music) -> music",
+					"(array, number|music) -> array",
+					"(number|music, array) -> array",
+				}
 			}
-		},
-		.location = {}, // TODO fill location
-	};
+		};
+	});
 }
 
 template<typename Binary_Operation, char ...Chars>
@@ -144,26 +153,24 @@ static Result<Value> comparison_operator(Interpreter &interpreter, std::vector<V
 		return Value::from(algo::pairwise_all(std::move(args), Binary_Predicate{}));
 	}
 
-	if (is_indexable(args[1].type) && !is_indexable(args[0].type)) {
-		std::swap(args[1], args[0]);
-		goto vectorized;
-	}
-
-	if (is_indexable(args[0].type) && !is_indexable(args[1].type)) {
-	vectorized:
+	auto result = symetric(is_indexable, std::not_fn(is_indexable), args.front(), args.back(), [&interpreter](Value lhs, Value rhs) -> Result<Value> {
 		std::vector<Value> result;
-		result.reserve(args[0].size());
-		for (auto i = 0u; i < args[0].size(); ++i) {
+		result.reserve(lhs.size());
+		for (auto i = 0u; i < lhs.size(); ++i) {
 			result.push_back(
 				Value::from(
 					Binary_Predicate{}(
-						Try(args[0].index(interpreter, i)),
-						args[1]
+						Try(lhs.index(interpreter, i)),
+						rhs
 					)
 				)
 			);
 		}
 		return Value::from(Array { std::move(result) });
+	});
+
+	if (result.has_value()) {
+		return *std::move(result);
 	}
 
 	return Value::from(Binary_Predicate{}(std::move(args.front()), std::move(args.back())));
@@ -308,7 +315,7 @@ static constexpr auto Operators = std::array {
 // All operators should be defined here except 'and' and 'or' which handle evaluation differently
 // and are need unevaluated expressions for their proper evaluation. Exclusion of them is marked
 // as subtraction of total excluded operators from expected constant
-static_assert(Operators.size() == Operators_Count - 2, "All operators handlers are defined here");
+static_assert(Operators.size() == Operators_Count - 3, "All operators handlers are defined here");
 
 void Interpreter::register_builtin_operators()
 {

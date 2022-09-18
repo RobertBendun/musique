@@ -475,8 +475,8 @@ struct Token
 	Location location;
 };
 
-static constexpr usize Keywords_Count  =  6;
-static constexpr usize Operators_Count = 16;
+static constexpr usize Keywords_Count  =  5;
+static constexpr usize Operators_Count = 17;
 
 std::string_view type_name(Token::Type type);
 
@@ -687,6 +687,9 @@ struct Parser
 
 	/// Tests if current token has given type and source
 	bool expect(Token::Type type, std::string_view lexeme) const;
+
+	// Tests if current token has given type and the next token has given type and source
+	bool expect(Token::Type t1, Token::Type t2, std::string_view lexeme_for_t2) const;
 };
 
 /// Number type supporting integer and fractional constants

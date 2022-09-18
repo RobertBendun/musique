@@ -3,7 +3,7 @@
 ----------------------------------------------
 oct 5; bpm 72; len (1/16);
 
-var subsection1 = [ n |
+subsection1 := [ n |
   sim (a 4 en) (a 2 e 3 a 3);
   play [oct 4; c e a];
 
@@ -22,7 +22,7 @@ var subsection1 = [ n |
   play (d 4 c 5 b 4);
 ];
 
-var section1 = [ n |
+section1 := [ n |
   play (e d#);
   play (e d# e b 4 d c);
 
@@ -35,7 +35,7 @@ var section1 = [ n |
     ]
 ];
 
-var section2 = [ n |
+section2 := [ n |
   sim (e 5 den) (c 3 g 3 c 4);
   play (g 4 f e);
 

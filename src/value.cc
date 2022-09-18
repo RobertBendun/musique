@@ -1,6 +1,7 @@
 #include <musique.hh>
 #include <musique_internal.hh>
 
+#include <iostream>
 #include <numeric>
 
 /// Finds numeric value of note. This form is later used as in
@@ -20,8 +21,6 @@ constexpr u8 note_index(u8 note)
 	// Parser should limit range of characters that is called with this function
 	unreachable();
 }
-
-#include <iostream>
 
 constexpr std::string_view note_index_to_string(int note_index)
 {

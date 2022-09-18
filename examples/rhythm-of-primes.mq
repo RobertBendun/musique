@@ -25,12 +25,12 @@ play c d c e (c & d) c d (c & e)
 
 --------------------------------------------------------------
 
-var Length = 20;
+Length := 20;
 
-var cmajor = [c;d;e;f;g];
-var scale = reverse cmajor;
-var primes = nprimes (len scale);
-var indicies = up (len scale);
+cmajor := [c;d;e;f;g];
+scale := reverse cmajor;
+primes := nprimes (len scale);
+indicies := up (len scale);
 
 oct 3;
 len (1/16);

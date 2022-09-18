@@ -136,6 +136,7 @@ namespace algo
 	/// Fold that stops iteration on error value via Result type
 	template<typename T>
 	constexpr Result<T> fold(auto&& range, T init, auto &&reducer)
+		requires (is_template_v<Result, decltype(reducer(std::move(init), *range.begin()))>)
 	{
 		for (auto &&value : range) {
 			init = Try(reducer(std::move(init), value));
