@@ -4,23 +4,24 @@
 
 - `+` – operator:
 	- dodawania (liczby całkowite i ułamki):
-```
-> 2 + 3
-5
-> (1/3) + (1/4)
-7/12
-> 1 + (up 10)
-[1; 2; 3; 4; 5; 6; 7; 8; 9; 10]
-```
+
+	```
+	> 2 + 3
+	5
+	> (1/3) + (1/4)
+	7/12
+	> 1 + (up 10)
+	[1; 2; 3; 4; 5; 6; 7; 8; 9; 10]
+	```
 
 	- inkrementacji zmiennej (liczby lub akordu, w tym w szczególności pojedynczeń nuty):
 
-```
-> c + 1
-c#
-> c4 + 2
-chord[d; f#]
-```
+	```
+	> c + 1
+	c#
+	 c4 + 2
+	hord[d; f#]
+	```
 
 - `-` – operator odejmowania/dekrementacji – analogicznie do operatora `+`;
 
@@ -28,23 +29,23 @@ chord[d; f#]
 
 	- mnożenia (liczby całkowite i ułamki):
 
-```
-> 2 * 5
-10
-> (1/3) * (1/4)
-1/12
-> 2 * (up 10)
-[0; 2; 4; 6; 8; 10; 12; 14; 16; 18]
-```
+	```
+	> 2 * 5
+	10
+	> (1/3) * (1/4)
+	1/12
+	> 2 * (up 10)
+	[0; 2; 4; 6; 8; 10; 12; 14; 16; 18]
+	```
 
 	- powtarzania – zwraca określoną liczbę powtórzeń danego dźwięku:
 
-```
-> a * 4
-[a; a; a; a]
-> a3 * 4
-[chord[a; c]; chord[a; c]; chord[a; c]; chord[a; c]]
-```
+	```
+	> a * 4
+	[a; a; a; a]
+	> a3 * 4
+	[chord[a; c]; chord[a; c]; chord[a; c]; chord[a; c]]
+	```
 
 - `/` – operator dzielenia – *wektor może być wyłącznie dzielną*:
 
