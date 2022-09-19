@@ -3,7 +3,7 @@
 ## Operatory arytmetyczne
 
 - `+` – operator:
-	- dodawania (liczby całkowite i ułamki):
+    - dodawania (liczby całkowite i ułamki):
 
 	```
 	> 2 + 3
@@ -14,7 +14,7 @@
 	[1; 2; 3; 4; 5; 6; 7; 8; 9; 10]
 	```
 
-	- inkrementacji zmiennej (liczby lub akordu, w tym w szczególności pojedynczeń nuty):
+    - inkrementacji zmiennej (liczby lub akordu, w tym w szczególności pojedynczeń nuty):
 
 	```
 	> c + 1
@@ -27,7 +27,7 @@
 
 - `*` – operator:
 
-	- mnożenia (liczby całkowite i ułamki):
+    - mnożenia (liczby całkowite i ułamki):
 
 	```
 	> 2 * 5
@@ -38,7 +38,7 @@
 	[0; 2; 4; 6; 8; 10; 12; 14; 16; 18]
 	```
 
-	- powtarzania – zwraca określoną liczbę powtórzeń danego dźwięku:
+    - powtarzania – zwraca określoną liczbę powtórzeń danego dźwięku:
 
 	```
 	> a * 4
