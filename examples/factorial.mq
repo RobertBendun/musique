@@ -1,15 +1,30 @@
-for := [ start stop iteration |
-	if (start > stop)
-	[nil]
-	[iteration start; for (start + 1) stop iteration]
+----------------------------------------------------------------------------
+This example shows how to implement factorial operation using different
+implementation techniques, showing how one can iterate and accumulate
+using Musique programming language
+----------------------------------------------------------------------------
+
+-- Calculate factorial using recursive approach
+factorial_recursive := [n |
+	if (n <= 1)
+		[1]
+		[n * (factorial_recursive (n-1))]
 ];
 
-factorial := [n | if (n <= 1) [1] [n * (factorial (n-1))]];
-for 1 10 [i | say (factorial i)];
-
+-- Calculate factorial using iterative approach
 factorial_iterative := [n |
 	x := 1;
-	for 1 n [i|x *= i];
+	for (range 1 (n+1)) [i|x *= i];
 	x
 ];
-for 1 10 [i | say (factorial_iterative i)];
+
+-- Calculate factorial using composition of functions
+factorial := [n| fold (1 + up n) 1 '*];
+
+-- Gather all functions into array, and iterate over it
+-- This allows to reduce repeatition of this test case
+for [factorial_recursive; factorial_iterative; factorial] [ factorial |
+	for (up 10) [ n |
+		say (factorial (n));
+	];
+];
