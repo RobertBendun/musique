@@ -25,7 +25,9 @@ chord[d; f#]
 - `-` – operator odejmowania/dekrementacji – analogicznie do operatora `+`;
 
 - `*` – operator:
+
 	- mnożenia (liczby całkowite i ułamki):
+
 ```
 > 2 * 5
 10
@@ -34,7 +36,9 @@ chord[d; f#]
 > 2 * (up 10)
 [0; 2; 4; 6; 8; 10; 12; 14; 16; 18]
 ```
+
 	- powtarzania – zwraca określoną liczbę powtórzeń danego dźwięku:
+
 ```
 > a * 4
 [a; a; a; a]
