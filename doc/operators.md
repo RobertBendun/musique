@@ -107,6 +107,8 @@ true
 > 3 >= 2
 true
 ```
+## Pozostałe operatory
+
 - `.` – operator indeksu (zwraca wskazany element, liczone od 0):
 ```
 > A:=[1; 3; 5]
