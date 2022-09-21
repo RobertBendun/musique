@@ -332,7 +332,7 @@ Result<Number> Number::pow(Number n) const
 	// Hard case, we raise this to fractional power.
 	// Essentialy finding n.den root of (x to n.num power).
 	// We need to protect ourselfs against even roots of negative numbers.
-	unimplemented();
+	unimplemented("nth root calculation is not implemented yet");
 }
 
 std::size_t std::hash<Number>::operator()(Number const& value) const

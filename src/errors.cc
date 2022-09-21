@@ -134,18 +134,19 @@ void unreachable(Location loc)
 std::ostream& operator<<(std::ostream& os, Error const& err)
 {
 	std::string_view short_description = visit(Overloaded {
-		[](errors::Operation_Requires_Midi_Connection const&)   { return "Operation requires MIDI connection"; },
-		[](errors::Missing_Variable const&)                     { return "Cannot find variable"; },
+		[](errors::Expected_Expression_Separator_Before const&) { return "Missing semicolon"; },
 		[](errors::Failed_Numeric_Parsing const&)               { return "Failed to parse a number"; },
+		[](errors::Literal_As_Identifier const&)                { return "Literal used in place of an identifier"; },
+		[](errors::Missing_Variable const&)                     { return "Cannot find variable"; },
 		[](errors::Not_Callable const&)                         { return "Value not callable"; },
+		[](errors::Operation_Requires_Midi_Connection const&)   { return "Operation requires MIDI connection"; },
+		[](errors::Out_Of_Range const&)                         { return "Index out of range"; },
 		[](errors::Undefined_Operator const&)                   { return "Undefined operator"; },
 		[](errors::Unexpected_Empty_Source const&)              { return "Unexpected end of file"; },
 		[](errors::Unexpected_Keyword const&)                   { return "Unexpected keyword"; },
 		[](errors::Unrecognized_Character const&)               { return "Unrecognized character"; },
+		[](errors::Wrong_Arity_Of const&)                       { return "Different arity then expected"; },
 		[](errors::internal::Unexpected_Token const&)           { return "Unexpected token"; },
-		[](errors::Expected_Expression_Separator_Before const&) { return "Missing semicolon"; },
-		[](errors::Literal_As_Identifier const&)                { return "Literal used in place of an identifier"; },
-		[](errors::Out_Of_Range const&)                         { return "Index out of range"; },
 		[](errors::Arithmetic const& err)                       {
 			switch (err.type) {
 			case errors::Arithmetic::Division_By_Zero: return "Division by 0";
@@ -296,6 +297,19 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 			}
 		},
 
+		[&](errors::Wrong_Arity_Of const& err) {
+			switch (err.type) {
+			break; case errors::Wrong_Arity_Of::Function:
+				os << "Function " << err.name << " expects " << err.expected_arity << " arguments but you provided " << err.actual_arity << "\n";
+				os << "\n";
+				print_error_line(loc);
+			break; case errors::Wrong_Arity_Of::Operator:
+				os << "Operator " << err.name << " expects " << err.expected_arity << " arguments but you provided " << err.actual_arity << "\n";
+				os << "\n";
+				print_error_line(loc);
+			}
+		},
+
 		[&](errors::Not_Callable const& err) {
 			os << "Value of type " << err.type << " cannot be called.\n";
 			os << "\n";
@@ -403,7 +417,11 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 			}
 		},
 
-		[&](errors::Unexpected_Keyword const&)               { unimplemented(); },
+		[&](errors::Unexpected_Keyword const& err) {
+			os << "Keyword " << err.keyword << " should not be used here\n\n";
+
+			print_error_line(loc);
+		},
 	}, err.details);
 
 	return os;

@@ -122,6 +122,22 @@ namespace errors
 		std::string_view op;
 	};
 
+	/// When user tries to use operator with wrong arity of arguments
+	struct Wrong_Arity_Of
+	{
+		/// Type of operation
+		enum Type { Operator, Function } type;
+
+		/// Name of operation
+		std::string_view name;
+
+		/// Arity that was expected by given operation
+		size_t expected_arity;
+
+		/// Arit that user provided
+		size_t actual_arity;
+	};
+
 	/// When user tried to call something that can't be called
 	struct Not_Callable
 	{
@@ -227,6 +243,7 @@ namespace errors
 		Unexpected_Keyword,
 		Unrecognized_Character,
 		Unsupported_Types_For,
+		Wrong_Arity_Of,
 		internal::Unexpected_Token
 	>;
 }

@@ -71,7 +71,7 @@ Result<Value> Value::from(Token t)
 		return Value::from(Chord::from(t.source));
 
 	default:
-		unimplemented();
+		unreachable();
 	}
 }
 
@@ -329,7 +329,16 @@ Result<Value> Block::operator()(Interpreter &i, std::vector<Value> arguments)
 	auto old_scope = std::exchange(i.env, context);
 	i.enter_scope();
 
-	assert(parameters.size() == arguments.size(), "wrong number of arguments");
+	if (parameters.size() != arguments.size()) {
+		return errors::Wrong_Arity_Of {
+			.type = errors::Wrong_Arity_Of::Function,
+			 // TODO Let user defined functions have name of their first assigment (Zig like)
+			 //      or from place of definition like <block at file:line:column>
+			.name = "<block>",
+			.expected_arity = parameters.size(),
+			.actual_arity = arguments.size(),
+		};
+	}
 
 	for (usize j = 0; j < parameters.size(); ++j) {
 		i.env->force_define(parameters[j], std::move(arguments[j]));
@@ -521,7 +530,13 @@ Result<Value> Chord::operator()(Interpreter&, std::vector<Value> args)
 				continue;
 
 			default:
-				unimplemented();
+				return errors::Unsupported_Types_For {
+					.type = errors::Unsupported_Types_For::Function,
+					.name = "note creation",
+					.possibilities = {
+						"(note:music [octave:number [duration:number]])+"
+					}
+				};
 			}
 		}
 

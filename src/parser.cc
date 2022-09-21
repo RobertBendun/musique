@@ -310,6 +310,18 @@ Result<Ast> Parser::parse_atomic_expression()
 			return ast;
 		}
 
+	break; case Token::Type::Operator:
+		return Error {
+			.details = errors::Wrong_Arity_Of {
+				.type = errors::Wrong_Arity_Of::Operator,
+				.name = peek()->source,
+				.expected_arity = 2, // TODO This should be resolved based on operator
+				.actual_arity = 0,
+			},
+			.location = peek()->location,
+		};
+
+
 	default:
 		return Error {
 			.details = errors::internal::Unexpected_Token {

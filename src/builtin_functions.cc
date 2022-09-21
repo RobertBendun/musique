@@ -350,7 +350,14 @@ static Result<Value> builtin_sim(Interpreter &interpreter, std::vector<Value> ar
 				return {};
 			}
 
-			unimplemented();
+			// Invalid type for sim function
+			return errors::Unsupported_Types_For {
+				.type = errors::Unsupported_Types_For::Function,
+				.name = "sim",
+				.possibilities = {
+					"(music | array of music)+"
+				},
+			};
 		}
 	} append { interpreter };
 
@@ -600,7 +607,17 @@ static Result<Value> builtin_try(Interpreter &interpreter, std::vector<Value> ar
 /// Update value inside of array
 static Result<Value> builtin_update(Interpreter &i, std::vector<Value> args)
 {
-	assert(args.size() == 3, "Update requires 3 arguments"); // TODO(assert)
+	auto const guard = Guard<1> {
+		.name = "update",
+		.possibilities = {
+			"array index:number new_value"
+		}
+	};
+
+	if (args.size() != 3) {
+		return guard.yield_error();
+	}
+
 	using Eager_And_Number = Shape<Value::Type::Array, Value::Type::Number>;
 	using Lazy_And_Number  = Shape<Value::Type::Block, Value::Type::Number>;
 
@@ -617,7 +634,7 @@ static Result<Value> builtin_update(Interpreter &i, std::vector<Value> args)
 		return Value::from(std::move(array));
 	}
 
-	unimplemented("Wrong shape of update function");
+	return guard.yield_error();
 }
 
 /// Return typeof variable

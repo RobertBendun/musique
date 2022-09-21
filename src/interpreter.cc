@@ -201,10 +201,9 @@ Result<Value> Interpreter::eval(Ast &&ast)
 			block.body = std::move(ast.arguments.back());
 			return Value::from(std::move(block));
 		}
-
-	default:
-		unimplemented();
 	}
+
+	unreachable();
 }
 
 void Interpreter::enter_scope()
