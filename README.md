@@ -55,8 +55,6 @@ $ make bin/musique
 ### Testowanie
 
 - `make test` - Uruchom wszystkie dostępne testy automatyczne
-- `make unit-tests` - Uruchamia testy jednostkowe interpretera
-- `make unit-test-coverage` - Uruchamia raport pokrycia kodu przez testy jednostkowe
 - `scripts/test.py test examples` - Uruchamia testy zachowań przykładów
 - `scripts/test.py record examples` - Nagrywa testy zachowań przykładów
 
@@ -69,7 +67,6 @@ $ make bin/musique
 ```
 .
 ├── bin            Miejsce produkcji plików wykonywalnych
-├── coverage
 ├── doc            Dokumentacja języka, interpretera
 │   └── build      Miejsce produkcji dokumentacji
 ├── editor         Pluginy do edytorów dodające wsparcie dla języka
@@ -79,7 +76,6 @@ $ make bin/musique
 └── include        Główny katalog z plikami nagłówkowymi
 ├── scripts        Skrypty wspierające budowanie i tworzenie
 └── src            Główny katalog z plikami źródłowymi
-    └── tests      Katalog z testami jednostkowymi
 ```
 
 ## Kolorowanie składni
