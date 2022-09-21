@@ -1,0 +1,121 @@
+TITLE Porównanie Musique z typowymi językami programowania
+
+BEGIN CSS
+table, tr, td {
+ font-size: 12pt;
+ border: 1pt solid #DDDDDD;
+ border-collapse: collapse;
+ vertical-align: top;
+}
+
+td, th {
+	padding: 2px;
+}
+
+END CSS
+
+BEGIN INTRO
+<h1>Ściągawka Musique, a Python i Ruby</h1>
+Ponieważ Musique jest kierowany do osób posiadających doświadczenie z muzyką algorytmiczną, szybkim sposobem na podstawowe poznanie języka jest porównanie z innymi technologiami w tej dziedzinie. Ten dokument służy bardziej ukazaniu różnic niż omówieniu samego języka.
+END INTRO
+
+BEGIN TABLE
+
+n Kategoria
+m Musique
+p Python
+r Ruby (SonicPi)
+c Komentarz
+
+n Deklaracja
+m x := 0
+p x = 0
+r x = 0
+c Zmienne należy zadeklarować by móc z nich korzystać
+
+n Aktualizacja
+m x = 1
+r x = 1
+p x = 1
+
+n Operacje matematyczne
+m x = 10 * 30 - 40 ** 2
+p x = 10 * 30 - 40 ** 2
+r x = 10 * 30 - 40 ** 2
+c Zarówno Python, Ruby jak i Musique posiadają operator potęgi **
+
+n Funkcja anonimowa
+m add := [x y | x + y]
+p add = lambda x, y: x + y
+r add = ->(x, y) { x + y }
+
+n Deklaracja funkcji
+m add := [x y |
+m   say x y;
+m   x + y
+m ]
+p def add(x, y):
+p     print(x, y)
+p     return x + y
+r def add(x, y)
+r     puts x, y
+r     return x + y
+r end
+c Musique nie rozróżnia funkcji anonimowych i zadeklarowanych
+
+n Tablice
+m x = [1; 2; 3; 4]
+p x = [1, 2, 3, 4]
+r x = [1, 2, 3, 4]
+
+n Nty element tablicy
+m x.n
+p x[n]
+r x[n]
+
+n Aktualizacja ntego elementu tablicy
+m x = update x n 10
+p x[n] = 10
+r x[n] = 10
+
+n Tablica od 0 do 9 włącznie
+m x = up 10
+p x = range(10)
+r x = [*0..9]
+
+n Tablica od 1 do 10 włącznie
+m x = 1 + up 10
+m lub x = range 1 11
+p x = range(1, 11)
+r x = [*1..10]
+
+n Iloczyn elementów tablicy
+m fold '* (1 + up 5)
+p functools.reduce(
+p   operator.mul, range(1, 6), 1)
+r [*1..5].inject(:*)
+c Musique pozwala zmienić dowolny operator w funkcję
+c poprzez zapis 'operator jak '* w przykładzie
+
+n Instrukcja warunkowa
+m if (n == 42)
+m   [ say 1 ]
+m   [ say 2 ]
+p if n == 42:
+p   print(1)
+p else:
+p   print(2)
+r if n == 42
+r   puts 1
+r else
+r   puts 2
+r end
+c Musique nie posiada instrukcji warunkowej, a funkcję if,
+c która przyjmuje wartość logiczną i dwa bloki (funkcje anonimowe)
+c - jeden z nich zostanie wykonany jeśli warunek jest prawdziwy,
+c a drugi jeśli jest fałszywy.
+n Wyrażenie warunkowe
+m x := if (n == 42) [1] [2]
+p x = 1 if n == 42 else 2
+r x = n == 42 ? 1 : 2
+END TABLE
