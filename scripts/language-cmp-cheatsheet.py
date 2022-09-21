@@ -120,7 +120,7 @@ def compile_template(*, template_path: str, target_path: str):
     sections = parse_table(lines=table_source)
 
     for section in sections:
-        section.ref = section.name.replace(" ", "_")
+        section.ref = section.name.strip().replace(" ", "_")
 
     nav = ""
     for section in sections:
