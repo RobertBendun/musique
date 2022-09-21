@@ -80,14 +80,21 @@ r x[n] = 10
 
 n Tablica od 0 do 9 włącznie
 m x = up 10
-p x = range(10)
+p x = list(range(10))
 r x = [*0..9]
 
 n Tablica od 1 do 10 włącznie
 m x = 1 + up 10
 m lub x = range 1 11
-p x = range(1, 11)
+p x = list(range(1, 11))
 r x = [*1..10]
+
+n Tablica od 9 do 0 włącznie
+m x = down 10
+m lub x = reverse (up 10)
+p x = list(range(9, -1, -1))
+p lub x = list(reversed(range(10)))
+r x = 9.downto(0).to_a
 
 n Iloczyn elementów tablicy
 m fold '* (1 + up 5)
