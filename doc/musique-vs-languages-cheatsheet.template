@@ -21,6 +21,8 @@ END INTRO
 
 BEGIN TABLE
 
+SECTION Podstawy
+
 n Kategoria
 m Musique
 p Python
@@ -63,6 +65,36 @@ r     return x + y
 r end
 c Musique nie rozróżnia funkcji anonimowych i zadeklarowanych
 
+n Instrukcja warunkowa
+m if (n == 42)
+m   [ say 1 ]
+m   [ say 2 ]
+p if n == 42:
+p   print(1)
+p else:
+p   print(2)
+r if n == 42
+r   puts 1
+r else
+r   puts 2
+r end
+c Musique nie posiada instrukcji warunkowej, a funkcję if,
+c która przyjmuje wartość logiczną i dwa bloki (funkcje anonimowe)
+c - jeden z nich zostanie wykonany jeśli warunek jest prawdziwy,
+c a drugi jeśli jest fałszywy.
+n Wyrażenie warunkowe
+m x := if (n == 42) [1] [2]
+p x = 1 if n == 42 else 2
+r x = n == 42 ? 1 : 2
+
+SECTION Tablice
+
+n Kategoria
+m Musique
+p Python
+r Ruby (SonicPi)
+c Komentarz
+
 n Tablice
 m x = [1; 2; 3; 4]
 p x = [1, 2, 3, 4]
@@ -104,25 +136,30 @@ r [*1..5].inject(:*)
 c Musique pozwala zmienić dowolny operator w funkcję
 c poprzez zapis 'operator jak '* w przykładzie
 
-n Instrukcja warunkowa
-m if (n == 42)
-m   [ say 1 ]
-m   [ say 2 ]
-p if n == 42:
-p   print(1)
-p else:
-p   print(2)
-r if n == 42
-r   puts 1
-r else
-r   puts 2
+n Iteracja po elementach tablicy
+m for (up 5) [ i | say i ]
+p for i in range(5):
+p   print(i)
+r (0..4).each do |i|
+r   puts i
 r end
-c Musique nie posiada instrukcji warunkowej, a funkcję if,
-c która przyjmuje wartość logiczną i dwa bloki (funkcje anonimowe)
-c - jeden z nich zostanie wykonany jeśli warunek jest prawdziwy,
-c a drugi jeśli jest fałszywy.
-n Wyrażenie warunkowe
-m x := if (n == 42) [1] [2]
-p x = 1 if n == 42 else 2
-r x = n == 42 ? 1 : 2
+c Podobnie jak w przypadku instrukcji warunkowej, Musique używa funkcji.
+
+n Sortowanie tablicy
+m xs := sort [1; 5; 3; 3; 2]
+p xs = sorted([1, 5, 3, 3, 2])
+r xs = [1, 5, 3, 3, 2].sort
+
+
+n Sortowanie wielu tablic w jedną
+m xs := sort [1; 5; 3; 3; 2]
+m   [3; 4; 5] 1 2 3
+p xs = sorted(itertools.chain(
+p   [1, 5, 3, 3, 2], [3, 4, 5],
+p   [1], [2], [3]
+p ))
+c Wiele operacji na tablicach może być wykonywane na dowolnej kombinacji
+c tablic i pojedyńczych wartości. Tworzy to jedną tablicę wykoniową.
+
+
 END TABLE
