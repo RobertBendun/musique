@@ -504,55 +504,96 @@ Chord Chord::from(std::string_view source)
 	return chord;
 }
 
-Result<Value> Chord::operator()(Interpreter&, std::vector<Value> args)
+Result<Value> Chord::operator()(Interpreter& interpreter, std::vector<Value> args)
 {
 	std::vector<Value> array;
-	Chord *current = this;
+	std::vector<Chord> current = { *this };
+
 	enum State {
 		Waiting_For_Octave,
 		Waiting_For_Length,
 		Waiting_For_Note
 	} state = Waiting_For_Octave;
 
-	for (auto &arg : args) {
-		if (arg.type == Value::Type::Number) {
-			switch (state) {
-			break; case Waiting_For_Octave:
-				std::for_each(current->notes.begin(), current->notes.end(),
-					[&arg](Note &n) { n.octave = arg.n.floor().as_int(); });
-				state = Waiting_For_Length;
-				continue;
+	static constexpr auto guard = Guard<1> {
+		.name = "note creation",
+		.possibilities = {
+			"(note:music [octave:number [duration:number]])+"
+		}
+	};
 
-			break; case Waiting_For_Length:
-				std::for_each(current->notes.begin(), current->notes.end(),
-					[&arg](Note &n) { n.length = arg.n; });
-				state = Waiting_For_Note;
-				continue;
+	auto const next = [&state] {
+		switch (state) {
+		break; case Waiting_For_Length: state = Waiting_For_Note;
+		break; case Waiting_For_Note:   state = Waiting_For_Octave;
+		break; case Waiting_For_Octave: state = Waiting_For_Length;
+		}
+	};
 
-			default:
-				return errors::Unsupported_Types_For {
-					.type = errors::Unsupported_Types_For::Function,
-					.name = "note creation",
-					.possibilities = {
-						"(note:music [octave:number [duration:number]])+"
-					}
-				};
+	auto const update = [&state](Chord &chord, Value &arg) -> Result<void> {
+		auto const resolve = [&chord](auto field, auto new_value) {
+			for (auto &note : chord.notes) {
+				(note.*field) = new_value;
 			}
+		};
+
+		switch (state) {
+		break; case Waiting_For_Octave:
+			resolve(&Note::octave, arg.n.floor().as_int());
+			return {};
+
+		break; case Waiting_For_Length:
+			resolve(&Note::length, arg.n);
+			return {};
+
+		default:
+			return guard.yield_error();
+		}
+	};
+
+	for (auto &arg : args) {
+		if (is_indexable(arg.type)) {
+			if (state != Waiting_For_Length && state != Waiting_For_Octave) {
+				return guard.yield_error();
+			}
+
+			auto const ring_size = current.size();
+			for (usize i = 0; i < arg.size() && current.size() < arg.size(); ++i) {
+				current.push_back(current[i % ring_size]);
+			}
+
+			for (usize i = 0; i < current.size(); ++i) {
+				if (Value value = Try(arg.index(interpreter, i % arg.size())); value.type == Value::Type::Number) {
+					Try(update(current[i], value));
+					continue;
+				}
+			}
+			next();
+			continue;
+		}
+
+		if (arg.type == Value::Type::Number) {
+			for (auto &chord : current) {
+				Try(update(chord, arg));
+			}
+			next();
+			continue;
 		}
 
 		if (arg.type == Value::Type::Music) {
-			if (array.empty()) {
-				array.push_back(Value::from(std::move(*current)));
-			}
-			array.push_back(std::move(arg));
-			current = &array.back().chord;
+			std::transform(current.begin(), current.end(), std::back_inserter(array),
+				[](Chord &c) { return Value::from(std::move(c)); });
+			current.clear();
+			current.push_back(arg.chord);
 			state = Waiting_For_Octave;
 		}
 	}
 
-	return array.empty()
-		? Value::from(*current)
-		: Value::from(Array{array});
+	std::transform(current.begin(), current.end(), std::back_inserter(array),
+		[](Chord &c) { return Value::from(std::move(c)); });
+
+	assert(not array.empty(), "At least *this should be in this array");
+	return Value::from(Array{array});
 }
 
 std::ostream& operator<<(std::ostream& os, Chord const& chord)
