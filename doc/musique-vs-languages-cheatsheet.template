@@ -185,4 +185,31 @@ r ].flatten.sort
 c Wiele operacji na tablicach może być wykonywane na dowolnej kombinacji
 c tablic i pojedyńczych wartości. Tworzy to jedną tablicę wykoniową.
 
+SECTION Muzyka
+
+n Kategoria
+m Musique
+r SonicPi
+c Komentarz
+
+n C w 4 oktawie
+m play (c 4)
+r play 60
+
+n Akord C-dur
+m play (c47 4)
+m lub oct 4; play c47
+m lub play [oct 4; c & e & g]
+r play :C4
+r play :E4
+r play :G4
+r lub play chord(:C4, :major)
+
+n Akord C-dur w 8 oktawie
+m play (c47 8)
+r play :C8
+r play :E8
+r play :G8
+r lub play chord(:C8, :major)
+
 END TABLE
