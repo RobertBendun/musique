@@ -1,5 +1,5 @@
-#include <musique/parser.hh>
-#include <musique/lexer.hh>
+#include <musique/parser/parser.hh>
+#include <musique/lexer/lexer.hh>
 #include <musique/try.hh>
 
 #include <iostream>

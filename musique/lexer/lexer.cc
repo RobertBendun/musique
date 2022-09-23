@@ -1,4 +1,4 @@
-#include <musique/lexer.hh>
+#include <musique/lexer/lexer.hh>
 #include <musique/unicode.hh>
 
 #include <iomanip>

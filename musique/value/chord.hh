@@ -1,6 +1,6 @@
 #include <vector>
 
-#include "note.hh"
+#include <musique/value/note.hh>
 
 struct Interpreter;
 struct Value;

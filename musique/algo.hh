@@ -3,7 +3,7 @@
 
 #include <musique/result.hh>
 #include <musique/try.hh>
-#include <musique/value.hh>
+#include <musique/value/value.hh>
 #include <ranges>
 
 /// Generic algorithms support

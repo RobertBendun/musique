@@ -3,7 +3,7 @@
 
 #include <memory>
 #include <unordered_map>
-#include "value.hh"
+#include <musique/value/value.hh>
 
 /// Collection holding all variables in given scope.
 struct Env : std::enable_shared_from_this<Env>

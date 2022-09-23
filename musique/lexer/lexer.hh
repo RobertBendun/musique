@@ -3,7 +3,7 @@
 
 #include <musique/location.hh>
 #include <musique/result.hh>
-#include <musique/token.hh>
+#include <musique/lexer/token.hh>
 #include <variant>
 
 /// Explicit marker of the end of file

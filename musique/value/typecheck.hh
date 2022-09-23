@@ -1,7 +1,7 @@
 #ifndef MUSIQUE_TYPECHECK_HH
 #define MUSIQUE_TYPECHECK_HH
 
-#include <musique/value.hh>
+#include <musique/value/value.hh>
 
 /// Intrinsic implementation primitive providing a short way to check if arguments match required type signature
 static inline bool typecheck(std::vector<Value> const& args, auto const& ...expected_types)

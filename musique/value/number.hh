@@ -3,7 +3,7 @@
 
 #include <musique/common.hh>
 #include <musique/result.hh>
-#include <musique/token.hh>
+#include <musique/lexer/token.hh>
 #include <ostream>
 
 /// Number type supporting integer and fractional constants

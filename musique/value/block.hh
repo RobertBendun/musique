@@ -1,8 +1,8 @@
 #ifndef MUSIQUE_BLOCK_HH
 #define MUSIQUE_BLOCK_HH
 
-#include "result.hh"
-#include "ast.hh"
+#include <musique/result.hh>
+#include <musique/parser/ast.hh>
 
 #include <memory>
 

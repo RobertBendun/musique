@@ -5,7 +5,7 @@
 #include <array>
 #include <musique/common.hh>
 #include <musique/errors.hh>
-#include <musique/value.hh>
+#include <musique/value/value.hh>
 
 /// Allows creation of guards that ensure proper type
 template<usize N>

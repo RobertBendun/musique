@@ -1,8 +1,8 @@
 #ifndef MUSIQUE_TOKEN_HH
 #define MUSIQUE_TOKEN_HH
 
-#include "common.hh"
-#include "location.hh"
+#include <musique/common.hh>
+#include <musique/location.hh>
 
 /// Lexical token representation for Musique language
 struct Token

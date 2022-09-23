@@ -7,11 +7,11 @@
 #include <thread>
 
 #include <midi.hh>
-#include <musique/env.hh>
+#include <musique/interpreter/env.hh>
 #include <musique/format.hh>
-#include <musique/interpreter.hh>
-#include <musique/lines.hh>
-#include <musique/parser.hh>
+#include <musique/interpreter/interpreter.hh>
+#include <musique/lexer/lines.hh>
+#include <musique/parser/parser.hh>
 #include <musique/pretty.hh>
 #include <musique/try.hh>
 #include <musique/unicode.hh>

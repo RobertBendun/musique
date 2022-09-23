@@ -1,7 +1,7 @@
 #ifndef MUSIQUE_AST_HH
 #define MUSIQUE_AST_HH
 
-#include "token.hh"
+#include <musique/lexer/token.hh>
 #include <vector>
 #include <optional>
 

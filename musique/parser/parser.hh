@@ -1,8 +1,8 @@
 #ifndef MUSIQUE_PARSER_HH
 #define MUSIQUE_PARSER_HH
 
-#include "ast.hh"
-#include "result.hh"
+#include <musique/parser/ast.hh>
+#include <musique/result.hh>
 
 /// Source code to program tree converter
 ///

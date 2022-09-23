@@ -2,7 +2,7 @@
 #define MUSIQUE_ARRAY_HH
 
 #include <vector>
-#include "result.hh"
+#include <musique/result.hh>
 
 struct Interpreter;
 struct Value;

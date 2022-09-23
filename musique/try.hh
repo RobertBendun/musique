@@ -1,7 +1,7 @@
 #ifndef MUSIQUE_TRY_HH
 #define MUSIQUE_TRY_HH
 
-#include "result.hh"
+#include <musique/result.hh>
 
 /// Shorthand for forwarding error values with Result type family.
 ///

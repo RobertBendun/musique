@@ -1,4 +1,4 @@
-#include <musique/number.hh>
+#include <musique/value/number.hh>
 #include <musique/try.hh>
 
 #include <cmath>

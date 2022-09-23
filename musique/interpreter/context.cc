@@ -1,4 +1,4 @@
-#include <musique/context.hh>
+#include <musique/interpreter/context.hh>
 
 Note Context::fill(Note note) const
 {

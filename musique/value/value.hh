@@ -1,13 +1,13 @@
 #ifndef MUSIQUE_VALUE_HH
 #define MUSIQUE_VALUE_HH
 
-#include "array.hh"
-#include "block.hh"
-#include "chord.hh"
-#include "common.hh"
-#include "note.hh"
-#include "result.hh"
-#include "token.hh"
+#include <musique/value/array.hh>
+#include <musique/value/block.hh>
+#include <musique/value/chord.hh>
+#include <musique/common.hh>
+#include <musique/value/note.hh>
+#include <musique/result.hh>
+#include <musique/lexer/token.hh>
 
 /// Representation of any value in language
 struct Value

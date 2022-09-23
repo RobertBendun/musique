@@ -1,7 +1,7 @@
 #ifndef MUSIQUE_FORMAT_HH
 #define MUSIQUE_FORMAT_HH
 
-#include "result.hh"
+#include <musique/result.hh>
 
 struct Interpreter;
 struct Value;

@@ -2,8 +2,8 @@
 #define MUSIQUE_INTERPRETER_HH
 
 #include <midi.hh>
-#include <musique/context.hh>
-#include <musique/value.hh>
+#include <musique/interpreter/context.hh>
+#include <musique/value/value.hh>
 
 /// Given program tree evaluates it into Value
 struct Interpreter

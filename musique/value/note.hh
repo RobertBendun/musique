@@ -3,7 +3,7 @@
 
 #include <optional>
 
-#include "number.hh"
+#include <musique/value/number.hh>
 
 /// Representation of musical note or musical pause
 struct Note

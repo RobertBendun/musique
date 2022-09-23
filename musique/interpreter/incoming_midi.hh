@@ -1,7 +1,7 @@
 #ifndef MUSIQUE_INCOMING_MIDI
 #define MUSIQUE_INCOMING_MIDI
 
-#include "interpreter.hh"
+#include <musique/interpreter/interpreter.hh>
 
 struct Interpreter::Incoming_Midi_Callbacks
 {

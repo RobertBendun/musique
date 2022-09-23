@@ -1,9 +1,9 @@
 #ifndef MUSIQUE_CONTEXT_HH
 #define MUSIQUE_CONTEXT_HH
 
-#include "common.hh"
-#include "note.hh"
-#include "number.hh"
+#include <musique/common.hh>
+#include <musique/value/note.hh>
+#include <musique/value/number.hh>
 #include <chrono>
 
 /// Context holds default values for music related actions

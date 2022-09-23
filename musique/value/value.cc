@@ -1,8 +1,8 @@
-#include <musique/env.hh>
+#include <musique/interpreter/env.hh>
 #include <musique/guard.hh>
-#include <musique/interpreter.hh>
+#include <musique/interpreter/interpreter.hh>
 #include <musique/try.hh>
-#include <musique/value.hh>
+#include <musique/value/value.hh>
 
 #include <iostream>
 #include <numeric>

@@ -3,7 +3,7 @@
 
 #include <tl/expected.hpp>
 
-#include "errors.hh"
+#include <musique/errors.hh>
 
 /// Holds either T or Error
 template<typename T>

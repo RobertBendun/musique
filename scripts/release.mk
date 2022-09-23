@@ -6,4 +6,4 @@ bin/%.o: musique/%.cc
 
 bin/musique: $(Release_Obj) bin/main.o bin/bestline.o lib/midi/libmidi-alsa.a
 	@echo "CXX $@"
-	@$(CXX) $(CXXFLAGS) $(RELEASE_FLAGS) $(CPPFLAGS) -o $@ $(Release_Obj) bin/bestline.o bin/main.o $(LDFLAGS) $(LDLIBS)
+	@$(CXX) $(CXXFLAGS) $(RELEASE_FLAGS) $(CPPFLAGS) -o $@ $(Release_Obj) bin/bestline.o $(LDFLAGS) $(LDLIBS)

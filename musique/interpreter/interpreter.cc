@@ -1,6 +1,6 @@
-#include <musique/env.hh>
-#include <musique/incoming_midi.hh>
-#include <musique/interpreter.hh>
+#include <musique/interpreter/env.hh>
+#include <musique/interpreter/incoming_midi.hh>
+#include <musique/interpreter/interpreter.hh>
 #include <musique/try.hh>
 
 #include <chrono>

@@ -1,9 +1,9 @@
 #include <functional>
 #include <musique/algo.hh>
 #include <musique/guard.hh>
-#include <musique/interpreter.hh>
+#include <musique/interpreter/interpreter.hh>
 #include <musique/try.hh>
-#include <musique/typecheck.hh>
+#include <musique/value/typecheck.hh>
 
 /// Intrinsic implementation primitive to ease operation vectorization
 static Result<Value> vectorize(auto &&operation, Interpreter &interpreter, Value lhs, Value rhs)
