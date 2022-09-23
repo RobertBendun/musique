@@ -1,4 +1,6 @@
-#include <musique.hh>
+#include <algorithm>
+#include <array>
+#include <musique/unicode.hh>
 #include <span>
 
 constexpr u32 Max_Latin1 = 0xff;

@@ -1,5 +1,5 @@
-#include <musique.hh>
-#include <musique_internal.hh>
+#include <musique/number.hh>
+#include <musique/try.hh>
 
 #include <cmath>
 #include <numeric>

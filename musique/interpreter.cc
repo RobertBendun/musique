@@ -1,5 +1,7 @@
-#include <musique.hh>
-#include <musique_internal.hh>
+#include <musique/env.hh>
+#include <musique/incoming_midi.hh>
+#include <musique/interpreter.hh>
+#include <musique/try.hh>
 
 #include <chrono>
 #include <iostream>

@@ -1,4 +1,8 @@
-#include <musique.hh>
+#include <musique/errors.hh>
+#include <musique/lines.hh>
+#include <musique/pretty.hh>
+#include <musique/unicode.hh>
+#include <musique/number.hh>
 
 #include <iostream>
 #include <sstream>

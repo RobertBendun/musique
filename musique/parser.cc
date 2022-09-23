@@ -1,5 +1,6 @@
-#include <musique.hh>
-#include <musique_internal.hh>
+#include <musique/parser.hh>
+#include <musique/lexer.hh>
+#include <musique/try.hh>
 
 #include <iostream>
 #include <numeric>

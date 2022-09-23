@@ -1,4 +1,7 @@
-#include <musique.hh>
+#include <musique/env.hh>
+#include <musique/format.hh>
+#include <musique/try.hh>
+#include <musique/value.hh>
 #include <sstream>
 
 Result<std::string> format(Interpreter &i, Value const& value)

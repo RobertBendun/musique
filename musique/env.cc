@@ -1,4 +1,4 @@
-#include <musique.hh>
+#include <musique/env.hh>
 
 #include <iostream>
 

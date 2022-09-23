@@ -6,8 +6,15 @@
 #include <span>
 #include <thread>
 
-#include <musique.hh>
 #include <midi.hh>
+#include <musique/env.hh>
+#include <musique/format.hh>
+#include <musique/interpreter.hh>
+#include <musique/lines.hh>
+#include <musique/parser.hh>
+#include <musique/pretty.hh>
+#include <musique/try.hh>
+#include <musique/unicode.hh>
 
 extern "C" {
 #include <bestline.h>

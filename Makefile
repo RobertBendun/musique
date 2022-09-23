@@ -4,7 +4,7 @@ Obj=                    \
 		builtin_functions.o \
 		builtin_operators.o \
 		context.o           \
-		environment.o       \
+		env.o               \
 		errors.o            \
 		format.o            \
 		interpreter.o       \
@@ -29,7 +29,7 @@ bin/bestline.o: lib/bestline/bestline.c lib/bestline/bestline.h
 	@echo "CC $@"
 	@$(CC) $< -c -O3 -o $@
 
-doc: Doxyfile src/*.cc include/*.hh
+doc: Doxyfile musique/*.cc include/*.hh
 	doxygen
 
 doc-open: doc
@@ -43,7 +43,6 @@ release: bin/musique
 
 install: bin/musique
 	scripts/install
-
 
 .PHONY: clean doc doc-open all test unit-tests release install
 

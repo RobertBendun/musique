@@ -1,4 +1,4 @@
-#include <musique.hh>
+#include <musique/location.hh>
 
 Location Location::at(usize line, usize column)
 {

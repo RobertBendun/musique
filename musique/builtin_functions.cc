@@ -1,5 +1,10 @@
-#include <musique.hh>
-#include <musique_internal.hh>
+#include <musique/algo.hh>
+#include <musique/env.hh>
+#include <musique/guard.hh>
+#include <musique/incoming_midi.hh>
+#include <musique/interpreter.hh>
+#include <musique/try.hh>
+#include <musique/typecheck.hh>
 
 #include <random>
 #include <memory>

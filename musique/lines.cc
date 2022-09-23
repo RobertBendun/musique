@@ -1,6 +1,6 @@
-#include <musique.hh>
-
 #include <iomanip>
+#include <musique/errors.hh>
+#include <musique/lines.hh>
 
 Lines Lines::the;
 

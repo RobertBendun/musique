@@ -1,7 +1,8 @@
-#include <musique.hh>
-#include <musique_internal.hh>
+#include <musique/lexer.hh>
+#include <musique/unicode.hh>
 
 #include <iomanip>
+#include <cstring>
 
 constexpr std::string_view Notes_Symbols = "abcedefghp";
 constexpr std::string_view Valid_Operator_Chars =
