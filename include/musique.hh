@@ -6,9 +6,9 @@
 #include <cstdint>
 #include <cstring>
 #include <functional>
+#include <iostream>
 #include <memory>
 #include <optional>
-#include <ostream>
 #include <span>
 #include <string_view>
 #include <variant>
@@ -784,7 +784,7 @@ struct Block
 	Result<Value> operator()(Interpreter &i, std::vector<Value> params);
 
 	/// Indexing block
-	Result<Value> index(Interpreter &i, unsigned position);
+	Result<Value> index(Interpreter &i, unsigned position) const;
 
 	/// Count of elements in block
 	usize size() const;
@@ -845,7 +845,7 @@ struct Array
 	std::vector<Value> elements;
 
 	/// Index element of an array
-	Result<Value> index(Interpreter &i, unsigned position);
+	Result<Value> index(Interpreter &i, unsigned position) const;
 
 	/// Count of elements
 	usize size() const;
@@ -923,7 +923,7 @@ struct Value
 	Result<Value> operator()(Interpreter &i, std::vector<Value> args);
 
 	/// Index contained value if it can be called
-	Result<Value> index(Interpreter &i, unsigned position);
+	Result<Value> index(Interpreter &i, unsigned position) const;
 
 	/// Return elements count of contained value if it can be measured
 	usize size() const;
@@ -1136,5 +1136,23 @@ template<> struct std::hash<Token>  { std::size_t operator()(Token  const&) cons
 template<> struct std::hash<Ast>    { std::size_t operator()(Ast    const&) const; };
 template<> struct std::hash<Number> { std::size_t operator()(Number const&) const; };
 template<> struct std::hash<Value>  { std::size_t operator()(Value  const&) const; };
+
+struct Value_Formatter
+{
+	enum Context
+	{
+		Free,
+		Inside_Block
+	};
+
+	Context context = Free;
+	unsigned indent = 0;
+
+	Value_Formatter nest(Context nested = Free) const;
+
+	Result<void> format(std::ostream& os, Interpreter &interpreter, Value const& value);
+};
+
+Result<std::string> format(Interpreter &i, Value const& value);
 
 #endif

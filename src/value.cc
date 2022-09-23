@@ -169,7 +169,7 @@ Result<Value> Value::operator()(Interpreter &i, std::vector<Value> args)
 	}
 }
 
-Result<Value> Value::index(Interpreter &i, unsigned position)
+Result<Value> Value::index(Interpreter &i, unsigned position) const
 {
 	switch (type) {
 	case Type::Block:
@@ -361,7 +361,7 @@ static inline Result<void> guard_index(unsigned index, unsigned size)
 }
 
 // TODO Add memoization
-Result<Value> Block::index(Interpreter &i, unsigned position)
+Result<Value> Block::index(Interpreter &i, unsigned position) const
 {
 	assert(parameters.size() == 0, "cannot index into block with parameters (for now)");
 	if (body.type != Ast::Type::Sequence) {
@@ -378,7 +378,7 @@ usize Block::size() const
 	return body.type == Ast::Type::Sequence ? body.arguments.size() : 1;
 }
 
-Result<Value> Array::index(Interpreter &, unsigned position)
+Result<Value> Array::index(Interpreter &, unsigned position) const
 {
 	Try(guard_index(position, elements.size()));
 	return elements[position];

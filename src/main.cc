@@ -126,9 +126,9 @@ struct Runner
 			midi_input_event_loop.detach();
 		}
 
-		Env::global->force_define("say", +[](Interpreter&, std::vector<Value> args) -> Result<Value> {
+		Env::global->force_define("say", +[](Interpreter &interpreter, std::vector<Value> args) -> Result<Value> {
 			for (auto it = args.begin(); it != args.end(); ++it) {
-			std::cout << *it;
+				Try(format(interpreter, *it));
 				if (std::next(it) != args.end())
 					std::cout << ' ';
 			}
@@ -162,7 +162,7 @@ struct Runner
 			return {};
 		}
 		if (auto result = Try(interpreter.eval(std::move(ast))); output && result.type != Value::Type::Nil) {
-			std::cout << result << std::endl;
+			std::cout << Try(format(interpreter, result)) << std::endl;
 		}
 		return {};
 	}

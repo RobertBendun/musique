@@ -6,6 +6,7 @@ Obj=                    \
 		context.o           \
 		environment.o       \
 		errors.o            \
+		format.o            \
 		interpreter.o       \
 		lexer.o             \
 		lines.o             \
