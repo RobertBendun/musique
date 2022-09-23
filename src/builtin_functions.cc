@@ -35,7 +35,7 @@ concept Iterable = (With_Index_Method<T> || With_Index_Operator<T>) && requires 
 
 /// Create chord out of given notes
 template<Iterable T>
-static inline Result<void> create_chord(std::vector<Note> &chord, Interpreter &interpreter, T args)
+static inline std::optional<Error> create_chord(std::vector<Note> &chord, Interpreter &interpreter, T args)
 {
 	for (auto i = 0u; i < args.size(); ++i) {
 		Value arg;
@@ -229,7 +229,7 @@ static auto builtin_program_change(Interpreter &i, std::vector<Value> args) -> R
 /// Plays sequentialy notes walking into arrays and evaluation blocks
 ///
 /// @invariant default_action is play one
-static inline Result<void> sequential_play(Interpreter &i, Value v)
+static inline std::optional<Error> sequential_play(Interpreter &i, Value v)
 {
 	switch (v.type) {
 	break; case Value::Type::Array:
@@ -250,7 +250,7 @@ static inline Result<void> sequential_play(Interpreter &i, Value v)
 }
 
 /// Play what's given
-static Result<void> action_play(Interpreter &i, Value v)
+static std::optional<Error> action_play(Interpreter &i, Value v)
 {
 	Try(sequential_play(i, std::move(v)));
 	return {};
@@ -335,7 +335,7 @@ static Result<Value> builtin_sim(Interpreter &interpreter, std::vector<Value> ar
 	struct {
 		Interpreter &interpreter;
 
-		Result<void> operator()(std::vector<Chord> &track, Value &arg)
+		std::optional<Error> operator()(std::vector<Chord> &track, Value &arg)
 		{
 			if (arg.type == Value::Type::Music) {
 				track.push_back(std::move(arg).chord);
@@ -351,13 +351,13 @@ static Result<Value> builtin_sim(Interpreter &interpreter, std::vector<Value> ar
 			}
 
 			// Invalid type for sim function
-			return errors::Unsupported_Types_For {
+			return Error{errors::Unsupported_Types_For {
 				.type = errors::Unsupported_Types_For::Function,
 				.name = "sim",
 				.possibilities = {
 					"(music | array of music)+"
 				},
-			};
+			}};
 		}
 	} append { interpreter };
 

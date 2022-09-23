@@ -153,7 +153,7 @@ struct Runner
 	}
 
 	/// Run given source
-	Result<void> run(std::string_view source, std::string_view filename, bool output = false)
+	std::optional<Error> run(std::string_view source, std::string_view filename, bool output = false)
 	{
 		auto ast = Try(Parser::parse(source, filename, repl_line_number));
 
@@ -326,9 +326,10 @@ static Result<void> Main(std::span<char const*> args)
 
 			Lines::the.add_line("<repl>", raw, repl_line_number);
 			auto result = runner.run(raw, "<repl>", true);
-			if (not result.has_value()) {
+			using Traits = Try_Traits<std::decay_t<decltype(result)>>;
+			if (not Traits::is_ok(result)) {
 				std::cout << std::flush;
-				std::cerr << result.error() << std::flush;
+				std::cerr << Traits::yield_error(std::move(result)) << std::flush;
 			}
 			repl_line_number++;
 			// We don't free input line since there could be values that still relay on it

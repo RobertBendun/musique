@@ -2,7 +2,6 @@
 #define Musique_Header_HH
 
 #include <chrono>
-#include <concepts>
 #include <cstdint>
 #include <cstring>
 #include <functional>
@@ -390,17 +389,85 @@ struct [[nodiscard("This value may contain critical error, so it should NOT be i
 	}
 };
 
+/// Abstraction over any value that are either value or error
+///
+/// Inspired by P2561R0
+template<typename = void>
+struct Try_Traits
+{
+	template<typename T>
+	static constexpr bool is_ok(T const& v) { return Try_Traits<T>::is_ok(v); }
+
+	template<typename T>
+	static constexpr auto yield_value(T&& v) { return Try_Traits<T>::yield_value(std::forward<T>(v)); }
+
+	template<typename T>
+	static constexpr auto yield_error(T&& v) { return Try_Traits<T>::yield_error(std::forward<T>(v)); }
+};
+
+template<>
+struct Try_Traits<std::optional<Error>>
+{
+	using Value_Type = std::nullopt_t;
+	using Error_Type = Error;
+
+	static constexpr bool is_ok(std::optional<Error> const& o)
+	{
+		return not o.has_value();
+	}
+
+	static std::nullopt_t yield_value(std::optional<Error>&& err)
+	{
+		assert(not err.has_value(), "Trying to yield value from optional that contains error");
+		return std::nullopt;
+	}
+
+	static Error yield_error(std::optional<Error>&& err)
+	{
+		assert(err.has_value(), "Trying to yield value from optional that NOT constains error");
+		return std::move(*err);
+	}
+};
+
+template<typename T>
+struct Try_Traits<Result<T>>
+{
+	using Value_Type = T;
+	using Error_Type = Error;
+
+	static constexpr bool is_ok(Result<T> const& o)
+	{
+		return o.has_value();
+	}
+
+	static auto yield_value(Result<T> val)
+	{
+		assert(val.has_value(), "Trying to yield value from expected that contains error");
+		if constexpr (std::is_void_v<T>) {
+		} else {
+			return std::move(*val);
+		}
+	}
+
+	static Error yield_error(Result<T>&& val)
+	{
+		assert(not val.has_value(), "Trying to yield error from expected with value");
+		return std::move(val.error());
+	}
+};
+
 /// Shorthand for forwarding error values with Result type family.
 ///
 /// This implementation requires C++ language extension: statement expressions
 /// It's supported by GCC and Clang, other compilers i don't know.
 /// Inspired by SerenityOS TRY macro
-#define Try(Value)                               \
-	({                                             \
-		auto try_value = (Value);                    \
-		if (not try_value.has_value()) [[unlikely]]  \
-			return tl::unexpected(try_value.error());  \
-		std::move(try_value).value();                \
+#define Try(Value)                                             \
+	({                                                           \
+		auto try_value = (Value);                                  \
+	 	using Trait [[maybe_unused]] = Try_Traits<std::decay_t<decltype(try_value)>>; \
+		if (not Trait::is_ok(try_value)) [[unlikely]]                \
+			return Trait::yield_error(std::move(try_value));                \
+		Trait::yield_value(std::move(try_value));                              \
 	})
 
 /// Drop in replacement for bool when C++ implcit conversions stand in your way
@@ -1035,7 +1102,7 @@ struct Interpreter
 	/// There is always at least one context
 	std::vector<Context> context_stack;
 
-	std::function<Result<void>(Interpreter&, Value)> default_action;
+	std::function<std::optional<Error>(Interpreter&, Value)> default_action;
 
 	struct Incoming_Midi_Callbacks;
 	std::unique_ptr<Incoming_Midi_Callbacks> callbacks;
@@ -1056,7 +1123,7 @@ struct Interpreter
 	void leave_scope();
 
 	/// Play note resolving any missing parameters with context via `midi_connection` member.
-	Result<void> play(Chord);
+	std::optional<Error> play(Chord);
 
 	/// Add to global interpreter scope all builtin function definitions
 	///
@@ -1150,7 +1217,7 @@ struct Value_Formatter
 
 	Value_Formatter nest(Context nested = Free) const;
 
-	Result<void> format(std::ostream& os, Interpreter &interpreter, Value const& value);
+	std::optional<Error> format(std::ostream& os, Interpreter &interpreter, Value const& value);
 };
 
 Result<std::string> format(Interpreter &i, Value const& value);

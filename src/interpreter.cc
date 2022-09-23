@@ -217,7 +217,7 @@ void Interpreter::leave_scope()
 	env = env->leave();
 }
 
-Result<void> Interpreter::play(Chord chord)
+std::optional<Error> Interpreter::play(Chord chord)
 {
 	Try(ensure_midi_connection_available(*this, Midi_Connection_Type::Output, "play"));
 	auto &ctx = context_stack.back();
@@ -256,7 +256,7 @@ Result<void> Interpreter::play(Chord chord)
 	return {};
 }
 
-Result<void> ensure_midi_connection_available(Interpreter &i, Midi_Connection_Type m, std::string_view operation_name)
+std::optional<Error> ensure_midi_connection_available(Interpreter &i, Midi_Connection_Type m, std::string_view operation_name)
 {
 	switch (m) {
 	break; case Midi_Connection_Type::Output:

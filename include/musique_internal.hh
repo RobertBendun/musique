@@ -27,14 +27,14 @@ struct Guard
 		return Error { std::move(error) };
 	}
 
-	inline Result<void> yield_result() const
+	inline std::optional<Error> yield_result() const
 	{
 		return yield_error();
 	}
 
-	inline Result<void> operator()(bool(*predicate)(Value::Type), Value const& v) const
+	inline std::optional<Error> operator()(bool(*predicate)(Value::Type), Value const& v) const
 	{
-		return predicate(v.type) ? Result<void>{} : yield_result();
+		return predicate(v.type) ? std::optional<Error>{} : yield_result();
 	}
 };
 
@@ -98,7 +98,7 @@ struct Interpreter::Incoming_Midi_Callbacks
 };
 
 enum class Midi_Connection_Type { Output, Input };
-Result<void> ensure_midi_connection_available(Interpreter&, Midi_Connection_Type, std::string_view operation_name);
+std::optional<Error> ensure_midi_connection_available(Interpreter&, Midi_Connection_Type, std::string_view operation_name);
 
 constexpr std::size_t hash_combine(std::size_t lhs, std::size_t rhs) {
 	return lhs ^= rhs + 0x9e3779b9 + (lhs << 6) + (lhs >> 2);
