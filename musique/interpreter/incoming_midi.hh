@@ -32,11 +32,11 @@ struct Interpreter::Incoming_Midi_Callbacks
 			target = [interpreter = &i, callback = &callback](T ...source_args)
 			{
 				if (!std::holds_alternative<Nil>(callback->data)) {
-					std::vector<Value> args { Value::from(Number(source_args))... };
-					args[1] = Value::from(Chord { { Note {
+					std::vector<Value> args { Number(source_args)... };
+					args[1] = Note {
 						.base = i32(std::get<Number>(args[1].data).num % 12),
 						.octave = std::get<Number>(args[1].data).num / 12
-					}}});
+					};
 					auto result = (*callback)(*interpreter, std::move(args));
 					// We discard this since callback is running in another thread.
 					(void) result;
@@ -47,7 +47,7 @@ struct Interpreter::Incoming_Midi_Callbacks
 			target = [interpreter = &i, callback = &callback](T ...source_args)
 			{
 				if (!std::holds_alternative<Nil>(callback->data)) {
-					auto result = (*callback)(*interpreter, { Value::from(Number(source_args))...  });
+					auto result = (*callback)(*interpreter, { Number(source_args)...  });
 					// We discard this since callback is running in another thread.
 					(void) result;
 				}

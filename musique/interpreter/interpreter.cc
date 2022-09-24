@@ -12,21 +12,21 @@
 static inline void register_note_length_constants()
 {
 	auto &global = *Env::global;
-	global.force_define("fn",   Value::from(Number(1,  1)));
-	global.force_define("dfn",  Value::from(Number(3,  2)));
-	global.force_define("hn",   Value::from(Number(1,  2)));
-	global.force_define("dhn",  Value::from(Number(3,  4)));
-	global.force_define("ddhn", Value::from(Number(7,  8)));
-	global.force_define("qn",   Value::from(Number(1,  4)));
-	global.force_define("dqn",  Value::from(Number(3,  8)));
-	global.force_define("ddqn", Value::from(Number(7, 16)));
-	global.force_define("en",   Value::from(Number(1,  8)));
-	global.force_define("den",  Value::from(Number(3, 16)));
-	global.force_define("dden", Value::from(Number(7, 32)));
-	global.force_define("sn",   Value::from(Number(1, 16)));
-	global.force_define("dsn",  Value::from(Number(3, 32)));
-	global.force_define("tn",   Value::from(Number(1, 32)));
-	global.force_define("dtn",  Value::from(Number(3, 64)));
+	global.force_define("fn",   Number(1,  1));
+	global.force_define("dfn",  Number(3,  2));
+	global.force_define("hn",   Number(1,  2));
+	global.force_define("dhn",  Number(3,  4));
+	global.force_define("ddhn", Number(7,  8));
+	global.force_define("qn",   Number(1,  4));
+	global.force_define("dqn",  Number(3,  8));
+	global.force_define("ddqn", Number(7, 16));
+	global.force_define("en",   Number(1,  8));
+	global.force_define("den",  Number(3, 16));
+	global.force_define("dden", Number(7, 32));
+	global.force_define("sn",   Number(1, 16));
+	global.force_define("dsn",  Number(3, 32));
+	global.force_define("tn",   Number(1, 32));
+	global.force_define("dtn",  Number(3, 64));
 }
 
 Interpreter::Interpreter()
@@ -60,7 +60,7 @@ Result<Value> Interpreter::eval(Ast &&ast)
 					if (auto op = operators.find(std::string(ast.token.source.substr(1))); op != operators.end()) {
 						return Value(op->second);
 					} else {
-						return Value::from(std::move(ast.token.source).substr(1));
+						return std::move(ast.token.source).substr(1);
 					}
 				}
 
@@ -201,7 +201,7 @@ Result<Value> Interpreter::eval(Ast &&ast)
 
 			block.context = env;
 			block.body = std::move(ast.arguments.back());
-			return Value::from(std::move(block));
+			return block;
 		}
 	}
 

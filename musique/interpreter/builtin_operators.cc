@@ -17,7 +17,7 @@ static Result<Value> vectorize(auto &&operation, Interpreter &interpreter, Value
 			array.elements.push_back(
 				Try(operation(interpreter, { Try(lhs_coll->index(interpreter, i)), rhs })));
 		}
-		return Value::from(std::move(array));
+		return array;
 	}
 
 	assert(rhs_coll != nullptr, "Trying to vectorize two non-collections");
@@ -27,7 +27,7 @@ static Result<Value> vectorize(auto &&operation, Interpreter &interpreter, Value
 		array.elements.push_back(
 			Try(operation(interpreter, { lhs, Try(rhs_coll->index(interpreter, i)) })));
 	}
-	return Value::from(std::move(array));
+	return array;
 }
 
 /// Intrinsic implementation primitive to ease operation vectorization
@@ -61,13 +61,13 @@ template<typename Binary_Operation>
 static Result<Value> plus_minus_operator(Interpreter &interpreter, std::vector<Value> args)
 {
 	if (args.empty()) {
-		return Value::from(Number(0));
+		return Number(0);
 	}
 
 	Value init = args.front();
 	return algo::fold(std::span(args).subspan(1), std::move(init), [&interpreter](Value lhs, Value &rhs) -> Result<Value> {
 		if (auto a = match<Number, Number>(lhs, rhs)) {
-			return Value::from(std::apply(Binary_Operation{}, *a));
+			return std::apply(Binary_Operation{}, *a);
 		}
 
 		auto result = symetric<Chord, Number>(lhs, rhs, [](Chord &lhs, Number rhs) {
@@ -77,7 +77,7 @@ static Result<Value> plus_minus_operator(Interpreter &interpreter, std::vector<V
 					note.simplify_inplace();
 				}
 			}
-			return Value::from(lhs);
+			return lhs;
 		});
 		if (result.has_value()) {
 			return *std::move(result);
@@ -110,13 +110,13 @@ static Result<Value> binary_operator(Interpreter& interpreter, std::vector<Value
 {
 	static constexpr char Name[] = { Chars..., '\0' };
 	if (args.empty()) {
-		return Value::from(Number(1));
+		return Number(1);
 	}
 	auto init = std::move(args.front());
 	return algo::fold(std::span(args).subspan(1), std::move(init),
 		[&interpreter](Value lhs, Value &rhs) -> Result<Value> {
 			if (auto a = match<Number, Number>(lhs, rhs)) {
-				return wrap_value(std::apply(Binary_Operation{}, *a));
+				return std::apply(Binary_Operation{}, *a);
 			}
 
 			if (holds_alternative<Collection>(lhs) != holds_alternative<Collection>(rhs)) {
@@ -140,7 +140,7 @@ template<typename Binary_Predicate>
 static Result<Value> comparison_operator(Interpreter &interpreter, std::vector<Value> args)
 {
 	if (args.size() != 2) {
-		return Value::from(algo::pairwise_all(std::move(args), Binary_Predicate{}));
+		return algo::pairwise_all(std::move(args), Binary_Predicate{});
 	}
 
 	auto lhs_coll = get_if<Collection>(args.front());
@@ -153,32 +153,30 @@ static Result<Value> comparison_operator(Interpreter &interpreter, std::vector<V
 		std::vector<Value> result;
 		result.reserve(coll->size());
 		for (auto i = 0u; i < coll->size(); ++i) {
-			result.push_back(
-				Value::from(
-					Binary_Predicate{}(
-						Try(coll->index(interpreter, i)),
-						*element
-					)
-				)
+			result.push_back(Value(
+				Binary_Predicate{}(
+					Try(coll->index(interpreter, i)),
+					*element
+				))
 			);
 		}
-		return Value::from(Array { std::move(result) });
+		return Array { std::move(result) };
 	}
 
-	return Value::from(Binary_Predicate{}(std::move(args.front()), std::move(args.back())));
+	return Binary_Predicate{}(std::move(args.front()), std::move(args.back()));
 }
 
 static Result<Value> multiplication_operator(Interpreter &i, std::vector<Value> args)
 {
 	if (args.empty()) {
-		return Value::from(Number(1));
+		return Number(1);
 	}
 
 	auto init = std::move(args.front());
 	return algo::fold(std::span(args).subspan(1), std::move(init), [&i](Value lhs, Value &rhs) -> Result<Value> {
 		{
 			auto result = symetric<Number, Chord>(lhs, rhs, [](Number lhs, Chord &rhs) {
-				return Value::from(Array { std::vector<Value>(lhs.floor().as_int(), Value::from(std::move(rhs))) });
+				return Array { std::vector<Value>(lhs.floor().as_int(), std::move(rhs)) };
 			});
 
 			if (result.has_value()) {
@@ -250,7 +248,7 @@ static constexpr auto Operators = std::array {
 						result.push_back(Try(source.index(interpreter, *index)));
 					}
 				}
-				return Value::from(Array(std::move(result)));
+				return Array(std::move(result));
 			}
 
 			return Error {
@@ -290,7 +288,7 @@ static constexpr auto Operators = std::array {
 				l.reserve(l.size() + r.size());
 				std::move(r.begin(), r.end(), std::back_inserter(l));
 
-				return Value::from(lhs);
+				return lhs;
 			}
 
 			auto result = Array {};
@@ -300,7 +298,7 @@ static constexpr auto Operators = std::array {
 					result.elements.push_back(Try(array.index(i, n)));
 				}
 			}
-			return Value::from(std::move(result));
+			return result;
 		}
 	},
 };

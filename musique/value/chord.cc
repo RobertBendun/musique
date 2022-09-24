@@ -111,18 +111,17 @@ Result<Value> Chord::operator()(Interpreter& interpreter, std::vector<Value> arg
 
 		if (auto chord = get_if<Chord>(arg)) {
 			std::transform(current.begin(), current.end(), std::back_inserter(array),
-				[](Chord &c) { return Value::from(std::move(c)); });
+				[](Chord &c) { return std::move(c); });
 			current.clear();
 			current.push_back(std::move(*chord));
 			state = Waiting_For_Octave;
 		}
 	}
 
-	std::transform(current.begin(), current.end(), std::back_inserter(array),
-		[](Chord &c) { return Value::from(std::move(c)); });
+	std::move(current.begin(), current.end(), std::back_inserter(array));
 
 	assert(not array.empty(), "At least *this should be in this array");
-	return Value::from(Array{std::move(array)});
+	return array;
 }
 
 std::ostream& operator<<(std::ostream& os, Chord const& chord)

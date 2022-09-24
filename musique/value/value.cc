@@ -14,99 +14,79 @@ Result<Value> Value::from(Token t)
 {
 	switch (t.type) {
 	case Token::Type::Numeric:
-		return Value::from(Try(Number::from(std::move(t))));
+		return Try(Number::from(std::move(t)));
 
 	case Token::Type::Symbol:
-		return Value::from(std::string(t.source));
+		return t.source;
 
 	case Token::Type::Keyword:
-		if (t.source == "false") return Value::from(false);
-		if (t.source == "nil")   return Value{};
-		if (t.source == "true")  return Value::from(true);
+		if (t.source == "false") return false;
+		if (t.source == "nil")   return {};
+		if (t.source == "true")  return true;
 		unreachable();
 
 	case Token::Type::Chord:
 		if (t.source.size() == 1 || (t.source.size() == 2 && t.source.back() == '#')) {
 			auto maybe_note = Note::from(t.source);
 			assert(maybe_note.has_value(), "Somehow parser passed invalid note literal");
-			return Value::from(*maybe_note);
+			return *maybe_note;
 		}
 
-		return Value::from(Chord::from(t.source));
+		return Chord::from(t.source);
 
 	default:
 		unreachable();
 	}
 }
 
-Value Value::from(Explicit_Bool b)
+Value::Value(Explicit_Bool b)
+	: data{b.value}
 {
-	Value v;
-	v.data = b.value;
-	return v;
 }
 
-Value Value::from(Number n)
+Value::Value(Number n)
+	: data(n.simplify())
 {
-	Value v;
-	v.data = std::move(n).simplify();
-	return v;
 }
 
-Value Value::from(std::string s)
+Value::Value(std::string s)
+	: data(Symbol(std::move(s)))
 {
-	Value v;
-	v.data = Symbol(std::move(s));
-	return v;
 }
 
-Value Value::from(std::string_view s)
+Value::Value(std::string_view s)
+	: data(Symbol(s))
 {
-	Value v;
-	v.data = Symbol(std::move(s));
-	return v;
 }
 
-Value Value::from(char const* s)
+Value::Value(char const* s)
+	: data(Symbol(s))
 {
-	Value v;
-	v.data = Symbol(s);
-	return v;
 }
 
-Value Value::from(Block &&block)
+Value::Value(Block &&block)
+	: data{std::move(block)}
 {
-	Value v;
-	v.data = std::move(block);
-	return v;
 }
 
-Value Value::from(Array &&array)
+Value::Value(Array &&array)
+	: data{std::move(array)}
 {
-	Value v;
-	v.data = std::move(array);
-	return v;
 }
 
-Value Value::from(std::vector<Value> &&array)
+Value::Value(std::vector<Value> &&array)
+	: data(Array(std::move(array)))
 {
-	Value v;
-	v.data = Array(std::move(array));
-	return v;
 }
 
-Value Value::from(Note n)
+Value::Value(Note n)
+	: data(Chord(n))
 {
-	Value v;
-	v.data = Chord(n);
-	return v;
 }
 
-Value Value::from(Chord chord)
+Value::Value(Chord chord)
+	: data(std::move(chord))
 {
-	Value v;
-	v.data = std::move(chord);
-	return v;
 }
 
 Result<Value> Value::operator()(Interpreter &i, std::vector<Value> args) const

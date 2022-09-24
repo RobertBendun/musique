@@ -28,17 +28,17 @@ struct Value
 	/// Create value holding provided boolean
 	///
 	/// Using Explicit_Bool to prevent from implicit casts
-	static Value from(Explicit_Bool b);
+	Value(Explicit_Bool b);
 
-	static Value from(Array &&array);              ///< Create value of type array holding provided array
-	static Value from(Block &&l);                  ///< Create value of type block holding provided block
-	static Value from(Chord chord);                ///< Create value of type music holding provided chord
-	static Value from(Note n);                     ///< Create value of type music holding provided note
-	static Value from(Number n);                   ///< Create value of type number holding provided number
-	static Value from(char const* s);              ///< Create value of type symbol holding provided symbol
-	static Value from(std::string s);              ///< Create value of type symbol holding provided symbol
-	static Value from(std::string_view s);         ///< Create value of type symbol holding provided symbol
-	static Value from(std::vector<Value> &&array); ///< Create value of type array holding provided array
+	Value(Array &&array);              ///< Create value of type array holding provided array
+	Value(Block &&l);                  ///< Create value of type block holding provided block
+	Value(Chord chord);                ///< Create value of type music holding provided chord
+	Value(Note n);                     ///< Create value of type music holding provided note
+	Value(Number n);                   ///< Create value of type number holding provided number
+	Value(char const* s);              ///< Create value of type symbol holding provided symbol
+	Value(std::string s);              ///< Create value of type symbol holding provided symbol
+	Value(std::string_view s);         ///< Create value of type symbol holding provided symbol
+	Value(std::vector<Value> &&array); ///< Create value of type array holding provided array
 
 	// TODO Most strings should not be allocated by Value, but reference to string allocated previously
 	// Wrapper for std::string is needed that will allocate only when needed, middle ground between:
@@ -107,12 +107,7 @@ template<> struct std::hash<Value>  { std::size_t operator()(Value  const&) cons
 template<typename T>
 Result<Value> wrap_value(Result<T> &&value)
 {
-	return std::move(value).map([](auto &&value) { return Value::from(std::move(value)); });
-}
-
-Value wrap_value(auto &&value)
-{
-	return Value::from(std::move(value));
+	return std::move(value).map([](auto &&value) { return Value(std::move(value)); });
 }
 
 template<typename Desired>

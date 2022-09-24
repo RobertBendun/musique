@@ -72,7 +72,7 @@ static Result<Value> ctx_read_write_property(Interpreter &interpreter, std::vect
 	using Member_Type = std::remove_cvref_t<decltype(std::declval<Context>().*(Mem_Ptr))>;
 
 	if (args.size() == 0) {
-		return Value::from(Number(interpreter.context_stack.back().*(Mem_Ptr)));
+		return Number(interpreter.context_stack.back().*(Mem_Ptr));
 	}
 
 	assert(std::holds_alternative<Number>(args.front().data), "Ctx only holds numeric values");
@@ -130,7 +130,7 @@ static Result<Value> apply_numeric_transform(Interpreter &i, std::vector<Value> 
 {
 	if (args.size()) {
 		if (auto number = get_if<Number>(args.front().data)) {
-			return Value::from((number->*Method)());
+			return (number->*Method)();
 		}
 	}
 
@@ -142,7 +142,7 @@ static Result<Value> apply_numeric_transform(Interpreter &i, std::vector<Value> 
 			goto invalid_argument_type;
 		}
 	}
-	return Value::from(std::move(array));
+	return array;
 
 
 invalid_argument_type:
@@ -185,14 +185,14 @@ static Result<Value> builtin_range(Interpreter&, std::vector<Value> args)
 	Array array;
 	if constexpr (dir == Range_Direction::Up) {
 		for (; start < stop; start += step) {
-			array.elements.push_back(Value::from(start));
+			array.elements.push_back(start);
 		}
 	} else {
 		for (; start < stop; start += step) {
-			array.elements.push_back(Value::from(stop - start - Number(1)));
+			array.elements.push_back(stop - start - Number(1));
 		}
 	}
-	return Value::from(std::move(array));
+	return array;
 }
 
 /// Send MIDI Program Change message
@@ -444,7 +444,7 @@ static Result<Value> builtin_primes(Interpreter&, std::vector<Value> args)
 		// Better sieve could be Sieve of Atkin, but it's more complicated
 		// so for now we would use Eratosthenes one.
 		if (n_frac.simplify_inplace(); n_frac.num <= 1) {
-			return Value::from(Array{});
+			return Array{};
 		}
 		size_t n = n_frac.floor().as_int();
 
@@ -468,10 +468,10 @@ static Result<Value> builtin_primes(Interpreter&, std::vector<Value> args)
 
 		for (uint i = 2; i < sieve.size() && results.size() != n; ++i) {
 			if (!sieve[i]) {
-				results.push_back(Value::from(Number(i)));
+				results.push_back(Number(i));
 			}
 		}
-		return Value::from(Array(std::move(results)));
+		return results;
 	}
 
 	return Error {
@@ -613,14 +613,14 @@ static Result<Value> builtin_update(Interpreter &i, std::vector<Value> args)
 	if (auto a = match<Array, Number, Value>(args)) {
 		auto& [v, index, value] = *a;
 		v.elements[index.as_int()] = std::move(std::move(value));
-		return Value::from(std::move(v));
+		return std::move(v);
 	}
 
 	if (auto a = match<Block, Number, Value>(args)) {
 		auto& [v, index, value] = *a;
-		auto array = Try(flatten(i, { Value::from(std::move(v)) }));
+		auto array = Try(flatten(i, { std::move(v) }));
 		array[index.as_int()] = std::move(args.back());
-		return Value::from(std::move(array));
+		return array;
 	}
 
 	return guard.yield_error();
@@ -630,7 +630,7 @@ static Result<Value> builtin_update(Interpreter &i, std::vector<Value> args)
 static Result<Value> builtin_typeof(Interpreter&, std::vector<Value> args)
 {
 	assert(args.size() == 1, "typeof expects only one argument"); // TODO(assert)
-	return Value::from(Symbol(type_name(args.front())));
+	return Symbol(type_name(args.front()));
 }
 
 /// Return length of container or set/get default length to play
@@ -638,7 +638,7 @@ static Result<Value> builtin_len(Interpreter &i, std::vector<Value> args)
 {
 	if (args.size() == 1) {
 		if (auto coll = get_if<Collection>(args.front())) {
-			return Value::from(Number(coll->size()));
+			return Number(coll->size());
 		}
 	}
 	// TODO Add overload that tells length of array to error reporting
@@ -648,7 +648,7 @@ static Result<Value> builtin_len(Interpreter &i, std::vector<Value> args)
 /// Join arguments into flat array
 static Result<Value> builtin_flat(Interpreter &i, std::vector<Value> args)
 {
-	return Value::from(Try(into_flat_array(i, std::move(args))));
+	return Try(into_flat_array(i, std::move(args)));
 }
 
 /// Shuffle arguments
@@ -657,7 +657,7 @@ static Result<Value> builtin_shuffle(Interpreter &i, std::vector<Value> args)
 	static std::mt19937 rnd{std::random_device{}()};
 	auto array = Try(flatten(i, std::move(args)));
 	std::shuffle(array.begin(), array.end(), rnd);
-	return Value::from(std::move(array));
+	return array;
 }
 
 /// Permute arguments
@@ -665,7 +665,7 @@ static Result<Value> builtin_permute(Interpreter &i, std::vector<Value> args)
 {
 	auto array = Try(flatten(i, std::move(args)));
 	std::next_permutation(array.begin(), array.end());
-	return Value::from(std::move(array));
+	return array;
 }
 
 /// Sort arguments
@@ -673,7 +673,7 @@ static Result<Value> builtin_sort(Interpreter &i, std::vector<Value> args)
 {
 	auto array = Try(flatten(i, std::move(args)));
 	std::sort(array.begin(), array.end());
-	return Value::from(std::move(array));
+	return array;
 }
 
 /// Reverse arguments
@@ -681,7 +681,7 @@ static Result<Value> builtin_reverse(Interpreter &i, std::vector<Value> args)
 {
 	auto array = Try(flatten(i, std::move(args)));
 	std::reverse(array.begin(), array.end());
-	return Value::from(std::move(array));
+	return array;
 }
 
 /// Get minimum of arguments
@@ -724,10 +724,10 @@ static Result<Value> builtin_partition(Interpreter &i, std::vector<Value> args)
 		tuple[Try(predicate(i, { std::move(value) })).truthy()].elements.push_back(std::move(value));
 	}
 
-	return Value::from(Array {{
-		Value::from(std::move(tuple[true])),
-		Value::from(std::move(tuple[false]))
-	}});
+	return Array {{
+		std::move(tuple[true]),
+		std::move(tuple[false])
+	}};
 }
 
 /// Rotate arguments by n steps
@@ -750,7 +750,7 @@ static Result<Value> builtin_rotate(Interpreter &i, std::vector<Value> args)
 				offset = -offset % array.size();
 				std::rotate(array.rbegin(), array.rbegin() + offset, array.rend());
 			}
-			return Value::from(std::move(array));
+			return array;
 		}
 	}
 
@@ -770,7 +770,7 @@ static Result<Value> builtin_unique(Interpreter &i, std::vector<Value> args)
 			result.push_back(std::move(el));
 		}
 	}
-	return Value::from(std::move(result));
+	return result;
 }
 
 /// Returns arguments with all successive copies eliminated
@@ -787,16 +787,16 @@ static Result<Value> builtin_uniq(Interpreter &i, std::vector<Value> args)
 		result.push_back(el);
 		previous = std::move(el);
 	}
-	return Value::from(std::move(result));
+	return result;
 }
 
 static Result<Value> builtin_hash(Interpreter&, std::vector<Value> args)
 {
-	return Value::from(Number(
+	return Number(
 		std::accumulate(args.cbegin(), args.cend(), size_t(0), [](size_t h, Value const& v) {
 			return hash_combine(h, std::hash<Value>{}(v));
 		})
-	));
+	);
 }
 
 /// Build chord from arguments
@@ -804,7 +804,7 @@ static Result<Value> builtin_chord(Interpreter &i, std::vector<Value> args)
 {
 	Chord chord;
 	Try(create_chord(chord.notes, i, std::move(args)));
-	return Value::from(std::move(chord));
+	return chord;
 }
 
 /// Send MIDI message Note On
@@ -918,7 +918,7 @@ static Result<Value> builtin_mix(Interpreter &i, std::vector<Value> args)
 		}
 	} while (awaiting_containers);
 
-	return Value::from(std::move(result));
+	return result;
 }
 
 /// Call operator. Calls first argument with remaining arguments
