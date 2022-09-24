@@ -3,25 +3,29 @@
 #include <musique/guard.hh>
 #include <musique/interpreter/interpreter.hh>
 #include <musique/try.hh>
-#include <musique/value/typecheck.hh>
+#include <musique/value/intrinsic.hh>
 
 /// Intrinsic implementation primitive to ease operation vectorization
 static Result<Value> vectorize(auto &&operation, Interpreter &interpreter, Value lhs, Value rhs)
 {
+	auto lhs_coll = get_if<Collection>(lhs);
+	auto rhs_coll = get_if<Collection>(rhs);
 
-	if (is_indexable(lhs.type) && !is_indexable(rhs.type)) {
+	if (lhs_coll != nullptr && rhs_coll == nullptr) {
 		Array array;
-		for (auto i = 0u; i < lhs.size(); ++i) {
+		for (auto i = 0u; i < lhs_coll->size(); ++i) {
 			array.elements.push_back(
-				Try(operation(interpreter, { Try(lhs.index(interpreter, i)), rhs })));
+				Try(operation(interpreter, { Try(lhs_coll->index(interpreter, i)), rhs })));
 		}
 		return Value::from(std::move(array));
 	}
 
+	assert(rhs_coll != nullptr, "Trying to vectorize two non-collections");
+
 	Array array;
-	for (auto i = 0u; i < rhs.size(); ++i) {
+	for (auto i = 0u; i < rhs_coll->size(); ++i) {
 		array.elements.push_back(
-			Try(operation(interpreter, { lhs, Try(rhs.index(interpreter, i)) })));
+			Try(operation(interpreter, { lhs, Try(rhs_coll->index(interpreter, i)) })));
 	}
 	return Value::from(std::move(array));
 }
@@ -37,30 +41,13 @@ static Result<Value> vectorize(auto &&operation, Interpreter &interpreter, std::
 /// Helper simlifiing implementation of symetric binary operations.
 ///
 /// Calls binary if values matches types any permutation of {t1, t2}, always in shape (t1, t2)
-inline std::optional<Value> symetric(Value::Type t1, Value::Type t2, Value &lhs, Value &rhs, auto binary)
+template<typename T1, typename T2>
+inline std::optional<Value> symetric(Value &lhs, Value &rhs, auto binary)
 {
-	if (lhs.type == t1 && rhs.type == t2) {
-		return binary(std::move(lhs), std::move(rhs));
-	} else if (lhs.type == t2 && rhs.type == t1) {
-		return binary(std::move(rhs), std::move(lhs));
-	} else {
-		return std::nullopt;
-	}
-}
-
-/// Helper simlifiing implementation of symetric binary operations.
-///
-/// Calls binary if values matches predicates in any permutation; always with shape (p1, p2)
-inline auto symetric(
-	std::predicate<Value::Type> auto&& p1,
-	std::predicate<Value::Type> auto&& p2,
-	Value &lhs, Value &rhs,
-	auto binary) -> std::optional<decltype(binary(std::move(lhs), std::move(rhs)))>
-{
-	if (p1(lhs.type) && p2(rhs.type)) {
-		return binary(std::move(lhs), std::move(rhs));
-	} else if (p2(lhs.type) && p1(rhs.type)) {
-		return binary(std::move(rhs), std::move(lhs));
+	if (auto a = match<T1, T2>(lhs, rhs)) {
+		return std::apply(std::move(binary), *a);
+	} else if (auto a = match<T1, T2>(rhs, lhs)) {
+		return std::apply(std::move(binary), *a);
 	} else {
 		return std::nullopt;
 	}
@@ -79,24 +66,24 @@ static Result<Value> plus_minus_operator(Interpreter &interpreter, std::vector<V
 
 	Value init = args.front();
 	return algo::fold(std::span(args).subspan(1), std::move(init), [&interpreter](Value lhs, Value &rhs) -> Result<Value> {
-		if (lhs.type == Value::Type::Number && rhs.type == Value::Type::Number) {
-			return Value::from(Binary_Operation{}(std::move(lhs).n, std::move(rhs).n));
+		if (auto a = match<Number, Number>(lhs, rhs)) {
+			return Value::from(std::apply(Binary_Operation{}, *a));
 		}
 
-		auto result = symetric(Value::Type::Music, Value::Type::Number, lhs, rhs, [](Value lhs, Value rhs) {
-			for (auto &note : lhs.chord.notes) {
+		auto result = symetric<Chord, Number>(lhs, rhs, [](Chord &lhs, Number rhs) {
+			for (auto &note : lhs.notes) {
 				if (note.base) {
-					*note.base = Binary_Operation{}(*note.base, rhs.n.as_int());
+					*note.base = Binary_Operation{}(*note.base, rhs.as_int());
 					note.simplify_inplace();
 				}
 			}
-			return lhs;
+			return Value::from(lhs);
 		});
 		if (result.has_value()) {
 			return *std::move(result);
 		}
 
-		if (is_indexable(lhs.type) != is_indexable(rhs.type)) {
+		if (holds_alternative<Collection>(lhs) != holds_alternative<Collection>(rhs)) {
 			return vectorize(plus_minus_operator<Binary_Operation>, interpreter, std::move(lhs), std::move(rhs));
 		}
 
@@ -128,11 +115,11 @@ static Result<Value> binary_operator(Interpreter& interpreter, std::vector<Value
 	auto init = std::move(args.front());
 	return algo::fold(std::span(args).subspan(1), std::move(init),
 		[&interpreter](Value lhs, Value &rhs) -> Result<Value> {
-			if (lhs.type == Value::Type::Number && rhs.type == Value::Type::Number) {
-				return wrap_value(Binary_Operation{}(std::move(lhs).n, std::move(rhs).n));
+			if (auto a = match<Number, Number>(lhs, rhs)) {
+				return wrap_value(std::apply(Binary_Operation{}, *a));
 			}
 
-			if (is_indexable(lhs.type) != is_indexable(rhs.type)) {
+			if (holds_alternative<Collection>(lhs) != holds_alternative<Collection>(rhs)) {
 				return vectorize(binary_operator<Binary_Operation, Chars...>, interpreter, std::move(lhs), std::move(rhs));
 			}
 
@@ -156,24 +143,26 @@ static Result<Value> comparison_operator(Interpreter &interpreter, std::vector<V
 		return Value::from(algo::pairwise_all(std::move(args), Binary_Predicate{}));
 	}
 
-	auto result = symetric(is_indexable, std::not_fn(is_indexable), args.front(), args.back(), [&interpreter](Value lhs, Value rhs) -> Result<Value> {
+	auto lhs_coll = get_if<Collection>(args.front());
+	auto rhs_coll = get_if<Collection>(args.back());
+
+	if (bool(lhs_coll) != bool(rhs_coll)) {
+		auto coll    = lhs_coll ? lhs_coll     : rhs_coll;
+		auto element = lhs_coll ? &args.back() : &args.front();
+
 		std::vector<Value> result;
-		result.reserve(lhs.size());
-		for (auto i = 0u; i < lhs.size(); ++i) {
+		result.reserve(coll->size());
+		for (auto i = 0u; i < coll->size(); ++i) {
 			result.push_back(
 				Value::from(
 					Binary_Predicate{}(
-						Try(lhs.index(interpreter, i)),
-						rhs
+						Try(coll->index(interpreter, i)),
+						*element
 					)
 				)
 			);
 		}
 		return Value::from(Array { std::move(result) });
-	});
-
-	if (result.has_value()) {
-		return *std::move(result);
 	}
 
 	return Value::from(Binary_Predicate{}(std::move(args.front()), std::move(args.back())));
@@ -188,10 +177,8 @@ static Result<Value> multiplication_operator(Interpreter &i, std::vector<Value> 
 	auto init = std::move(args.front());
 	return algo::fold(std::span(args).subspan(1), std::move(init), [&i](Value lhs, Value &rhs) -> Result<Value> {
 		{
-			auto result = symetric(Value::Type::Number, Value::Type::Music, lhs, rhs, [](Value lhs, Value rhs) {
-				return Value::from(Array {
-					.elements = std::vector<Value>(lhs.n.floor().as_int(), std::move(rhs))
-				});
+			auto result = symetric<Number, Chord>(lhs, rhs, [](Number lhs, Chord &rhs) {
+				return Value::from(Array { std::vector<Value>(lhs.floor().as_int(), Value::from(std::move(rhs))) });
 			});
 
 			if (result.has_value()) {
@@ -214,7 +201,7 @@ static Result<Value> multiplication_operator(Interpreter &i, std::vector<Value> 
 	});
 }
 
-using Operator_Entry = std::tuple<char const*, Intrinsic>;
+using Operator_Entry = std::tuple<char const*, Intrinsic::Function_Pointer>;
 
 using power = decltype([](Number lhs, Number rhs) -> Result<Number> {
 	return lhs.pow(rhs);
@@ -237,32 +224,33 @@ static constexpr auto Operators = std::array {
 	Operator_Entry { ">=", comparison_operator<std::greater_equal<>> },
 
 	Operator_Entry { ".",
-		+[](Interpreter &i, std::vector<Value> args) -> Result<Value> {
-			if (args.size() == 2 && is_indexable(args[0].type)) {
-				if (args[1].type == Value::Type::Number) {
-					return std::move(args.front()).index(i, std::move(args.back()).n.as_int());
-				}
+		+[](Interpreter &interpreter, std::vector<Value> args) -> Result<Value> {
+			if (auto a = match<Collection, Number>(args)) {
+				auto& [coll, pos] = *a;
+				return coll.index(interpreter, pos.as_int());
+			}
+			if (auto a = match<Collection, Bool>(args)) {
+				auto& [coll, pos] = *a;
+				return coll.index(interpreter, pos ? 1 : 0);
+			}
+			if (auto a = match<Collection, Collection>(args)) {
+				auto& [source, positions] = *a;
 
-				if (args[1].type == Value::Type::Bool) {
-					return std::move(args.front()).index(i, args.back().b ? 1 : 0);
-				}
+				std::vector<Value> result;
+				for (size_t n = 0; n < positions.size(); ++n) {
+					auto const v = Try(positions.index(interpreter, n));
 
-				if (is_indexable(args[1].type)) {
-					std::vector<Value> result;
-					for (size_t n = 0; n < args[1].size(); ++n) {
-						auto const v = Try(args[1].index(i, n));
-						switch (v.type) {
-						break; case Value::Type::Number:
-							result.push_back(Try(args[0].index(i, v.n.as_int())));
+					auto index = std::visit(Overloaded {
+						[](Number n) -> std::optional<size_t> { return n.floor().as_int(); },
+						[](Bool b)   -> std::optional<size_t> { return b ? 1 : 0; },
+						[](auto &&)  -> std::optional<size_t> { return std::nullopt; }
+					}, v.data);
 
-						break; case Value::Type::Bool: default:
-							if (v.truthy()) {
-								result.push_back(Try(args[0].index(i, n)));
-							}
-						}
+					if (index) {
+						result.push_back(Try(source.index(interpreter, *index)));
 					}
-					return Value::from(Array { result });
 				}
+				return Value::from(Array(std::move(result)));
 			}
 
 			return Error {
@@ -290,11 +278,13 @@ static constexpr auto Operators = std::array {
 				.type = errors::Unsupported_Types_For::Operator
 			};
 
-			using Chord_Chord = Shape<Value::Type::Music, Value::Type::Music>;
-			if (Chord_Chord::typecheck(args)) {
-				auto [lhs, rhs] = Chord_Chord::move_from(args);
-				auto &l = lhs.notes;
-				auto &r = rhs.notes;
+			if (auto a = match<Chord, Chord>(args)) {
+				auto [lhs, rhs] = *a;
+				auto &l = lhs.notes, &r = rhs.notes;
+				if (l.size() < r.size()) {
+					std::swap(l, r);
+					std::swap(lhs, rhs);
+				}
 
 				// Append one set of notes to another to make bigger chord!
 				l.reserve(l.size() + r.size());
@@ -304,8 +294,8 @@ static constexpr auto Operators = std::array {
 			}
 
 			auto result = Array {};
-			for (auto&& array : args) {
-				Try(guard(is_indexable, array));
+			for (auto&& a : args) {
+				auto &array = *Try(guard.match<Collection>(a));
 				for (auto n = 0u; n < array.size(); ++n) {
 					result.elements.push_back(Try(array.index(i, n)));
 				}

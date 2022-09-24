@@ -24,6 +24,7 @@ using isize = std::ptrdiff_t;
 /// Combine several lambdas into one for visiting std::variant
 template<typename ...Lambdas>
 struct Overloaded : Lambdas... { using Lambdas::operator()...; };
+template<class... Ts> Overloaded(Ts...) -> Overloaded<Ts...>;
 
 /// Returns if provided thingy is a given template
 template<template<typename ...> typename Template, typename>

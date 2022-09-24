@@ -27,8 +27,8 @@ struct Range_Table
 	usize latin_offset;
 };
 
-constexpr auto Letter = Range_Table {
-	std::array {
+constexpr auto Letter = Range_Table<359, 227> {
+	{
 		R16 {0x0041, 0x005a, 1},
 		R16 {0x0061, 0x007a, 1},
 		R16 {0x00aa, 0x00b5, 11},

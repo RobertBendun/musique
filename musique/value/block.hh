@@ -1,20 +1,21 @@
 #ifndef MUSIQUE_BLOCK_HH
 #define MUSIQUE_BLOCK_HH
 
-#include <musique/result.hh>
-#include <musique/parser/ast.hh>
-
 #include <memory>
+#include <musique/parser/ast.hh>
+#include <musique/result.hh>
+#include <musique/value/collection.hh>
+#include <musique/value/function.hh>
 
 struct Env;
 struct Interpreter;
 struct Value;
 
-using Intrinsic = Result<Value>(*)(Interpreter &i, std::vector<Value>);
-
 /// Lazy Array / Continuation / Closure type thingy
-struct Block
+struct Block : Collection, Function
 {
+	~Block() override = default;
+
 	/// Location of definition / creation
 	Location location;
 
@@ -28,13 +29,13 @@ struct Block
 	std::shared_ptr<Env> context;
 
 	/// Calling block
-	Result<Value> operator()(Interpreter &i, std::vector<Value> params);
+	Result<Value> operator()(Interpreter &i, std::vector<Value> params) const override;
 
 	/// Indexing block
-	Result<Value> index(Interpreter &i, unsigned position) const;
+	Result<Value> index(Interpreter &i, unsigned position) const override;
 
 	/// Count of elements in block
-	usize size() const;
+	usize size() const override;
 };
 
 #endif

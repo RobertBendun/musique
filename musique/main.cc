@@ -135,7 +135,7 @@ struct Runner
 
 		Env::global->force_define("say", +[](Interpreter &interpreter, std::vector<Value> args) -> Result<Value> {
 			for (auto it = args.begin(); it != args.end(); ++it) {
-				Try(format(interpreter, *it));
+				std::cout << Try(format(interpreter, *it));
 				if (std::next(it) != args.end())
 					std::cout << ' ';
 			}
@@ -168,7 +168,7 @@ struct Runner
 			dump(ast);
 			return {};
 		}
-		if (auto result = Try(interpreter.eval(std::move(ast))); output && result.type != Value::Type::Nil) {
+		if (auto result = Try(interpreter.eval(std::move(ast))); output && not holds_alternative<Nil>(result)) {
 			std::cout << Try(format(interpreter, result)) << std::endl;
 		}
 		return {};
@@ -193,7 +193,7 @@ void completion(char const* buf, bestlineCompletions *lc)
 }
 
 /// Fancy main that supports Result forwarding on error (Try macro)
-static Result<void> Main(std::span<char const*> args)
+static std::optional<Error> Main(std::span<char const*> args)
 {
 	if (isatty(STDOUT_FILENO) && getenv("NO_COLOR") == nullptr) {
 		pretty::terminal_mode();
@@ -350,8 +350,8 @@ int main(int argc, char const** argv)
 {
 	auto const args = std::span(argv, argc).subspan(1);
 	auto const result = Main(args);
-	if (not result.has_value()) {
-		std::cerr << result.error() << std::flush;
+	if (result.has_value()) {
+		std::cerr << result.value() << std::flush;
 		return 1;
 	}
 }

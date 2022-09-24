@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <array>
+#include <musique/accessors.hh>
 #include <musique/common.hh>
 #include <musique/errors.hh>
 #include <musique/value/value.hh>
@@ -33,9 +34,19 @@ struct Guard
 		return yield_error();
 	}
 
-	inline std::optional<Error> operator()(bool(*predicate)(Value::Type), Value const& v) const
+	template<typename T>
+	inline Result<T*> match(Value &v) const
 	{
-		return predicate(v.type) ? std::optional<Error>{} : yield_result();
+		if (auto p = get_if<T>(v)) {
+			return p;
+		} else {
+			return yield_error();
+		}
+	}
+
+	inline std::optional<Error> operator()(bool(*predicate)(Value const&), Value const& v) const
+	{
+		return predicate(v) ? std::optional<Error>{} : yield_result();
 	}
 };
 

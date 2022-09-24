@@ -4,7 +4,6 @@
 #include <musique/interpreter/incoming_midi.hh>
 #include <musique/interpreter/interpreter.hh>
 #include <musique/try.hh>
-#include <musique/value/typecheck.hh>
 
 #include <random>
 #include <memory>
@@ -26,12 +25,6 @@ concept With_Index_Method = requires (T t, Interpreter interpreter, usize positi
 	{ t.index(interpreter, position) } -> std::convertible_to<Result<Value>>;
 };
 
-/// Check if type has index operator
-template<typename T>
-concept With_Index_Operator = requires (T t, unsigned i) {
-	{ t[i] } -> std::convertible_to<Value>;
-};
-
 /// Check if type has either (index operator or method) and size() method
 template<typename T>
 concept Iterable = (With_Index_Method<T> || With_Index_Operator<T>) && requires (T const t) {
@@ -40,7 +33,7 @@ concept Iterable = (With_Index_Method<T> || With_Index_Operator<T>) && requires 
 
 /// Create chord out of given notes
 template<Iterable T>
-static inline std::optional<Error> create_chord(std::vector<Note> &chord, Interpreter &interpreter, T args)
+static inline std::optional<Error> create_chord(std::vector<Note> &chord, Interpreter &interpreter, T&& args)
 {
 	for (auto i = 0u; i < args.size(); ++i) {
 		Value arg;
@@ -50,19 +43,21 @@ static inline std::optional<Error> create_chord(std::vector<Note> &chord, Interp
 			arg = std::move(args[i]);
 		}
 
-		switch (arg.type) {
-		case Value::Type::Array:
-		case Value::Type::Block:
-			Try(create_chord(chord, interpreter, std::move(arg)));
-			break;
-
-		case Value::Type::Music:
-			std::copy_if(arg.chord.notes.begin(), arg.chord.notes.end(), std::back_inserter(chord), [](Note const& n) { return bool(n.base); });
-			break;
-
-		default:
-			assert(false, "this type is not supported inside chord"); // TODO(assert)
+		if (auto arg_chord = get_if<Chord>(arg)) {
+			std::ranges::copy_if(
+				arg_chord->notes,
+				std::back_inserter(chord),
+				[](Note const& n) { return n.base.has_value(); }
+			);
+			continue;
 		}
+
+		if (auto collection = get_if<Collection>(arg)) {
+			Try(create_chord(chord, interpreter, *collection));
+			continue;
+		}
+
+		assert(false, "this type is not supported inside chord"); // TODO(assert)
 	}
 
 	return {};
@@ -80,45 +75,48 @@ static Result<Value> ctx_read_write_property(Interpreter &interpreter, std::vect
 		return Value::from(Number(interpreter.context_stack.back().*(Mem_Ptr)));
 	}
 
-	assert(args.front().type == Value::Type::Number, "Ctx only holds numeric values");
+	assert(std::holds_alternative<Number>(args.front().data), "Ctx only holds numeric values");
 
 	if constexpr (std::is_same_v<Member_Type, Number>) {
-		interpreter.context_stack.back().*(Mem_Ptr) = args.front().n;
+		interpreter.context_stack.back().*(Mem_Ptr) = std::get<Number>(args.front().data);
 	} else {
-		interpreter.context_stack.back().*(Mem_Ptr) = static_cast<Member_Type>(args.front().n.as_int());
+		interpreter.context_stack.back().*(Mem_Ptr) = static_cast<Member_Type>(
+			std::get<Number>(args.front().data).as_int()
+		);
 	}
 
 	return Value{};
 }
 
 /// Iterate over array and it's subarrays to create one flat array
-static Result<Array> into_flat_array(Interpreter &i, std::span<Value> args)
+static Result<Array> into_flat_array(Interpreter &interpreter, std::span<Value> args)
 {
-	Array array;
+	Array target;
 	for (auto &arg : args) {
-		switch (arg.type) {
-		case Value::Type::Array:
-			std::move(arg.array.elements.begin(), arg.array.elements.end(), std::back_inserter(array.elements));
-			break;
-
-		case Value::Type::Block:
-			for (auto j = 0u; j < arg.blk.size(); ++j) {
-				array.elements.push_back(Try(arg.blk.index(i, j)));
-			}
-			break;
-
-		default:
-			array.elements.push_back(std::move(arg));
-		}
+		std::visit(Overloaded {
+			[&target](Array &&array) -> std::optional<Error> {
+				std::ranges::move(array.elements, std::back_inserter(target.elements));
+				return {};
+			},
+			[&target, &interpreter](Block &&block) -> std::optional<Error> {
+				for (auto i = 0u; i < block.size(); ++i) {
+					target.elements.push_back(Try(block.index(interpreter, i)));
+				}
+				return {};
+			},
+			[&target, &arg](auto&&) -> std::optional<Error> {
+				target.elements.push_back(std::move(arg));
+				return {};
+			},
+		}, std::move(arg.data));
 	}
-	return array;
+	return target;
 }
 
 static Result<Array> into_flat_array(Interpreter &i, std::vector<Value> args)
 {
 	return into_flat_array(i, std::span(args));
 }
-
 
 /// Helper to convert method to it's name
 template<auto> struct Number_Method_Name;
@@ -130,19 +128,22 @@ template<> struct Number_Method_Name<&Number::round> { static constexpr auto val
 template<auto Method>
 static Result<Value> apply_numeric_transform(Interpreter &i, std::vector<Value> args)
 {
-	using N = Shape<Value::Type::Number>;
-	if (N::typecheck(args)) {
-		return Value::from((std::get<0>(N::move_from(args)).*Method)());
+	if (args.size()) {
+		if (auto number = get_if<Number>(args.front().data)) {
+			return Value::from((number->*Method)());
+		}
 	}
 
 	auto array = Try(into_flat_array(i, std::span(args)));
-
 	for (Value &arg : array.elements) {
-		if (arg.type != Value::Type::Number)
+		if (auto number = get_if<Number>(arg.data)) {
+			*number = (number->*Method)();
+		} else {
 			goto invalid_argument_type;
-		arg.n = (arg.n.*Method)();
+		}
 	}
 	return Value::from(std::move(array));
+
 
 invalid_argument_type:
 	return Error {
@@ -163,28 +164,21 @@ enum class Range_Direction { Up, Down };
 template<Range_Direction dir>
 static Result<Value> builtin_range(Interpreter&, std::vector<Value> args)
 {
-	using N   = Shape<Value::Type::Number>;
-	using NN  = Shape<Value::Type::Number, Value::Type::Number>;
-	using NNN = Shape<Value::Type::Number, Value::Type::Number, Value::Type::Number>;
-
 	auto start = Number(0), stop = Number(0), step = Number(1);
 
 	if (0) {}
-	else if (auto a = N::typecheck_and_move(args))   { std::tie(stop)              = *a; }
-	else if (auto a = NN::typecheck_and_move(args))  { std::tie(start, stop)       = *a; }
-	else if (auto a = NNN::typecheck_and_move(args)) { std::tie(start, stop, step) = *a; }
+	else if (auto a = match<Number>(args))                 { std::tie(stop)              = *a; }
+	else if (auto a = match<Number, Number>(args))         { std::tie(start, stop)       = *a; }
+	else if (auto a = match<Number, Number, Number>(args)) { std::tie(start, stop, step) = *a; }
 	else {
-		return Error {
-			.details = errors::Unsupported_Types_For {
-				.type = errors::Unsupported_Types_For::Function,
-				.name = "range",
-				.possibilities = {
-					"(stop: number) -> array of number",
-					"(start: number, stop: number) -> array of number",
-					"(start: number, stop: number, step: number) -> array of number",
-				}
-			},
-			.location = {}
+		return errors::Unsupported_Types_For {
+			.type = errors::Unsupported_Types_For::Function,
+			.name = "range",
+			.possibilities = {
+				"(stop: number) -> array of number",
+				"(start: number, stop: number) -> array of number",
+				"(start: number, stop: number, step: number) -> array of number",
+			}
 		};
 	}
 
@@ -203,17 +197,14 @@ static Result<Value> builtin_range(Interpreter&, std::vector<Value> args)
 
 /// Send MIDI Program Change message
 static auto builtin_program_change(Interpreter &i, std::vector<Value> args) -> Result<Value> {
-	using Program = Shape<Value::Type::Number>;
-	using Channel_Program = Shape<Value::Type::Number, Value::Type::Number>;
-
-	if (Program::typecheck(args)) {
-		auto [program] = Program::move_from(args);
+	if (auto a = match<Number>(args)) {
+		auto [program] = *a;
 		i.midi_connection->send_program_change(0, program.as_int());
 		return Value{};
 	}
 
-	if (Channel_Program::typecheck(args)) {
-		auto [chan, program] = Channel_Program::move_from(args);
+	if (auto a = match<Number, Number>(args)) {
+		auto [chan, program] = *a;
 		i.midi_connection->send_program_change(chan.as_int(), program.as_int());
 		return Value{};
 	}
@@ -236,19 +227,16 @@ static auto builtin_program_change(Interpreter &i, std::vector<Value> args) -> R
 /// @invariant default_action is play one
 static inline std::optional<Error> sequential_play(Interpreter &i, Value v)
 {
-	switch (v.type) {
-	break; case Value::Type::Array:
-		for (auto &el : v.array.elements)
+	if (auto array = get_if<Array>(v)) {
+		for (auto &el : array->elements) {
 			Try(sequential_play(i, std::move(el)));
-
-	break; case Value::Type::Block:
-		Try(sequential_play(i, Try(i.eval(std::move(v).blk.body))));
-
-	break; case Value::Type::Music:
-		return i.play(v.chord);
-
-	break; default:
-		;
+		}
+	}
+	else if (auto block = get_if<Block>(v)) {
+		Try(sequential_play(i, Try(i.eval(std::move(block->body)))));
+	}
+	else if (auto chord = get_if<Chord>(v)) {
+		return i.play(*chord);
 	}
 
 	return {};
@@ -291,16 +279,20 @@ static Result<Value> builtin_par(Interpreter &i, std::vector<Value> args) {
 
 	assert(args.size() >= 1, "par only makes sense for at least one argument"); // TODO(assert)
 	if (args.size() == 1) {
-		Try(i.play(std::move(args.front()).chord));
+		auto chord = get_if<Chord>(args.front());
+		assert(chord, "Par expects music value as first argument"); // TODO(assert)
+		Try(i.play(std::move(*chord)));
 		return Value{};
 	}
 
 	// Create chord that should sustain during playing of all other notes
 	auto &ctx = i.context_stack.back();
-	auto chord = std::move(args.front()).chord;
-	std::for_each(chord.notes.begin(), chord.notes.end(), [&](Note &note) { note = ctx.fill(note); });
+	auto chord = get_if<Chord>(args.front());
+	assert(chord, "par expects music value as first argument"); // TODO(assert)
 
-	for (auto const& note : chord.notes) {
+	std::for_each(chord->notes.begin(), chord->notes.end(), [&](Note &note) { note = ctx.fill(note); });
+
+	for (auto const& note : chord->notes) {
 		if (note.base) {
 			i.midi_connection->send_note_on(0, *note.into_midi_note(), 127);
 		}
@@ -308,7 +300,7 @@ static Result<Value> builtin_par(Interpreter &i, std::vector<Value> args) {
 
 	auto result = builtin_play(i, std::span(args).subspan(1));
 
-	for (auto const& note : chord.notes) {
+	for (auto const& note : chord->notes) {
 		if (note.base) {
 			i.midi_connection->send_note_off(0, *note.into_midi_note(), 127);
 		}
@@ -342,14 +334,14 @@ static Result<Value> builtin_sim(Interpreter &interpreter, std::vector<Value> ar
 
 		std::optional<Error> operator()(std::vector<Chord> &track, Value &arg)
 		{
-			if (arg.type == Value::Type::Music) {
-				track.push_back(std::move(arg).chord);
+			if (auto chord = get_if<Chord>(arg)) {
+				track.push_back(*chord);
 				return {};
 			}
 
-			if (is_indexable(arg.type)) {
-				for (auto i = 0u; i < arg.size(); ++i) {
-					auto value = Try(arg.index(interpreter, i));
+			if (auto collection = get_if<Collection>(arg)) {
+				for (auto i = 0u; i < collection->size(); ++i) {
+					auto value = Try(collection->index(interpreter, i));
 					Try((*this)(track, value));
 				}
 				return {};
@@ -447,12 +439,10 @@ static inline size_t upper_sieve_bound_to_yield_n_primes(size_t n_primes)
 /// Generate n primes
 static Result<Value> builtin_primes(Interpreter&, std::vector<Value> args)
 {
-	using N = Shape<Value::Type::Number>;
-
-	if (N::typecheck(args)) {
+	if (auto a = match<Number>(args)) {
+		auto [n_frac] = *a;
 		// Better sieve could be Sieve of Atkin, but it's more complicated
 		// so for now we would use Eratosthenes one.
-		auto [n_frac] = N::move_from(args);
 		if (n_frac.simplify_inplace(); n_frac.num <= 1) {
 			return Value::from(Array{});
 		}
@@ -481,7 +471,7 @@ static Result<Value> builtin_primes(Interpreter&, std::vector<Value> args)
 				results.push_back(Value::from(Number(i)));
 			}
 		}
-		return Value::from(Array { .elements = results });
+		return Value::from(Array(std::move(results)));
 	}
 
 	return Error {
@@ -503,18 +493,16 @@ static Result<Value> builtin_for(Interpreter &i, std::vector<Value> args)
 		.possibilities = { "(array, callback) -> any" }
 	};
 
-	if (args.size() != 2) {
+	if (auto a = match<Collection, Function>(args)) {
+		auto& [collection, func] = *a;
+		Value result{};
+		for (size_t n = 0; n < collection.size(); ++n) {
+			result = Try(func(i, { Try(collection.index(i, n)) }));
+		}
+		return result;
+	} else {
 		return guard.yield_error();
 	}
-
-	Try(guard(is_indexable, args[0]));
-	Try(guard(is_callable, args[1]));
-
-	Value result{};
-	for (size_t n = 0; n < args[0].size(); ++n) {
-		result = Try(args[1](i, { Try(args[0].index(i, n)) }));
-	}
-	return result;
 }
 
 /// Fold container
@@ -543,14 +531,13 @@ static Result<Value> builtin_fold(Interpreter &interpreter, std::vector<Value> a
 		return guard.yield_error();
 	}
 
-	Try(guard(is_indexable, array));
-	Try(guard(is_callable, callback));
+	auto collection = Try(guard.match<Collection>(array));
+	auto function = Try(guard.match<Function>(callback));
 
-	for (auto i = 0u; i < array.size(); ++i) {
-		auto element = Try(array.index(interpreter, i));
-		init = Try(callback(interpreter, { std::move(init), std::move(element) }));
+	for (auto i = 0u; i < collection->size(); ++i) {
+		auto element = Try(collection->index(interpreter, i));
+		init = Try((*function)(interpreter, { std::move(init), std::move(element) }));
 	}
-
 	return init;
 }
 
@@ -569,11 +556,11 @@ static Result<Value> builtin_if(Interpreter &i, std::vector<Value> args)  {
 	}
 
 	if (args.front().truthy()) {
-		Try(guard(is_callable, args[1]));
-		return args[1](i, {});
+		auto fun = Try(guard.match<Function>(args[1]));
+		return (*fun)(i, {});
 	} else if (args.size() == 3) {
-		Try(guard(is_callable, args[2]));
-		return args[2](i, {});
+		auto fun = Try(guard.match<Function>(args[2]));
+		return (*fun)(i, {});
 	}
 
 	return Value{};
@@ -590,19 +577,19 @@ static Result<Value> builtin_try(Interpreter &interpreter, std::vector<Value> ar
 	};
 
 	if (args.size() == 1) {
-		Try(guard(is_callable, args[0]));
-		return std::move(args[0])(interpreter, {}).value_or(Value{});
+		auto callable = Try(guard.match<Function>(args[0]));
+		return std::move(*callable)(interpreter, {}).value_or(Value{});
 	}
 
 	Value success;
 
 	for (usize i = 0; i+1 < args.size(); ++i) {
-		Try(guard(is_callable, args[i]));
-		if (auto result = std::move(args[i])(interpreter, {})) {
+		auto callable = Try(guard.match<Function>(args[i]));
+		if (auto result = std::move(*callable)(interpreter, {})) {
 			success = *std::move(result);
 		} else {
-			Try(guard(is_callable, args.back()));
-			return std::move(args.back())(interpreter, {});
+			auto callable = Try(guard.match<Function>(args.back()));
+			return std::move(*callable)(interpreter, {});
 		}
 	}
 
@@ -623,17 +610,14 @@ static Result<Value> builtin_update(Interpreter &i, std::vector<Value> args)
 		return guard.yield_error();
 	}
 
-	using Eager_And_Number = Shape<Value::Type::Array, Value::Type::Number>;
-	using Lazy_And_Number  = Shape<Value::Type::Block, Value::Type::Number>;
-
-	if (Eager_And_Number::typecheck_front(args)) {
-		auto [v, index] = Eager_And_Number::move_from(args);
-		v.elements[index.as_int()] = std::move(args.back());
+	if (auto a = match<Array, Number, Value>(args)) {
+		auto& [v, index, value] = *a;
+		v.elements[index.as_int()] = std::move(std::move(value));
 		return Value::from(std::move(v));
 	}
 
-	if (Lazy_And_Number::typecheck_front(args)) {
-		auto [v, index] = Lazy_And_Number::move_from(args);
+	if (auto a = match<Block, Number, Value>(args)) {
+		auto& [v, index, value] = *a;
 		auto array = Try(flatten(i, { Value::from(std::move(v)) }));
 		array[index.as_int()] = std::move(args.back());
 		return Value::from(std::move(array));
@@ -645,17 +629,20 @@ static Result<Value> builtin_update(Interpreter &i, std::vector<Value> args)
 /// Return typeof variable
 static Result<Value> builtin_typeof(Interpreter&, std::vector<Value> args)
 {
-	assert(args.size() == 1, "typeof expects only one argument");
-	return Value::from(std::string(type_name(args.front().type)));
+	assert(args.size() == 1, "typeof expects only one argument"); // TODO(assert)
+	return Value::from(Symbol(type_name(args.front())));
 }
 
 /// Return length of container or set/get default length to play
 static Result<Value> builtin_len(Interpreter &i, std::vector<Value> args)
 {
-	if (args.size() != 1 || !is_indexable(args.front().type)) {
-		return ctx_read_write_property<&Context::length>(i, std::move(args));
+	if (args.size() == 1) {
+		if (auto coll = get_if<Collection>(args.front())) {
+			return Value::from(Number(coll->size()));
+		}
 	}
-	return Value::from(Number(args.front().size()));
+	// TODO Add overload that tells length of array to error reporting
+	return ctx_read_write_property<&Context::length>(i, std::move(args));
 }
 
 /// Join arguments into flat array
@@ -729,8 +716,7 @@ static Result<Value> builtin_partition(Interpreter &i, std::vector<Value> args)
 		return guard.yield_error();
 	}
 
-	auto predicate = std::move(args.front());
-	Try(guard(is_callable, predicate));
+	auto& predicate = *Try(guard.match<Function>(args.front()));
 	auto array = Try(flatten(i, std::span(args).subspan(1)));
 
 	Array tuple[2] = {};
@@ -738,7 +724,7 @@ static Result<Value> builtin_partition(Interpreter &i, std::vector<Value> args)
 		tuple[Try(predicate(i, { std::move(value) })).truthy()].elements.push_back(std::move(value));
 	}
 
-	return Value::from(Array { .elements = {
+	return Value::from(Array {{
 		Value::from(std::move(tuple[true])),
 		Value::from(std::move(tuple[false]))
 	}});
@@ -752,20 +738,23 @@ static Result<Value> builtin_rotate(Interpreter &i, std::vector<Value> args)
 		.possibilities = { "(number, ...array) -> array" }
 	};
 
-	if (args.empty() || args.front().type != Value::Type::Number) {
-		return guard.yield_error();
+
+	if (args.size()) {
+		if (auto const offset_source = get_if<Number>(args.front())) {
+			auto offset = offset_source->as_int();
+			auto array = Try(flatten(i, std::span(args).subspan(1)));
+			if (offset > 0) {
+				offset = offset % array.size();
+				std::rotate(array.begin(), array.begin() + offset, array.end());
+			} else if (offset < 0) {
+				offset = -offset % array.size();
+				std::rotate(array.rbegin(), array.rbegin() + offset, array.rend());
+			}
+			return Value::from(std::move(array));
+		}
 	}
 
-	auto offset = std::move(args.front()).n.as_int();
-	auto array = Try(flatten(i, std::span(args).subspan(1)));
-	if (offset > 0) {
-		offset = offset % array.size();
-		std::rotate(array.begin(), array.begin() + offset, array.end());
-	} else if (offset < 0) {
-		offset = -offset % array.size();
-		std::rotate(array.rbegin(), array.rbegin() + offset, array.rend());
-	}
-	return Value::from(std::move(array));
+	return guard.yield_error();
 }
 
 /// Returns unique collection of arguments
@@ -821,18 +810,14 @@ static Result<Value> builtin_chord(Interpreter &i, std::vector<Value> args)
 /// Send MIDI message Note On
 static Result<Value> builtin_note_on(Interpreter &i, std::vector<Value> args)
 {
-	using Channel_Note_Velocity = Shape<Value::Type::Number, Value::Type::Number, Value::Type::Number>;
-	using Channel_Music_Velocity = Shape<Value::Type::Number, Value::Type::Music, Value::Type::Number>;
-
-	if (Channel_Note_Velocity::typecheck(args)) {
-		auto [chan, note, vel] = Channel_Note_Velocity::move_from(args);
+	if (auto a = match<Number, Number, Number>(args)) {
+		auto [chan, note, vel] = *a;
 		i.midi_connection->send_note_on(chan.as_int(), note.as_int(), vel.as_int());
 		return Value {};
 	}
 
-	if (Channel_Music_Velocity::typecheck(args)) {
-		auto [chan, chord, vel] = Channel_Music_Velocity::move_from(args);
-
+	if (auto a = match<Number, Chord, Number>(args)) {
+		auto [chan, chord, vel] = *a;
 		for (auto note : chord.notes) {
 			note = i.context_stack.back().fill(note);
 			i.midi_connection->send_note_on(chan.as_int(), *note.into_midi_note(), vel.as_int());
@@ -855,17 +840,14 @@ static Result<Value> builtin_note_on(Interpreter &i, std::vector<Value> args)
 /// Send MIDI message Note Off
 static Result<Value> builtin_note_off(Interpreter &i, std::vector<Value> args)
 {
-	using Channel_Note = Shape<Value::Type::Number, Value::Type::Number>;
-	using Channel_Music = Shape<Value::Type::Number, Value::Type::Music>;
-
-	if (Channel_Note::typecheck(args)) {
-		auto [chan, note] = Channel_Note::move_from(args);
+	if (auto a = match<Number, Number>(args)) {
+		auto [chan, note] = *a;
 		i.midi_connection->send_note_off(chan.as_int(), note.as_int(), 127);
 		return Value {};
 	}
 
-	if (Channel_Music::typecheck(args)) {
-		auto [chan, chord] = Channel_Music::move_from(args);
+	if (auto a = match<Number, Chord>(args)) {
+		auto& [chan, chord] = *a;
 
 		for (auto note : chord.notes) {
 			note = i.context_stack.back().fill(note);
@@ -889,27 +871,23 @@ static Result<Value> builtin_note_off(Interpreter &i, std::vector<Value> args)
 /// Add handler for incoming midi messages
 static Result<Value> builtin_incoming(Interpreter &i, std::vector<Value> args)
 {
-	if (args.size() != 2 || args[0].type != Value::Type::Symbol || !is_callable(args[1].type)) {
-		return Error {
-			.details = errors::Unsupported_Types_For {
-				.type = errors::Unsupported_Types_For::Function,
-				.name = "incoming",
-				.possibilities = { "(symbol, function) -> nil" }
-			},
-			.location = {}
-		};
+	if (auto a = match<Symbol, Function>(args)) {
+		auto& [symbol, fun] = *a;
+		if (symbol == "note_on" || symbol == "noteon") {
+			i.callbacks->note_on = std::move(args[1]);
+		} else if (symbol == "note_off" || symbol == "noteoff") {
+			i.callbacks->note_off = std::move(args[1]);
+		} else {
+
+		}
+		return Value{};
 	}
 
-	std::string const& symbol = args[0].s;
-
-	if (symbol == "note_on" || symbol == "noteon") {
-		i.callbacks->note_on = std::move(args[1]);
-	} else if (symbol == "note_off" || symbol == "noteoff") {
-		i.callbacks->note_off = std::move(args[1]);
-	} else {
-
-	}
-	return Value{};
+	return errors::Unsupported_Types_For {
+		.type = errors::Unsupported_Types_For::Function,
+		.name = "incoming",
+		.possibilities = { "(symbol, function) -> nil" }
+	};
 }
 
 /// Interleaves arguments
@@ -919,7 +897,7 @@ static Result<Value> builtin_mix(Interpreter &i, std::vector<Value> args)
 
 	std::unordered_map<std::size_t, std::size_t> indicies;
 
-	size_t awaiting_containers = std::count_if(args.begin(), args.end(), [](Value const& v) { return is_indexable(v.type); });
+	size_t awaiting_containers = std::count_if(args.begin(), args.end(), holds_alternative<Collection>);
 
 	// Algorithm description:
 	// Repeat until all arguments were exhausted:
@@ -929,12 +907,13 @@ static Result<Value> builtin_mix(Interpreter &i, std::vector<Value> args)
 	//     Otherwise append element to the list
 	do {
 		for (size_t idx = 0; idx < args.size(); ++idx) {
-			if (auto &arg = args[idx]; is_indexable(arg.type)) {
-				result.push_back(Try(arg.index(i, indicies[idx]++ % arg.size())));
-				if (indicies[idx] == arg.size())
+			if (auto coll = get_if<Collection>(args[idx])) {
+				result.push_back(Try(coll->index(i, indicies[idx]++ % coll->size())));
+				if (indicies[idx] == coll->size()) {
 					awaiting_containers--;
+				}
 			} else {
-				result.push_back(arg);
+				result.push_back(args[idx]);
 			}
 		}
 	} while (awaiting_containers);
@@ -952,14 +931,12 @@ static Result<Value> builtin_call(Interpreter &i, std::vector<Value> args)
 		}
 	};
 
-	if (args.size() == 0) {
+	if (args.empty()) {
 		return guard.yield_error();
 	}
 
-	auto callable = args.front();
-	Try(guard(is_callable, callable));
+	auto &callable = *Try(guard.match<Function>(args.front()));
 	args.erase(args.begin());
-
 	return callable(i, std::move(args));
 }
 

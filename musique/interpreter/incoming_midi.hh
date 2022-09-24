@@ -31,11 +31,11 @@ struct Interpreter::Incoming_Midi_Callbacks
 			// in our own note abstraction, not as numbers.
 			target = [interpreter = &i, callback = &callback](T ...source_args)
 			{
-				if (callback->type != Value::Type::Nil) {
+				if (!std::holds_alternative<Nil>(callback->data)) {
 					std::vector<Value> args { Value::from(Number(source_args))... };
-					args[1] = Value::from(Chord { .notes { Note {
-						.base = i32(args[1].n.num % 12),
-						.octave = args[1].n.num / 12
+					args[1] = Value::from(Chord { { Note {
+						.base = i32(std::get<Number>(args[1].data).num % 12),
+						.octave = std::get<Number>(args[1].data).num / 12
 					}}});
 					auto result = (*callback)(*interpreter, std::move(args));
 					// We discard this since callback is running in another thread.
@@ -46,7 +46,7 @@ struct Interpreter::Incoming_Midi_Callbacks
 			// Generic case, preserve all passed parameters as numbers
 			target = [interpreter = &i, callback = &callback](T ...source_args)
 			{
-				if (callback->type != Value::Type::Nil) {
+				if (!std::holds_alternative<Nil>(callback->data)) {
 					auto result = (*callback)(*interpreter, { Value::from(Number(source_args))...  });
 					// We discard this since callback is running in another thread.
 					(void) result;

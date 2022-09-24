@@ -18,56 +18,42 @@ Value_Formatter Value_Formatter::nest(Context nested) const
 
 std::optional<Error> Value_Formatter::format(std::ostream& os, Interpreter &interpreter, Value const& value)
 {
-	switch (value.type) {
-	break; case Value::Type::Nil:
-		os << "nil";
-
-	break; case Value::Type::Symbol:
-		os << value.s;
-
-	break; case Value::Type::Bool:
-		os << std::boolalpha << value.b;
-
-	break; case Value::Type::Number:
-		if (auto n = value.n.simplify(); n.den == 1) {
-			os << n.num << '/' << n.den;
-		} else {
-			os << n.num;
-		}
-
-	break; case Value::Type::Intrinsic:
-		for (auto const& [key, val] : Env::global->variables) {
-			if (val.type == Value::Type::Intrinsic && val.intr == value.intr) {
-				os << "<intrinsic '" << key << "'>";
-				return {};
+	return std::visit(Overloaded {
+		[&](Intrinsic const& intrinsic) -> std::optional<Error> {
+			for (auto const& [key, val] : Env::global->variables) {
+				if (auto other = get_if<Intrinsic>(val); intrinsic == *other) {
+					os << "<intrinsic '" << key << "'>";
+					return {};
+				}
 			}
-		}
-		os << "<intrinsic>";
-
-
-	break; case Value::Type::Array:
-		os << '[';
-		for (auto i = 0u; i < value.array.elements.size(); ++i) {
-			if (i > 0) {
-				os << "; ";
+			os << "<intrinsic>";
+			return {};
+		},
+		[&](Array const& array) -> std::optional<Error> {
+			os << '[';
+			for (auto i = 0u; i < array.elements.size(); ++i) {
+				if (i > 0) {
+					os << "; ";
+				}
+				Try(nest(Inside_Block).format(os, interpreter, array.elements[i]));
 			}
-			Try(nest(Inside_Block).format(os, interpreter, value.array.elements[i]));
-		}
-		os << ']';
-
-	break; case Value::Type::Block:
-		os << '[';
-		for (auto i = 0u; i < value.blk.size(); ++i) {
-			if (i > 0) {
-				os << "; ";
+			os << ']';
+			return {};
+		},
+		[&](Block const& block) -> std::optional<Error> {
+			os << '[';
+			for (auto i = 0u; i < block.size(); ++i) {
+				if (i > 0) {
+					os << "; ";
+				}
+				Try(nest(Inside_Block).format(os, interpreter, Try(block.index(interpreter, i))));
 			}
-			Try(nest(Inside_Block).format(os, interpreter, Try(value.index(interpreter, i))));
+			os << ']';
+			return {};
+		},
+		[&](auto&&) -> std::optional<Error> {
+			os << value;
+			return {};
 		}
-		os << ']';
-
-	break; case Value::Type::Music:
-		os << value.chord;
-	}
-
-	return {};
+	}, value.data);
 }

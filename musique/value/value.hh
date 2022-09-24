@@ -1,13 +1,23 @@
 #ifndef MUSIQUE_VALUE_HH
 #define MUSIQUE_VALUE_HH
 
+#include <musique/accessors.hh>
+#include <musique/common.hh>
+#include <musique/lexer/token.hh>
+#include <musique/result.hh>
 #include <musique/value/array.hh>
 #include <musique/value/block.hh>
 #include <musique/value/chord.hh>
-#include <musique/common.hh>
+#include <musique/value/intrinsic.hh>
 #include <musique/value/note.hh>
-#include <musique/result.hh>
-#include <musique/lexer/token.hh>
+
+struct Nil
+{
+	bool operator==(Nil const&) const = default;
+};
+
+using Bool   = bool;
+using Symbol = std::string;
 
 /// Representation of any value in language
 struct Value
@@ -30,42 +40,36 @@ struct Value
 	static Value from(std::string_view s);         ///< Create value of type symbol holding provided symbol
 	static Value from(std::vector<Value> &&array); ///< Create value of type array holding provided array
 
-	enum class Type
-	{
-		Nil,        ///< Unit type, used for denoting emptiness and result of some side effect only functions
-		Bool,       ///< Boolean type, used for logic computations
-		Number,     ///< Number type, representing only rational numbers
-		Symbol,     ///< Symbol type, used to represent identifiers
-		Intrinsic,  ///< Intrinsic functions that are implemented in C++
-		Block,      ///< Block type, containing block value (lazy array/closure/lambda like)
-		Array,      ///< Array type, eager array
-		Music,      ///< Music type,
-	};
-
-	Value() = default;
-	Value(Value const&) = default;
-	Value(Value &&) = default;
-	Value& operator=(Value const&) = default;
-	Value& operator=(Value &&) = default;
-
-	/// Contructs Intrinsic, used to simplify definition of intrinsics
-	inline Value(Intrinsic intr) : type{Type::Intrinsic}, intr(intr)
-	{
-	}
-
-	Type type = Type::Nil;
-	bool b;
-	Number n;
-	Intrinsic intr;
-	Block blk;
-	Chord chord;
-	Array array;
-
 	// TODO Most strings should not be allocated by Value, but reference to string allocated previously
 	// Wrapper for std::string is needed that will allocate only when needed, middle ground between:
 	//   std::string      - always owning string type
 	//   std::string_view - not-owning string type
-	std::string s{};
+	std::variant<
+		Nil,
+		Bool,
+		Number,
+		Symbol,
+		Intrinsic,
+		Block,
+		Array,
+		Chord
+	> data = Nil{};
+
+	Value();
+	Value(Value const&) = default;
+	Value(Value &&) = default;
+	Value& operator=(Value const&) = default;
+	Value& operator=(Value &&) = default;
+	~Value() = default;
+
+	/// Contructs Intrinsic, used to simplify definition of intrinsics
+	inline Value(Intrinsic::Function_Pointer intr) : data(Intrinsic(intr))
+	{
+	}
+
+	inline Value(Intrinsic const& intr) : data(intr)
+	{
+	}
 
 	/// Returns truth judgment for current type, used primarly for if function
 	bool truthy() const;
@@ -74,7 +78,7 @@ struct Value
 	bool falsy() const;
 
 	/// Calls contained value if it can be called
-	Result<Value> operator()(Interpreter &i, std::vector<Value> args);
+	Result<Value> operator()(Interpreter &i, std::vector<Value> args) const;
 
 	/// Index contained value if it can be called
 	Result<Value> index(Interpreter &i, unsigned position) const;
@@ -87,54 +91,18 @@ struct Value
 	std::partial_ordering operator<=>(Value const& other) const;
 };
 
-template<Value::Type>
-struct Member_For_Value_Type {};
+/// Forward variant operations to variant member
+template<typename T>
+inline T const* get_if(Value const& v) { return get_if<T const>(v.data); }
 
-template<> struct Member_For_Value_Type<Value::Type::Bool>
-{ static constexpr auto value = &Value::b; };
-
-template<> struct Member_For_Value_Type<Value::Type::Number>
-{ static constexpr auto value = &Value::n; };
-
-template<> struct Member_For_Value_Type<Value::Type::Symbol>
-{ static constexpr auto value = &Value::s; };
-
-template<> struct Member_For_Value_Type<Value::Type::Intrinsic>
-{ static constexpr auto value = &Value::intr; };
-
-template<> struct Member_For_Value_Type<Value::Type::Block>
-{ static constexpr auto value = &Value::blk; };
-
-template<> struct Member_For_Value_Type<Value::Type::Array>
-{ static constexpr auto value = &Value::array; };
-
-template<> struct Member_For_Value_Type<Value::Type::Music>
-{ static constexpr auto value = &Value::chord; };
+template<typename T>
+inline T* get_if(Value& v) { return get_if<T>(v.data); }
 
 /// Returns type name of Value type
-std::string_view type_name(Value::Type t);
+std::string_view type_name(Value const& v);
 
 std::ostream& operator<<(std::ostream& os, Value const& v);
 template<> struct std::hash<Value>  { std::size_t operator()(Value  const&) const; };
-
-/// Returns if type can be indexed
-static constexpr bool is_indexable(Value::Type type)
-{
-	return type == Value::Type::Array || type == Value::Type::Block;
-}
-
-/// Returns if type can be called
-static constexpr bool is_callable(Value::Type type)
-{
-	return type == Value::Type::Block || type == Value::Type::Intrinsic;
-}
-
-
-/// Binary operation may be vectorized when there are two argument which one is indexable and other is not
-static inline bool may_be_vectorized(std::vector<Value> const& args)
-{
-	return args.size() == 2 && (is_indexable(args[0].type) != is_indexable(args[1].type));
-}
 
 template<typename T>
 Result<Value> wrap_value(Result<T> &&value)
@@ -145,6 +113,59 @@ Result<Value> wrap_value(Result<T> &&value)
 Value wrap_value(auto &&value)
 {
 	return Value::from(std::move(value));
+}
+
+template<typename Desired>
+constexpr Desired& get_ref(Value &v)
+{
+	if constexpr (std::is_same_v<Desired, Value>) {
+		return v;
+	} else {
+		if (auto result = get_if<Desired>(v)) { return *result; }
+		unreachable();
+	}
+}
+
+template<typename Desired>
+constexpr bool holds_alternative(Value const& v)
+{
+	if constexpr (std::is_same_v<Desired, Value>) {
+		return true;
+	} else {
+		return get_if<Desired>(v.data) != nullptr;
+	}
+}
+
+template<typename Values>
+concept With_Index_Operator = requires (Values &values, size_t i) {
+	{ values[i] } -> std::convertible_to<Value>;
+	{ values.size() } -> std::convertible_to<size_t>;
+};
+
+template<typename ...T>
+constexpr auto match(With_Index_Operator auto& values) -> std::optional<std::tuple<T&...>>
+{
+	return [&]<std::size_t ...I>(std::index_sequence<I...>) -> std::optional<std::tuple<T&...>> {
+		if (sizeof...(T) == values.size() && (holds_alternative<T>(values[I]) && ...)) {
+			return {{ get_ref<T>(values[I])... }};
+		} else {
+			return std::nullopt;
+		}
+	} (std::make_index_sequence<sizeof...(T)>{});
+}
+
+template<typename ...T, typename ...Values>
+constexpr auto match(Values& ...values) -> std::optional<std::tuple<T&...>>
+{
+	static_assert(sizeof...(T) == sizeof...(Values), "Provided parameters and expected types list must have the same length");
+
+	return [&]<std::size_t ...I>(std::index_sequence<I...>) -> std::optional<std::tuple<T&...>> {
+		if ((holds_alternative<T>(values) && ...)) {
+			return {{ get_ref<T>(values)... }};
+		} else {
+			return std::nullopt;
+		}
+	} (std::make_index_sequence<sizeof...(T)>{});
 }
 
 #endif
