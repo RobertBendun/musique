@@ -1,3 +1,3 @@
 test: bin/debug/musique
-	scripts/test.py test examples
+	python3 scripts/test.py
 

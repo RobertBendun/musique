@@ -1,0 +1,14 @@
+say (false and false);
+say (false and true);
+say (true  and false);
+say (true  and true);
+
+-- Test value preservation
+say (0 and 5);
+say (1 and 5);
+say (false and 4);
+say (true  and 4);
+
+-- Test lazy evaluation
+(say 32; false) and (say 42);
+(say 32; true) and (say 42);

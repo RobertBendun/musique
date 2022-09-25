@@ -1,0 +1,17 @@
+say (range 0);
+say (range (0 - 1));
+say (range 10);
+say (range 1 10);
+say (range 1 10 2);
+
+say (up 0);
+say (up (0 - 1));
+say (up 10);
+say (up 1 10);
+say (up 1 10 2);
+
+say (down 0);
+say (down (0 - 1));
+say (down 10);
+say (down 1 10);
+say (down 1 10 2);

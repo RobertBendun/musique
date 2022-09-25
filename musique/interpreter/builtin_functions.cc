@@ -188,8 +188,8 @@ static Result<Value> builtin_range(Interpreter&, std::vector<Value> args)
 			array.elements.push_back(start);
 		}
 	} else {
-		for (; start < stop; start += step) {
-			array.elements.push_back(stop - start - Number(1));
+		for (; stop > start; stop -= step) {
+			array.elements.push_back(stop - Number(1));
 		}
 	}
 	return array;

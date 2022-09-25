@@ -1,170 +1,160 @@
-#!/usr/bin/env python3
-from dataclasses import dataclass
-from glob import glob
-from sys import argv
-from sys import exit
-import os.path
-import shlex
-import subprocess
+import argparse
+import dataclasses
 import json
-from unittest import case
+import os
+import subprocess
 
-Interpreter = "bin/musique"
+TEST_DB = "test_db.json"
+INTERPRETER = "bin/debug/musique"
 
-def directories_in_path(path: str):
-    dirs = []
-    while True:
-        dirname, _ = os.path.split(path)
-        if not dirname:
-            break
-        dirs.append(dirname)
-        path = dirname
-        if path == "/":
-            break
-    dirs.reverse()
-    return dirs
+@dataclasses.dataclass
+class Result:
+    exit_code:    int       = 0
+    stdin_lines:  list[str] = dataclasses.field(default_factory=list)
+    stdout_lines: list[str] = dataclasses.field(default_factory=list)
+    stderr_lines: list[str] = dataclasses.field(default_factory=list)
 
-def mkdir_recursive(path: str):
-    for directory in directories_in_path(path):
-        try:
-            os.mkdir(directory)
-        except FileExistsError:
-            continue
+@dataclasses.dataclass
+class TestCase:
+    name:         str
+    exit_code:    int       = 0
+    stdin_lines:  list[str] = dataclasses.field(default_factory=list)
+    stdout_lines: list[str] = dataclasses.field(default_factory=list)
+    stderr_lines: list[str] = dataclasses.field(default_factory=list)
 
-@dataclass
-class Test_Case:
-    returncode = 0
+    def run(self, interpreter: str, source: str, cwd: str):
+        result = subprocess.run(
+            args=[interpreter, source],
+            capture_output=True,
+            cwd=cwd,
+            text=True
+        )
+        return Result(
+            exit_code=result.returncode,
+            stdout_lines=result.stdout.splitlines(keepends=False),
+            stderr_lines=result.stderr.splitlines(keepends=False)
+        )
 
-    @staticmethod
-    def from_file(fname : str):
-        with open(fname) as f:
-            content = json.load(f)
-            tc = Test_Case()
-            for name in content:
-                # assert hasattr(tc, name), "Test_Case does not have attribute %s" % (name,)
-                setattr(tc, name, content[name])
-            return tc
+    def record(self, interpreter: str, source: str, cwd: str):
+        print(f"Recording case {self.name}")
+        result = self.run(interpreter, source, cwd)
 
-    @staticmethod
-    def from_run(run, flags=[]):
-        tc = Test_Case()
-        for attr in ["returncode", "stdout", "stderr"]: ### TODO FLAGS
-            try:
-                run_attr = getattr(run, attr).decode()
-            except (UnicodeDecodeError, AttributeError):
-                run_attr = getattr(run, attr)
+        changes = []
+        if self.exit_code    != result.exit_code:    changes.append("exit code")
+        if self.stderr_lines != result.stderr_lines: changes.append("stderr")
+        if self.stdout_lines != result.stdout_lines: changes.append("stdout")
+        if changes:
+            print(f"  changed: {', '.join(changes)}")
 
-            setattr(tc, attr, run_attr)
-        setattr(tc, "flags", flags)
-        return tc
+        self.exit_code, self.stderr_lines, self.stdout_lines = result.exit_code, result.stderr_lines, result.stdout_lines
 
-    def save(self, fname : str):
-        j = {}
-        for attr in ["returncode", "stdout", "stderr", "flags"]:
-            j[attr] = getattr(self, attr)
+    def test(self, interpreter: str, source: str, cwd: str):
+        print(f"  Testing case {self.name}  ", end="")
+        result = self.run(interpreter, source, cwd)
+        if self.exit_code == result.exit_code and self.stdout_lines == result.stdout_lines and self.stderr_lines == result.stderr_lines:
+            print("ok")
+            return True
 
-        mkdir_recursive(fname)
-        with open(fname, 'w') as f:
-            json.dump(j, f, indent=4)
+        print(f"FAILED")
+        print(f"File: {source}")
 
-def cmd_run_echoed(cmd, **kwargs):
-    print("[CMD] %s" % " ".join(map(shlex.quote, cmd)))
-    return subprocess.run(cmd, **kwargs)
+        if self.exit_code != result.exit_code:
+            print(f"Different exit code - expected {self.exit_code}, got {result.exit_code}")
 
-def find_path_for_test_case(path: str) -> str:
-    directory, filename = os.path.split(path)
-    return (directory if directory else ".") + "/.tests_cache/" + filename + ".json"
+        for name, expected, actual in [
+            ("standard output", self.stdout_lines, result.stdout_lines),
+            ("standard error",  self.stderr_lines, result.stderr_lines)
+        ]:
+            if expected == actual:
+                continue
 
-def run_tests(file_paths: list):
-    return_code = 0
-    for program_file in file_paths:
-        test_case_file = find_path_for_test_case(program_file)
-        if os.path.exists(test_case_file):
-            tc = Test_Case.from_file(test_case_file)
-        else:
-            continue
+            diff_line = None
+            for i, (exp_line, got_line) in enumerate(zip(expected, actual)):
+                if exp_line != got_line:
+                    diff_line = i
+                    break
 
-        flags_list = [Interpreter]
-        if hasattr(tc, "flags"):
-            flags_list.extend(tc.flags)
-        flags_list.append(program_file)
-
-        res = cmd_run_echoed(flags_list, capture_output=True)
-
-        for attr in [a for a in dir(tc) if a in ["returncode", "stdout", "stderr"]]:
-            tc_attr = getattr(tc, attr)
-            res_attr = getattr(res, attr)
-            try:
-                res_attr = res_attr.decode()
-            except (UnicodeDecodeError, AttributeError):
-                pass
-
-            if tc_attr != res_attr:
-                print(f"[ERROR] Failed test {program_file}")
-                print(f"Expected {attr} = ")
-                print(tc_attr)
-                print(f"Received {attr} = ")
-                print(res_attr)
-                return_code = 1
-    exit(return_code)
-
-def record_tests(file_paths: list):
-    for program_file in file_paths:
-        test_case_file = find_path_for_test_case(program_file)
-
-        res = cmd_run_echoed([Interpreter, program_file], capture_output=True)
-        tc = Test_Case.from_run(res, [])
-        tc.save(test_case_file)
-
-def add_tests(file_paths: list):
-    to_be_added = []
-
-    for program_file in file_paths:
-        test_case_file = find_path_for_test_case(program_file)
-        if not os.path.exists(test_case_file):
-            print(f"Add test {program_file}? (yes/no)")
-            if "yes".startswith(input().strip().lower()):
-                to_be_added.append(program_file)
-
-    record_tests(to_be_added)
-
-
-# list of files to test
-def main():
-    file_paths, mode = [], run_tests
-
-    if len(argv) < 2:
-        print("[ERROR] Expected mode argument (either 'record', 'add' or 'test')")
-        exit(1)
-
-    if argv[1] == "test":
-        mode = run_tests
-    elif argv[1] == "record":
-        mode = record_tests
-    elif argv[1] == "add":
-        mode = add_tests
-    else:
-        print(f"[ERROR] Unrecognized mode '{argv[1]}'")
-        exit(1)
-
-    if len(argv) < 3:
-        print("[ERROR] Expected test case")
-        exit(1)
-
-    interpreter = os.getenv("INTERPRETER")
-    if interpreter:
-        Interpreter = interpreter
-
-    for path in argv[2:]:
-        if os.path.exists(path):
-            if os.path.isdir(path):
-                file_paths.extend(glob(f"{path}/*.mq"))
+            if diff_line is not None:
+                print(f"First difference at line {diff_line+1} in {name}:")
+                print(f"  Expected: {expected[diff_line]}")
+                print(f"       Got: {actual[diff_line]}")
+            elif len(expected) > len(actual):
+                print(f"Expected {name} is {len(expected) - len(actual)} lines longer then actual")
             else:
-                file_paths.append(path)
-        elif mode == add_tests:
-            print("Adding: " + path)
+                print(f"Actual {name} is {len(actual) - len(expected)} lines longer then expected")
 
-    mode(file_paths)
+        return False
+
+
+@dataclasses.dataclass
+class TestSuite:
+    name:  str
+    cases: list[TestCase] = dataclasses.field(default_factory=list)
+
+suites = list[TestSuite]()
+
+def traverse(discover: bool, update: bool):
+    to_record = list[tuple[TestSuite, TestCase]]()
+    if discover:
+        for suite_name in os.listdir(testing_dir):
+            if os.path.isdir(os.path.join(testing_dir, suite_name)) and suite_name not in (suite.name for suite in suites):
+                print(f"Discovered new test suite: {suite_name}")
+                suites.append(TestSuite(name=suite_name))
+
+        for suite in suites:
+            suite_path = os.path.join(testing_dir, suite.name)
+            for case_name in os.listdir(suite_path):
+                if os.path.isfile(os.path.join(suite_path, case_name)) and case_name not in (case.name for case in suite.cases):
+                    print(f"In suite '{suite.name}' discovered new test case: {case_name}")
+                    case = TestCase(name=case_name)
+                    suite.cases.append(case)
+                    to_record.append((suite, case))
+
+    if update:
+        to_record.extend(((suite, case) for suite in suites for case in suite.cases))
+
+    for (suite, case) in to_record:
+        case.record(
+            interpreter=os.path.join(root, INTERPRETER),
+            source=os.path.join(testing_dir, suite.name, case.name),
+            cwd=root
+        )
+
+    with open(test_db_path, "w") as f:
+        json_suites = [dataclasses.asdict(suite) for suite in suites]
+        json.dump(json_suites, f, indent=2)
+
+def test():
+    successful, total = 0, 0
+    for suite in suites:
+        print(f"Testing suite {suite.name}")
+        for case in suite.cases:
+            successful += int(case.test(
+                interpreter=os.path.join(root, INTERPRETER),
+                source=os.path.join(testing_dir, suite.name, case.name),
+                cwd=root
+            ))
+            total += 1
+
+    print(f"Passed {successful} out of {total} ({100 * successful // total}%)")
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Regression test runner for Musique programming language")
+    parser.add_argument("-d", "--discover", action="store_true", help="Discover all tests that are not in testing database")
+    parser.add_argument("-u", "--update", action="store_true", help="Update all tests")
+
+    args = parser.parse_args()
+
+    root = os.path.dirname(os.path.dirname(__file__))
+    testing_dir = os.path.join(root, "regression-tests")
+    test_db_path = os.path.join(testing_dir, TEST_DB)
+
+    with open(test_db_path, "r") as f:
+        for src in json.load(f):
+            src["cases"] = [TestCase(**case) for case in src["cases"]]
+            suites.append(TestSuite(**src))
+
+    if args.discover or args.update:
+        traverse(discover=args.discover, update=args.update)
+    else:
+        test()
