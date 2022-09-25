@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# This script creates a release of Musique programming language
+# Release is defined as a zip archive containing source code,
+# build binaries for supported platforms and build documentation
+
 set -e -o pipefail
 
 Suffix="$(date +"%Y-%m-%d")"
@@ -20,12 +24,15 @@ echo "Copy bin/musique, examples, license and documentation"
 
 cp bin/musique "$Target"/
 cp LICENSE "$Target"/LICENSE
+cp CHANGELOG.md "$Target/CHANGELOG.md"
 cp -r examples  "$Target"/examples
 sed "s/bin\/musique/musique/" scripts/install > "$Target"/install.sh
 chmod 0755 "$Target"/install.sh
 
 lowdown -s doc/overview.md  -m "title:Omówienie języka Musique"     -o "$Target"/overview.html
 lowdown -s doc/functions.md -m "title:Lista funkcji języka Musique" -o "$Target"/functions.html
+python scripts/language-cmp-cheatsheet.py doc/musique-vs-languages-cheatsheet.template
+mv doc/musique-vs-languages-cheatsheet.html "${Target}/musique-vs-others-cheatsheet.html"
 
 echo "Copy source code"
 
