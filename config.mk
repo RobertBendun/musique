@@ -1,12 +1,12 @@
 MAKEFLAGS="-j $(grep -c ^processor /proc/cpuinfo)"
 
 CXXFLAGS:=$(CXXFLAGS) -std=c++20 -Wall -Wextra -Werror=switch -Werror=return-type -Werror=unused-result -Wno-maybe-uninitialized
-CPPFLAGS:=$(CPPFLAGS) -Ilib/expected/ -Ilib/ut/ -Ilib/midi/include -I. -Ilib/bestline/
+CPPFLAGS:=$(CPPFLAGS) -Ilib/expected/ -Ilib/midi/include -I. -Ilib/bestline/
 
-RELEASE_FLAGS=-O3
+RELEASE_FLAGS=-O2
 DEBUG_FLAGS=-O0 -ggdb -fsanitize=undefined -DDebug
 
 CXX=g++
 
-LDFLAGS=-L./lib/midi/
+LDFLAGS=-L./lib/midi/ -flto
 LDLIBS=-lmidi-alsa -lasound -lpthread -static-libgcc -static-libstdc++

@@ -21,13 +21,13 @@ void Interpreter::register_callbacks()
 
 /// Check if type has index method
 template<typename T>
-concept With_Index_Method = requires (T t, Interpreter interpreter, usize position) {
+concept With_Index_Method = requires (T &t, Interpreter interpreter, usize position) {
 	{ t.index(interpreter, position) } -> std::convertible_to<Result<Value>>;
 };
 
 /// Check if type has either (index operator or method) and size() method
 template<typename T>
-concept Iterable = (With_Index_Method<T> || With_Index_Operator<T>) && requires (T const t) {
+concept Iterable = (With_Index_Method<T> || With_Index_Operator<T>) && requires (T const& t) {
 	{ t.size() } -> std::convertible_to<usize>;
 };
 
@@ -44,7 +44,8 @@ static Result<std::vector<Value>> deep_flat(Interpreter &interpreter, Iterable a
 		}
 
 		if (auto collection = get_if<Collection>(element)) {
-			std::ranges::move(Try(deep_flat(interpreter, *collection)), std::back_inserter(result));
+			auto array = Try(deep_flat(interpreter, *collection));
+			std::move(array.begin(), array.end(), std::back_inserter(result));
 		} else {
 			result.push_back(std::move(element));
 		}
@@ -709,7 +710,7 @@ static Result<Value> builtin_reverse(Interpreter &i, std::vector<Value> args)
 /// Get minimum of arguments
 static Result<Value> builtin_min(Interpreter &i, std::vector<Value> args)
 {
-	auto array = Try(deep_flat(i, std::move(args)));
+	auto array = Try(deep_flat(i, args));
 	if (auto min = std::ranges::min_element(array); min != array.end())
 		return *min;
 	return Value{};
@@ -718,7 +719,7 @@ static Result<Value> builtin_min(Interpreter &i, std::vector<Value> args)
 /// Get maximum of arguments
 static Result<Value> builtin_max(Interpreter &i, std::vector<Value> args)
 {
-	auto array = Try(deep_flat(i, std::move(args)));
+	auto array = Try(deep_flat(i, args));
 	if (auto max = std::ranges::max_element(array); max != array.end())
 		return *max;
 	return Value{};
@@ -741,7 +742,7 @@ static Result<Value> builtin_partition(Interpreter &i, std::vector<Value> args)
 
 	Array tuple[2] = {};
 	for (auto &value : array) {
-		tuple[Try(predicate(i, { std::move(value) })).truthy()].elements.push_back(std::move(value));
+		tuple[Try(predicate(i, { value })).truthy()].elements.push_back(std::move(value));
 	}
 
 	return Array {{
