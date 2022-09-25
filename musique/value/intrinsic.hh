@@ -22,7 +22,7 @@ struct Intrinsic : Function
 	constexpr ~Intrinsic() = default;
 
 	/// Calls underlying function pointer
-	Result<Value> operator()(Interpreter&, std::vector<Value>) const;
+	Result<Value> operator()(Interpreter&, std::vector<Value>) const override;
 
 	/// Compares if function pointers are equal
 	bool operator==(Intrinsic const&) const = default;

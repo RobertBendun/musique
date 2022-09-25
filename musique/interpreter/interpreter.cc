@@ -205,6 +205,8 @@ Result<Value> Interpreter::eval(Ast &&ast)
 		}
 	}
 
+	std::cout << ast.type << std::endl;
+	std::cout << ast.token.type << std::endl;
 	unreachable();
 }
 

@@ -1,0 +1,13 @@
+-- If executes then first block when condition is true
+if true [say 1];
+if true [say 2] [say 3];
+
+-- If executes second block when condition is false
+if false [say 4] [say 5];
+
+-- If returns nil when without else block
+say (if false [say 6]);
+
+-- If returns block execution value
+say (if true [7]);
+say (if false [say 100; 8] [say 200; 9]);

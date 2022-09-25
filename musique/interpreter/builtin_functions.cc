@@ -31,6 +31,28 @@ concept Iterable = (With_Index_Method<T> || With_Index_Operator<T>) && requires 
 	{ t.size() } -> std::convertible_to<usize>;
 };
 
+static Result<std::vector<Value>> deep_flat(Interpreter &interpreter, Iterable auto const& array)
+{
+	std::vector<Value> result;
+
+	for (auto i = 0u; i < array.size(); ++i) {
+		Value element;
+		if constexpr (With_Index_Method<decltype(array)>) {
+			element = Try(array.index(interpreter, i));
+		} else {
+			element = std::move(array[i]);
+		}
+
+		if (auto collection = get_if<Collection>(element)) {
+			std::ranges::move(Try(deep_flat(interpreter, *collection)), std::back_inserter(result));
+		} else {
+			result.push_back(std::move(element));
+		}
+	}
+
+	return result;
+}
+
 /// Create chord out of given notes
 template<Iterable T>
 static inline std::optional<Error> create_chord(std::vector<Note> &chord, Interpreter &interpreter, T&& args)
@@ -543,7 +565,7 @@ static Result<Value> builtin_fold(Interpreter &interpreter, std::vector<Value> a
 
 /// Execute blocks depending on condition
 static Result<Value> builtin_if(Interpreter &i, std::vector<Value> args)  {
-	constexpr auto guard = Guard<2> {
+	static constexpr auto guard = Guard<2> {
 		.name = "if",
 		.possibilities = {
 			"(any, function) -> any",
@@ -656,7 +678,7 @@ static Result<Value> builtin_shuffle(Interpreter &i, std::vector<Value> args)
 {
 	static std::mt19937 rnd{std::random_device{}()};
 	auto array = Try(flatten(i, std::move(args)));
-	std::shuffle(array.begin(), array.end(), rnd);
+	std::ranges::shuffle(array, rnd);
 	return array;
 }
 
@@ -664,7 +686,7 @@ static Result<Value> builtin_shuffle(Interpreter &i, std::vector<Value> args)
 static Result<Value> builtin_permute(Interpreter &i, std::vector<Value> args)
 {
 	auto array = Try(flatten(i, std::move(args)));
-	std::next_permutation(array.begin(), array.end());
+	std::ranges::next_permutation(array);
 	return array;
 }
 
@@ -672,7 +694,7 @@ static Result<Value> builtin_permute(Interpreter &i, std::vector<Value> args)
 static Result<Value> builtin_sort(Interpreter &i, std::vector<Value> args)
 {
 	auto array = Try(flatten(i, std::move(args)));
-	std::sort(array.begin(), array.end());
+	std::ranges::sort(array);
 	return array;
 }
 
@@ -680,28 +702,26 @@ static Result<Value> builtin_sort(Interpreter &i, std::vector<Value> args)
 static Result<Value> builtin_reverse(Interpreter &i, std::vector<Value> args)
 {
 	auto array = Try(flatten(i, std::move(args)));
-	std::reverse(array.begin(), array.end());
+	std::ranges::reverse(array);
 	return array;
 }
 
 /// Get minimum of arguments
 static Result<Value> builtin_min(Interpreter &i, std::vector<Value> args)
 {
-	auto array = Try(flatten(i, std::move(args)));
-	auto min = std::min_element(array.begin(), array.end());
-	if (min == array.end())
-		return Value{};
-	return *min;
+	auto array = Try(deep_flat(i, std::move(args)));
+	if (auto min = std::ranges::min_element(array); min != array.end())
+		return *min;
+	return Value{};
 }
 
 /// Get maximum of arguments
 static Result<Value> builtin_max(Interpreter &i, std::vector<Value> args)
 {
-	auto array = Try(flatten(i, std::move(args)));
-	auto max = std::max_element(array.begin(), array.end());
-	if (max == array.end())
-		return Value{};
-	return *max;
+	auto array = Try(deep_flat(i, std::move(args)));
+	if (auto max = std::ranges::max_element(array); max != array.end())
+		return *max;
+	return Value{};
 }
 
 /// Parition arguments into 2 arrays based on predicate
@@ -935,7 +955,8 @@ static Result<Value> builtin_call(Interpreter &i, std::vector<Value> args)
 		return guard.yield_error();
 	}
 
-	auto &callable = *Try(guard.match<Function>(args.front()));
+	auto fst = std::move(args.front());
+	auto &callable = *Try(guard.match<Function>(fst));
 	args.erase(args.begin());
 	return callable(i, std::move(args));
 }
