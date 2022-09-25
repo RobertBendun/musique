@@ -3,6 +3,8 @@
 * `bmp value` – zmienia wartość BMP z domyślnej na `value`;
 	-`value` musi być liczbą całkowitą, domyślnie `120`;
 
+* `call function args` – funkcja wywołująca funkcję `function`, która przekazuje `function` `args` jako argumenty wywoływanej fukncji;
+
 * `ceil value` – operacja podobna do matematycznej funkcji podłogi (zaokrąglenie liczby do pierwszej liczby całkowitej mniejszej lub równej tej liczbie);
 	- `value` – musi być to wartość o typie Number lub tablica takich wartości;
 
