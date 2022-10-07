@@ -89,17 +89,16 @@ static Result<Value> plus_minus_operator(Interpreter &interpreter, std::vector<V
 
 		static_assert(std::is_same_v<std::plus<>, Binary_Operation> || std::is_same_v<std::minus<>, Binary_Operation>,
 				"Error message printing only supports operators given above");
-		return Error {
-			.details = errors::Unsupported_Types_For {
-				.type = errors::Unsupported_Types_For::Operator,
-				.name = std::is_same_v<std::plus<>, Binary_Operation> ? "+" : "-",
-				.possibilities = {
-					"(number, number) -> number",
-					"(music, number) -> music",
-					"(number, music) -> music",
-					"(array, number|music) -> array",
-					"(number|music, array) -> array",
-				}
+
+		return errors::Unsupported_Types_For {
+			.type = errors::Unsupported_Types_For::Operator,
+			.name = std::is_same_v<std::plus<>, Binary_Operation> ? "+" : "-",
+			.possibilities = {
+				"(number, number) -> number",
+				"(music, number) -> music",
+				"(number, music) -> music",
+				"(array, number|music) -> array",
+				"(number|music, array) -> array",
 			}
 		};
 	});

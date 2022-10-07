@@ -38,7 +38,7 @@ struct Value
 	Value(char const* s);              ///< Create value of type symbol holding provided symbol
 	Value(std::string s);              ///< Create value of type symbol holding provided symbol
 	Value(std::string_view s);         ///< Create value of type symbol holding provided symbol
-	Value(std::vector<Value> &&array); ///< Create value of type array holding provided array
+	explicit Value(std::vector<Value> &&array); ///< Create value of type array holding provided array
 
 	// TODO Most strings should not be allocated by Value, but reference to string allocated previously
 	// Wrapper for std::string is needed that will allocate only when needed, middle ground between:

@@ -564,6 +564,28 @@ static Result<Value> builtin_fold(Interpreter &interpreter, std::vector<Value> a
 	return init;
 }
 
+/// Scan computes inclusive prefix sum
+static Result<Value> builtin_scan(Interpreter &interpreter, std::vector<Value> args)
+{
+	if (args.size()) {
+		if (auto p = get_if<Function>(args.front())) {
+			auto xs = Try(flatten(interpreter, std::span(args).subspan(1)));
+			for (auto i = 1u; i < xs.size(); ++i) {
+				xs[i] = Try((*p)(interpreter, { xs[i-1], xs[i] }));
+			}
+			return xs;
+		}
+	}
+
+	return errors::Unsupported_Types_For {
+		.type = errors::Unsupported_Types_For::Function,
+		.name = "scan",
+		.possibilities = {
+			"(callback, ...array) -> any"
+		}
+	};
+}
+
 /// Execute blocks depending on condition
 static Result<Value> builtin_if(Interpreter &i, std::vector<Value> args)  {
 	static constexpr auto guard = Guard<2> {
@@ -997,6 +1019,7 @@ void Interpreter::register_builtin_functions()
 	global.force_define("reverse",        builtin_reverse);
 	global.force_define("rotate",         builtin_rotate);
 	global.force_define("round",          apply_numeric_transform<&Number::round>);
+	global.force_define("scan",           builtin_scan);
 	global.force_define("shuffle",        builtin_shuffle);
 	global.force_define("sim",            builtin_sim);
 	global.force_define("sort",           builtin_sort);

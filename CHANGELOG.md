@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+* Added `scan` builtin, which computes prefix sum of passed values when provided with addition operator
+
+### Fixed
+
+* Prevented accidental recursive construction of Arrays and Values by making convinience constructor `Value::Value(std::vector<Value>&&)` explicit
+
 ## [0.1.0] - 2022-09-25
 
 ### Added

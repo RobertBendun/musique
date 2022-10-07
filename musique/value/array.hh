@@ -15,7 +15,7 @@ struct Array : Collection
 	std::vector<Value> elements;
 
 	Array();
-	Array(std::vector<Value>&&);
+	explicit Array(std::vector<Value>&&);
 	Array(Array const&);
 	Array(Array &&);
 	~Array() override;

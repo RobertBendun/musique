@@ -7,7 +7,7 @@ Array::Array(Array &&)     = default;
 Array::~Array()            = default;
 
 Array::Array(std::vector<Value>&& elements)
-	: elements{std::move(elements)}
+	: elements(std::move(elements))
 {
 }
 
