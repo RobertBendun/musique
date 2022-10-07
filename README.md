@@ -21,16 +21,6 @@ $ sudo apt install -y build-essential libasound2-dev
 
 ## Budowanie interpretera
 
-Jeśli nie posiadasz zależności `lib/midi` to:
-
-```console
-$ git submodule init
-$ git submodule update
-$ (cd lib/midi; make)
-```
-
-A następnie zbuduj interpreter:
-
 ```console
 $ make bin/musique
 ```

@@ -1,7 +1,7 @@
 #ifndef MUSIQUE_INTERPRETER_HH
 #define MUSIQUE_INTERPRETER_HH
 
-#include <midi.hh>
+#include <musique/midi/midi.hh>
 #include <musique/interpreter/context.hh>
 #include <musique/value/value.hh>
 

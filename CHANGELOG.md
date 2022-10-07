@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 * Added `scan` builtin, which computes prefix sum of passed values when provided with addition operator
 
+### Changed
+
+* Integrated libmidi library into Musique codebase
+
 ### Fixed
 
 * Prevented accidental recursive construction of Arrays and Values by making convinience constructor `Value::Value(std::vector<Value>&&)` explicit

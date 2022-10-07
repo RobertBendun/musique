@@ -6,11 +6,11 @@
 #include <span>
 #include <thread>
 
-#include <midi.hh>
-#include <musique/interpreter/env.hh>
 #include <musique/format.hh>
+#include <musique/interpreter/env.hh>
 #include <musique/interpreter/interpreter.hh>
 #include <musique/lexer/lines.hh>
+#include <musique/midi/midi.hh>
 #include <musique/parser/parser.hh>
 #include <musique/pretty.hh>
 #include <musique/try.hh>
