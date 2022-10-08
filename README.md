@@ -92,3 +92,6 @@ Skopiuj katalog [etc/editor/musique-vscode](etc/editor/musique-vscode) do folder
 
 - Creator of [tl::expected](https://github.com/TartanLlama/expected) - [Sy Brand](https://sybrand.ink/)
 - Creator of [bestline](https://github.com/jart/bestline) - [Justine Tunney](https://justinetunney.com/)
+- Creator of [rtmidi](https://github.com/thestk/rtmidi/) - [Gary P. Scavone](http://www.music.mcgill.ca/~gary/)
+
+and all contributors that created libraries above.

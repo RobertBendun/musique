@@ -76,6 +76,7 @@ static T pop(std::span<char const*> &span)
 		"Thanks to:\n"
 		"  Sy Brand, https://sybrand.ink/, creator of tl::expected https://github.com/TartanLlama/expected\n"
 		"  Justine Tunney, https://justinetunney.com, creator of bestline readline library https://github.com/jart/bestline\n"
+		"  Gary P. Scavone, http://www.music.mcgill.ca/~gary/, creator of rtmidi https://github.com/thestk/rtmidi\n"
 		;
 	std::exit(1);
 }

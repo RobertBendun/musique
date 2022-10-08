@@ -1,6 +1,12 @@
 #include <musique/midi/midi.hh>
 #include <musique/errors.hh>
 
+// Copyright notice for RtMidi library
+__asm__(R"license(.ident  "\
+RtMidi: realtime MIDI i/o C++ classes\
+Copyright (c) 2003-2021 Gary P. Scavone"
+)license");
+
 void midi::Rt_Midi::list_ports(std::ostream &out) const
 try {
 	RtMidiIn input;
