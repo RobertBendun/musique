@@ -1,23 +1,18 @@
 #pragma once
+#include <RtMidi.h>
 #include <cstdint>
 #include <functional>
-
-#ifdef MIDI_ENABLE_ALSA_SUPPORT
-#include <alsa/asoundlib.h>
-#include <ostream>
+#include <optional>
 #include <stop_token>
-
-#ifdef assert
-#undef assert
-#endif
-
-#endif
+#include <string>
 
 // Documentation of midi messages available at http://midi.teragonaudio.com/tech/midispec.htm
 namespace midi
 {
 	struct Connection
 	{
+		virtual ~Connection() = default;
+
 		virtual bool supports_output() const = 0;
 		virtual bool supports_input () const = 0;
 
@@ -32,19 +27,15 @@ namespace midi
 		std::function<void(uint8_t, uint8_t)> note_off_callback = nullptr;
 	};
 
-#ifdef MIDI_ENABLE_ALSA_SUPPORT
-	struct ALSA : Connection
+	struct Rt_Midi : Connection
 	{
-		explicit ALSA(std::string connection_name);
+		~Rt_Midi() override = default;
 
-		/// Initialize connection with ALSA
-		void init_sequencer();
+		/// Connect with specific MIDI port for outputing MIDI messages
+		void connect_output(unsigned target);
 
-		/// Connect with specific ALSA port for outputing MIDI messages
-		void connect_output(std::string const& target);
-
-		/// Connect with specific ALSA port for reading MIDI messages
-		void connect_input(std::string const& target);
+		/// Connect with specific MIDI port for reading MIDI messages
+		void connect_input(unsigned target);
 
 		/// List available ports
 		void list_ports(std::ostream &out) const;
@@ -59,18 +50,9 @@ namespace midi
 
 		void input_event_loop(std::stop_token);
 
-		/// Name that is used by ALSA to describe our connection
-		std::string connection_name = {};
-		bool connected = false;
-		snd_seq_t *seq = nullptr;
-		long client = 0;
-		int queue = 0;
-		snd_seq_addr_t input_port_addr{};
-		snd_seq_addr_t output_port_addr{};
-		int input_port = -1;
-		int output_port = -1;
+		std::optional<RtMidiIn> input;
+		std::optional<RtMidiOut> output;
 	};
-#endif
 
 	/// All defined controllers for controller change message
 	enum class Controller : uint8_t

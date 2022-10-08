@@ -1,10 +1,10 @@
-#define MIDI_ENABLE_ALSA_SUPPORT
-
+#include <charconv>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <span>
 #include <thread>
+#include <cstring>
 
 #include <musique/format.hh>
 #include <musique/interpreter/env.hh>
@@ -29,11 +29,26 @@ static unsigned repl_line_number = 1;
 #define Ignore(Call) do { auto const ignore_ ## __LINE__ = (Call); (void) ignore_ ## __LINE__; } while(0)
 
 /// Pop string from front of an array
-static std::string_view pop(std::span<char const*> &span)
+template<typename T = std::string_view>
+static T pop(std::span<char const*> &span)
 {
 	auto element = span.front();
 	span = span.subspan(1);
-	return element;
+
+	if constexpr (std::is_same_v<T, std::string_view>) {
+		return element;
+	} else if constexpr (std::is_arithmetic_v<T>) {
+		T result;
+		auto end = element + std::strlen(element);
+		auto [ptr, ec] = std::from_chars(element, end, result);
+		if (ec != decltype(ec){}) {
+			std::cout << "Expected natural number as argument" << std::endl;
+			std::exit(1);
+		}
+		return result;
+	} else {
+		static_assert(always_false<T>, "Unsupported type for pop operation");
+	}
 }
 
 /// Print usage and exit
@@ -101,33 +116,32 @@ struct Runner
 {
 	static inline Runner *the;
 
-	midi::ALSA alsa;
+	midi::Rt_Midi midi;
 	Interpreter interpreter;
 	std::thread midi_input_event_loop;
 	std::stop_source stop_source;
 
 	/// Setup interpreter and midi connection with given port
-	Runner(std::string input_port, std::string output_port)
-		: alsa("musique")
+	Runner(std::optional<unsigned> input_port, std::optional<unsigned> output_port)
+		: midi()
 		, interpreter{}
 	{
 		assert(the == nullptr, "Only one instance of runner is supported");
 		the = this;
 
-		bool const alsa_go = output_port.size() || input_port.size();
-		if (alsa_go) {
-			alsa.init_sequencer();
-			interpreter.midi_connection = &alsa;
+		bool const midi_go = bool(input_port) || bool(output_port);
+		if (midi_go) {
+			interpreter.midi_connection = &midi;
 		}
-		if (output_port.size()) {
-			std::cout << "Connected MIDI output to port " << output_port << ". Ready to play!" << std::endl;
-			alsa.connect_output(output_port);
+		if (output_port) {
+			std::cout << "Connected MIDI output to port " << *output_port << ". Ready to play!" << std::endl;
+			midi.connect_output(*output_port);
 		}
-		if (input_port.size()) {
-			std::cout << "Connected MIDI input to port " << input_port << ". Ready for incoming messages!" << std::endl;
-			alsa.connect_input(input_port);
+		if (input_port) {
+			std::cout << "Connected MIDI input to port " << *input_port << ". Ready for incoming messages!" << std::endl;
+			midi.connect_input(*input_port);
 		}
-		if (alsa_go) {
+		if (midi_go) {
 			interpreter.register_callbacks();
 			midi_input_event_loop = std::thread([this] { handle_midi_event_loop(); });
 			midi_input_event_loop.detach();
@@ -156,7 +170,7 @@ struct Runner
 
 	void handle_midi_event_loop()
 	{
-		alsa.input_event_loop(stop_source.get_token());
+		midi.input_event_loop(stop_source.get_token());
 	}
 
 	/// Run given source
@@ -207,8 +221,8 @@ static std::optional<Error> Main(std::span<char const*> args)
 	};
 
 	// Arbitraly chosen for conviniance of the author
-	std::string_view input_port{};
-	std::string_view output_port{};
+	std::optional<unsigned> input_port{};
+	std::optional<unsigned> output_port{};
 
 	std::vector<Run> runnables;
 
@@ -221,9 +235,7 @@ static std::optional<Error> Main(std::span<char const*> args)
 		}
 
 		if (arg == "-l" || arg == "--list") {
-			midi::ALSA alsa("musique");
-			alsa.init_sequencer();
-			alsa.list_ports(std::cout);
+			midi::Rt_Midi{}.list_ports(std::cout);
 			return {};
 		}
 
@@ -251,7 +263,7 @@ static std::optional<Error> Main(std::span<char const*> args)
 				std::cerr << "musique: error: option " << arg << " requires an argument" << std::endl;
 				std::exit(1);
 			}
-			input_port = pop(args);
+			input_port = pop<unsigned>(args);
 			continue;
 		}
 
@@ -260,7 +272,7 @@ static std::optional<Error> Main(std::span<char const*> args)
 				std::cerr << "musique: error: option " << arg << " requires an argument" << std::endl;
 				std::exit(1);
 			}
-			output_port = pop(args);
+			output_port = pop<unsigned>(args);
 			continue;
 		}
 
@@ -272,7 +284,7 @@ static std::optional<Error> Main(std::span<char const*> args)
 		std::exit(1);
 	}
 
-	Runner runner{std::string(input_port), std::string(output_port)};
+	Runner runner{input_port, output_port};
 
 	for (auto const& [is_file, argument] : runnables) {
 		if (!is_file) {

@@ -10,10 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 * Added `scan` builtin, which computes prefix sum of passed values when provided with addition operator
+* Added [rtmidi](https://github.com/thestk/rtmidi/) dependency which should provide multiplatform MIDI support
 
 ### Changed
 
 * Integrated libmidi library into Musique codebase
+* Moved from custom ALSA interaction to using rtmidi for MIDI I/O operations
+
+### Removed
+
+* Support for incoming MIDI messages handling due to poor implementation that didn't statisfy user needs
 
 ### Fixed
 
