@@ -20,6 +20,7 @@ using i64 = std::int64_t;
 
 using usize = std::size_t;
 using isize = std::ptrdiff_t;
+using uint = unsigned int;
 
 /// Combine several lambdas into one for visiting std::variant
 template<typename ...Lambdas>

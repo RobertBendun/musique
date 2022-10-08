@@ -6,7 +6,8 @@ CPPFLAGS:=$(CPPFLAGS) -Ilib/expected/ -I. -Ilib/bestline/ -Ilib/rtmidi/
 RELEASE_FLAGS=-O2
 DEBUG_FLAGS=-O0 -ggdb -fsanitize=undefined -DDebug
 
-CXX=g++
+CC=i686-w64-mingw32-gcc
+CXX=i686-w64-mingw32-g++
 
 LDFLAGS=-flto
-LDLIBS=-lasound -lpthread -static-libgcc -static-libstdc++
+LDLIBS=-lwinmm -lpthread -static-libgcc -static-libstdc++

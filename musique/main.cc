@@ -16,10 +16,6 @@
 #include <musique/try.hh>
 #include <musique/unicode.hh>
 
-extern "C" {
-#include <bestline.h>
-}
-
 namespace fs = std::filesystem;
 
 static bool ast_only_mode = false;
@@ -194,23 +190,19 @@ struct Runner
 /// some of the strings are only views into source
 std::vector<std::string> eternal_sources;
 
-void completion(char const* buf, bestlineCompletions *lc)
+bool is_tty()
 {
-	std::string_view in{buf};
-
-	for (auto scope = Runner::the->interpreter.env.get(); scope != nullptr; scope = scope->parent.get()) {
-		for (auto const& [name, _] : scope->variables) {
-			if (name.starts_with(in)) {
-				bestlineAddCompletion(lc, name.c_str());
-			}
-		}
-	}
+#ifdef __linux__
+	return isatty(STDOUT_FILENO);
+#else
+	return true;
+#endif
 }
 
 /// Fancy main that supports Result forwarding on error (Try macro)
 static std::optional<Error> Main(std::span<char const*> args)
 {
-	if (isatty(STDOUT_FILENO) && getenv("NO_COLOR") == nullptr) {
+	if (is_tty() && getenv("NO_COLOR") == nullptr) {
 		pretty::terminal_mode();
 	}
 
@@ -314,15 +306,13 @@ static std::optional<Error> Main(std::span<char const*> args)
 	if (runnables.empty() || enable_repl) {
 		repl_line_number = 1;
 		enable_repl = true;
-		bestlineSetCompletionCallback(completion);
 		for (;;) {
-			char *input_buffer = bestlineWithHistory("> ", "musique");
-			if (input_buffer == nullptr) {
+			std::string_view raw;
+			if (auto s = new std::string{}; std::getline(std::cin, *s)) {
+				raw = *s;
+			} else {
 				break;
 			}
-
-			// Raw input line used for execution in language
-			std::string_view raw = input_buffer;
 
 			// Used to recognize REPL commands
 			std::string_view command = raw;
@@ -330,7 +320,6 @@ static std::optional<Error> Main(std::span<char const*> args)
 
 			if (command.empty()) {
 				// Line is empty so there is no need to execute it or parse it
-				free(input_buffer);
 				continue;
 			}
 
