@@ -17,7 +17,7 @@ fi
 mkdir -p "$Target"
 
 if ! [ -f bin/musique ]; then
-	make bin/musique
+	make config=release
 fi
 
 echo "Copy bin/musique, examples, license and documentation"

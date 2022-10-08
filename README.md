@@ -21,52 +21,22 @@ $ sudo apt install -y build-essential libasound2-dev
 
 ## Budowanie interpretera
 
-```console
-$ make bin/musique
-```
+Wygeneruj konfigurację dla twojej platformy przy pomocy [`premake`](https://premake.github.io/)
 
-Żeby zainstalować interpreter języka Musique w systemie, należy dodatkowo wykonać polecenie:
+- Linux: `premake5 gmake`
+- Windows: `premake5 <twoja-wersja-visual-studio>`, np `premake5 vs2022`
 
-```
-# make install
-```
+Żeby zainstalować interpreter języka Musique w systemie, należy dodatkowo wykonać polecenie `scripts/install`
 
 *Uwaga*: powyższe polecenie instalacyjne musi zostać wykonane jako uprzywilejowany użytkownik (np. wykorzystując polecenie `sudo`).
 
-## Dostępne komendy
-
-- `make` - Buduje interpreter `bin/musique` (tryb release)
-- `make debug` - Buduje interpreter `bin/debug/musique` (tryb debug)
-- `make clean` - Usuwa reprodukowalne elementy projektu (automatycznie stworzone pliki binarne czy raporty)
 ### Dokumentacja
 
-- `make doc` - Tworzy `doc/build/html/` zawierający dokumentację projektu
+Dokumentację kodu źródłowego możesz wygenerować korzystając z polecenia `doxygen`. Dokumentacja języka (jak i kodu źródłowego po wygnerowaniu) dostępna jest w katalogu `doc/`.
 
 ### Testowanie
 
-- `make test` - Uruchom wszystkie dostępne testy automatyczne
-- `scripts/test.py test examples` - Uruchamia testy zachowań przykładów
-- `scripts/test.py record examples` - Nagrywa testy zachowań przykładów
-
-### Debugowanie
-
-- `scripts/log-function-calls.sh` - Tworzy listę wywołań funkcji używając GDB
-
-## Budowa projektu
-
-```
-.
-├── bin            Miejsce produkcji plików wykonywalnych
-├── doc            Dokumentacja języka, interpretera
-│   └── build      Miejsce produkcji dokumentacji
-├── editor         Pluginy do edytorów dodające wsparcie dla języka
-├── lib            Zewnętrzne zależności projektu
-│   ├── expected
-│   └── ut
-└── include        Główny katalog z plikami nagłówkowymi
-├── scripts        Skrypty wspierające budowanie i tworzenie
-└── src            Główny katalog z plikami źródłowymi
-```
+- `scripts/test.py` - Nagrywa testy zachowań przykładów
 
 ## Kolorowanie składni
 
