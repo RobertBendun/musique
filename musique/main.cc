@@ -16,9 +16,15 @@
 #include <musique/try.hh>
 #include <musique/unicode.hh>
 
+#ifdef _WIN32
+extern "C" {
+#include <io.h>
+}
+#else
 extern "C" {
 #include <bestline.h>
 }
+#endif
 
 namespace fs = std::filesystem;
 
@@ -194,6 +200,7 @@ struct Runner
 /// some of the strings are only views into source
 std::vector<std::string> eternal_sources;
 
+#ifndef _WIN32
 void completion(char const* buf, bestlineCompletions *lc)
 {
 	std::string_view in{buf};
@@ -206,11 +213,21 @@ void completion(char const* buf, bestlineCompletions *lc)
 		}
 	}
 }
+#endif
+
+bool is_tty()
+{
+#ifdef _WIN32
+	return _isatty(STDOUT_FILENO);
+#else
+	return isatty(STDOUT_FILENO);
+#endif
+}
 
 /// Fancy main that supports Result forwarding on error (Try macro)
 static std::optional<Error> Main(std::span<char const*> args)
 {
-	if (isatty(STDOUT_FILENO) && getenv("NO_COLOR") == nullptr) {
+	if (is_tty() && getenv("NO_COLOR") == nullptr) {
 		pretty::terminal_mode();
 	}
 
@@ -314,13 +331,27 @@ static std::optional<Error> Main(std::span<char const*> args)
 	if (runnables.empty() || enable_repl) {
 		repl_line_number = 1;
 		enable_repl = true;
+#ifndef _WIN32
 		bestlineSetCompletionCallback(completion);
+#else
+		std::vector<std::string> repl_source_lines;
+#endif
 		for (;;) {
-			char *input_buffer = bestlineWithHistory("> ", "musique");
+#ifndef _WIN32
+			char const* input_buffer = bestlineWithHistory("> ", "musique");
 			if (input_buffer == nullptr) {
 				break;
 			}
-
+#else
+			std::cout << "> " << std::flush;
+			char const* input_buffer;
+			if (std::string s{}; std::getline(std::cin, s)) {
+				repl_source_lines.push_back(std::move(s));
+				input_buffer = repl_source_lines.back().c_str();
+			} else {
+				break;
+			}
+#endif
 			// Raw input line used for execution in language
 			std::string_view raw = input_buffer;
 
@@ -330,7 +361,11 @@ static std::optional<Error> Main(std::span<char const*> args)
 
 			if (command.empty()) {
 				// Line is empty so there is no need to execute it or parse it
-				free(input_buffer);
+#ifndef _WIN32
+				free(const_cast<char*>(input_buffer));
+#else
+				repl_source_lines.pop_back();
+#endif
 				continue;
 			}
 

@@ -16,13 +16,14 @@ fi
 
 mkdir -p "$Target"
 
-if ! [ -f bin/musique ]; then
-	make bin/musique
-fi
-
-echo "Copy bin/musique, examples, license and documentation"
-
+make clean && make bin/musique
 cp bin/musique "$Target"/
+
+make clean && make bin/musique os=windows
+cp bin/musique.exe "$Target"/
+
+echo "Copy examples, license and documentation"
+
 cp LICENSE "$Target"/LICENSE
 cp CHANGELOG.md "$Target/CHANGELOG.md"
 cp -r examples  "$Target"/examples

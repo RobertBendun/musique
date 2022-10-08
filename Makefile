@@ -8,15 +8,12 @@ all: bin/musique
 include scripts/debug.mk
 include scripts/release.mk
 include scripts/test.mk
-
-bin/bestline.o: lib/bestline/bestline.c lib/bestline/bestline.h
-	@echo "CC $@"
-	@$(CC) $< -c -O3 -o $@
+include scripts/windows.mk
 
 # http://www.music.mcgill.ca/~gary/rtmidi/#compiling
 bin/rtmidi.o: lib/rtmidi/RtMidi.cpp lib/rtmidi/RtMidi.h
 	@echo "CXX $@"
-	@$(CXX) $< -c -O2 -o $@ -D__LINUX_ALSA__
+	@$(CXX) $< -c -O2 -o $@ $(CPPFLAGS)
 
 doc: Doxyfile musique/*.cc musique/*.hh
 	doxygen

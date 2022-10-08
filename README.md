@@ -21,9 +21,8 @@ $ sudo apt install -y build-essential libasound2-dev
 
 ## Budowanie interpretera
 
-```console
-$ make bin/musique
-```
+- Aby wybudować wersję Linux+ALSA: `make`
+- Aby wybudować wersję Windows: `make os=windows`
 
 Żeby zainstalować interpreter języka Musique w systemie, należy dodatkowo wykonać polecenie:
 
@@ -38,6 +37,7 @@ $ make bin/musique
 - `make` - Buduje interpreter `bin/musique` (tryb release)
 - `make debug` - Buduje interpreter `bin/debug/musique` (tryb debug)
 - `make clean` - Usuwa reprodukowalne elementy projektu (automatycznie stworzone pliki binarne czy raporty)
+
 ### Dokumentacja
 
 - `make doc` - Tworzy `doc/build/html/` zawierający dokumentację projektu
@@ -45,28 +45,6 @@ $ make bin/musique
 ### Testowanie
 
 - `make test` - Uruchom wszystkie dostępne testy automatyczne
-- `scripts/test.py test examples` - Uruchamia testy zachowań przykładów
-- `scripts/test.py record examples` - Nagrywa testy zachowań przykładów
-
-### Debugowanie
-
-- `scripts/log-function-calls.sh` - Tworzy listę wywołań funkcji używając GDB
-
-## Budowa projektu
-
-```
-.
-├── bin            Miejsce produkcji plików wykonywalnych
-├── doc            Dokumentacja języka, interpretera
-│   └── build      Miejsce produkcji dokumentacji
-├── editor         Pluginy do edytorów dodające wsparcie dla języka
-├── lib            Zewnętrzne zależności projektu
-│   ├── expected
-│   └── ut
-└── include        Główny katalog z plikami nagłówkowymi
-├── scripts        Skrypty wspierające budowanie i tworzenie
-└── src            Główny katalog z plikami źródłowymi
-```
 
 ## Kolorowanie składni
 
