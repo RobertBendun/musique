@@ -8,11 +8,12 @@ all: bin/musique
 include scripts/debug.mk
 include scripts/release.mk
 include scripts/test.mk
+include scripts/windows.mk
 
 # http://www.music.mcgill.ca/~gary/rtmidi/#compiling
 bin/rtmidi.o: lib/rtmidi/RtMidi.cpp lib/rtmidi/RtMidi.h
 	@echo "CXX $@"
-	@$(CXX) $< -c -O2 -o $@ -D__WINDOWS_MM__
+	@$(CXX) $< -c -O2 -o $@ $(CPPFLAGS)
 
 doc: Doxyfile musique/*.cc musique/*.hh
 	doxygen

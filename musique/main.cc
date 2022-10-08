@@ -16,6 +16,16 @@
 #include <musique/try.hh>
 #include <musique/unicode.hh>
 
+#ifdef _WIN32
+extern "C" {
+#include <io.h>
+}
+#else
+extern "C" {
+#include <bestline.h>
+}
+#endif
+
 namespace fs = std::filesystem;
 
 static bool ast_only_mode = false;
@@ -190,12 +200,27 @@ struct Runner
 /// some of the strings are only views into source
 std::vector<std::string> eternal_sources;
 
+#ifndef _WIN32
+void completion(char const* buf, bestlineCompletions *lc)
+{
+	std::string_view in{buf};
+
+	for (auto scope = Runner::the->interpreter.env.get(); scope != nullptr; scope = scope->parent.get()) {
+		for (auto const& [name, _] : scope->variables) {
+			if (name.starts_with(in)) {
+				bestlineAddCompletion(lc, name.c_str());
+			}
+		}
+	}
+}
+#endif
+
 bool is_tty()
 {
-#ifdef __linux__
-	return isatty(STDOUT_FILENO);
+#ifdef _WIN32
+	return _isatty(STDOUT_FILENO);
 #else
-	return true;
+	return isatty(STDOUT_FILENO);
 #endif
 }
 
@@ -306,13 +331,29 @@ static std::optional<Error> Main(std::span<char const*> args)
 	if (runnables.empty() || enable_repl) {
 		repl_line_number = 1;
 		enable_repl = true;
+#ifndef _WIN32
+		bestlineSetCompletionCallback(completion);
+#else
+		std::vector<std::string> repl_source_lines;
+#endif
 		for (;;) {
-			std::string_view raw;
-			if (auto s = new std::string{}; std::getline(std::cin, *s)) {
-				raw = *s;
+#ifndef _WIN32
+			char const* input_buffer = bestlineWithHistory("> ", "musique");
+			if (input_buffer == nullptr) {
+				break;
+			}
+#else
+			std::cout << "> " << std::flush;
+			char const* input_buffer;
+			if (std::string s{}; std::getline(std::cin, s)) {
+				repl_source_lines.push_back(std::move(s));
+				input_buffer = repl_source_lines.back().c_str();
 			} else {
 				break;
 			}
+#endif
+			// Raw input line used for execution in language
+			std::string_view raw = input_buffer;
 
 			// Used to recognize REPL commands
 			std::string_view command = raw;
@@ -320,6 +361,11 @@ static std::optional<Error> Main(std::span<char const*> args)
 
 			if (command.empty()) {
 				// Line is empty so there is no need to execute it or parse it
+#ifndef _WIN32
+				free(const_cast<char*>(input_buffer));
+#else
+				repl_source_lines.pop_back();
+#endif
 				continue;
 			}
 
