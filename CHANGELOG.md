@@ -15,7 +15,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 * Integrated libmidi library into Musique codebase
-* Moved from Makefile to Premake build system for unified multiplatform builds
 * Moved from custom ALSA interaction to using rtmidi for MIDI I/O operations
 
 ### Removed

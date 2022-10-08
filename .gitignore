@@ -11,6 +11,3 @@ drafts.cc
 release_*
 *.zip
 *.html
-.clang-tidy
-*.make
-Makefile
