@@ -228,38 +228,70 @@ bool is_tty()
 /// Handles commands inside REPL session (those starting with ':')
 ///
 /// Returns if one of command matched
-static Result<bool> handle_repl_session_commands(std::string_view command, Runner &runner)
+static Result<bool> handle_repl_session_commands(std::string_view input, Runner &runner)
 {
-	if (command == "exit") {
-		std::exit(0);
-	}
+	using Handler = std::optional<Error>(*)(Runner &runner, std::optional<std::string_view> arg);
+	using Command = std::pair<std::string_view, Handler>;
+	static constexpr auto Commands = std::array {
+		Command { "exit",
+			+[](Runner&, std::optional<std::string_view>) -> std::optional<Error> {
+				std::exit(0);
+			}
+		},
+		Command { "quit",
+			+[](Runner&, std::optional<std::string_view>) -> std::optional<Error> {
+				std::exit(0);
+			}
+		},
+		Command { "clear",
+			+[](Runner&, std::optional<std::string_view>) -> std::optional<Error> {
+				std::cout << "\x1b[1;1H\x1b[2J" << std::flush;
+				return {};
+			}
+		},
+		Command { "help",
+			+[](Runner&, std::optional<std::string_view>) -> std::optional<Error> {
+				print_repl_help();
+				return {};
+			}
+		},
+		Command { "load",
+			+[](Runner& runner, std::optional<std::string_view> arg) -> std::optional<Error> {
+				if (not arg.has_value()) {
+					std::cerr << ":load subcommand requires path to file that will be loaded" << std::endl;
+					return {};
+				}
+				auto path = *arg;
+				std::ifstream source_file{std::string(path)};
+				if (not source_file.is_open()) {
+					std::cerr << ":load cannot find file " << path << std::endl;
+					return {};
+				}
+				eternal_sources.emplace_back(std::istreambuf_iterator<char>(source_file), std::istreambuf_iterator<char>());
+				Lines::the.add_file(std::string(path), eternal_sources.back());
+				return runner.run(eternal_sources.back(), path);
+			}
+		},
+	};
 
-	if (command == "clear") {
-		std::cout << "\x1b[1;1H\x1b[2J" << std::flush;
-		return true;
-	}
-
-	if (command.starts_with('!')) {
+	if (input.starts_with('!')) {
 		// TODO Maybe use different shell invoking mechanism then system
 		// since on Windows it uses cmd.exe and not powershell which is
 		// strictly superior
-		Ignore(system(command.data() + 1));
+		Ignore(system(input.data() + 1));
 		return true;
 	}
 
-	if (command == "help") {
-		print_repl_help();
-		return true;
-	}
+	auto ws = input.find_first_of(" \t\n");
+	auto provided_command = input.substr(0, input.find_first_of(" \t\n"));
+	auto arg = ws == std::string_view::npos ? std::string_view{} : input.substr(ws);
+	trim(arg);
 
-	if (command.starts_with("load")) {
-		command = command.substr("load"sv.size());
-		trim(command);
-		std::ifstream source_file{std::string(command)};
-		eternal_sources.emplace_back(std::istreambuf_iterator<char>(source_file), std::istreambuf_iterator<char>());
-		Lines::the.add_file(std::string(command), eternal_sources.back());
-		Try(runner.run(eternal_sources.back(), command));
-		return true;
+	for (auto [command_name, handler] : Commands) {
+		if (provided_command == command_name) {
+			Try(handler(runner, arg));
+			return true;
+		}
 	}
 
 	return false;
