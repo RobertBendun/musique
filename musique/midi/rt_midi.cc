@@ -36,9 +36,11 @@ try {
 
 void midi::Rt_Midi::connect_output(unsigned target)
 try {
-	assert(not output.has_value(), "Reconeccting is not supported yet");
+	ensure(not output.has_value(), "Reconeccting is not supported yet");
 	output.emplace();
-	output->openPort(target, "Musique output port");
+	output->openVirtualPort("Musique output port");
+	
+	// output->openPort(target, "Musique output port");
 } catch (RtMidiError &error) {
 	// TODO(error)
 	std::cerr << "Failed to use MIDI connection: " << error.getMessage() << std::endl;
@@ -47,7 +49,7 @@ try {
 
 void midi::Rt_Midi::connect_input(unsigned target)
 try {
-	assert(not input.has_value(), "Reconeccting is not supported yet");
+	ensure(not input.has_value(), "Reconeccting is not supported yet");
 	input.emplace();
 	input->openPort(target, "Musique input port");
 } catch (RtMidiError &error) {
@@ -104,6 +106,3 @@ void midi::Rt_Midi::send_controller_change(uint8_t channel, uint8_t controller_n
 	send_message(*output, std::array { std::uint8_t(Control_Change + channel), controller_number, value });
 }
 
-void midi::Rt_Midi::input_event_loop(std::stop_token)
-{
-}

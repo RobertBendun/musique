@@ -13,7 +13,7 @@ include scripts/windows.mk
 # http://www.music.mcgill.ca/~gary/rtmidi/#compiling
 bin/rtmidi.o: lib/rtmidi/RtMidi.cpp lib/rtmidi/RtMidi.h
 	@echo "CXX $@"
-	@$(CXX) $< -c -O2 -o $@ $(CPPFLAGS)
+	@$(CXX) $< -c -O2 -o $@ $(CPPFLAGS) -std=c++20
 
 doc: Doxyfile musique/*.cc musique/*.hh
 	doxygen

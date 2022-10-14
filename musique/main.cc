@@ -5,6 +5,7 @@
 #include <span>
 #include <thread>
 #include <cstring>
+#include <cstdio>
 
 #include <musique/format.hh>
 #include <musique/interpreter/env.hh>
@@ -21,6 +22,7 @@ extern "C" {
 #include <io.h>
 }
 #else
+#include <unistd.h>
 extern "C" {
 #include <bestline.h>
 }
@@ -126,15 +128,13 @@ struct Runner
 
 	midi::Rt_Midi midi;
 	Interpreter interpreter;
-	std::thread midi_input_event_loop;
-	std::stop_source stop_source;
 
 	/// Setup interpreter and midi connection with given port
 	Runner(std::optional<unsigned> input_port, std::optional<unsigned> output_port)
 		: midi()
 		, interpreter{}
 	{
-		assert(the == nullptr, "Only one instance of runner is supported");
+		ensure(the == nullptr, "Only one instance of runner is supported");
 		the = this;
 
 		bool const midi_go = bool(input_port) || bool(output_port);
@@ -149,11 +149,6 @@ struct Runner
 			std::cout << "Connected MIDI input to port " << *input_port << ". Ready for incoming messages!" << std::endl;
 			midi.connect_input(*input_port);
 		}
-		if (midi_go) {
-			interpreter.register_callbacks();
-			midi_input_event_loop = std::thread([this] { handle_midi_event_loop(); });
-			midi_input_event_loop.detach();
-		}
 
 		Env::global->force_define("say", +[](Interpreter &interpreter, std::vector<Value> args) -> Result<Value> {
 			for (auto it = args.begin(); it != args.end(); ++it) {
@@ -166,20 +161,10 @@ struct Runner
 		});
 	}
 
-	~Runner()
-	{
-		stop_source.request_stop();
-	}
-
 	Runner(Runner const&) = delete;
 	Runner(Runner &&) = delete;
 	Runner& operator=(Runner const&) = delete;
 	Runner& operator=(Runner &&) = delete;
-
-	void handle_midi_event_loop()
-	{
-		midi.input_event_loop(stop_source.get_token());
-	}
 
 	/// Run given source
 	std::optional<Error> run(std::string_view source, std::string_view filename, bool output = false)
@@ -221,7 +206,7 @@ bool is_tty()
 #ifdef _WIN32
 	return _isatty(STDOUT_FILENO);
 #else
-	return isatty(STDOUT_FILENO);
+	return isatty(fileno(stdout));
 #endif
 }
 

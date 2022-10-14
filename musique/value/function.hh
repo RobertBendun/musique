@@ -12,6 +12,7 @@ struct Function
 	virtual Result<Value> operator()(Interpreter &i, std::vector<Value> params) const = 0;
 
 	constexpr bool operator==(Function const&) const = default;
+	constexpr std::strong_ordering operator<=>(Function const&) const = default;
 };
 
 #endif // MUSIQUE_VALUE_FUNCTION_HH

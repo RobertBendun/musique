@@ -226,7 +226,7 @@ auto Lexer::consume_if(auto first, auto second) -> bool
 
 void Lexer::rewind()
 {
-	assert(last_rune_length != 0, "cannot rewind to not existing rune");
+	ensure(last_rune_length != 0, "cannot rewind to not existing rune");
 	source = { source.data() - last_rune_length, source.size() + last_rune_length };
 	token_length -= last_rune_length;
 	location = prev_location;

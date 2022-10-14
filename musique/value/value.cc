@@ -1,4 +1,5 @@
 #include <musique/accessors.hh>
+#include <musique/algo.hh>
 #include <musique/guard.hh>
 #include <musique/interpreter/env.hh>
 #include <musique/interpreter/interpreter.hh>
@@ -7,8 +8,24 @@
 
 #include <iostream>
 #include <numeric>
+#include <compare>
 
 Value::Value() = default;
+
+std::strong_ordering operator<=>(std::string const& lhs, std::string const& rhs)
+{
+	if (auto cmp = lhs.size() <=> rhs.size(); cmp == 0) {
+		if (auto cmp = strncmp(lhs.c_str(), rhs.c_str(), lhs.size()); cmp == 0) {
+			return std::strong_ordering::equal;
+		} else if (cmp < 0) {
+			return std::strong_ordering::less;
+		} else {
+			return std::strong_ordering::greater;
+		}
+	} else {
+		return cmp;
+	}
+}
 
 Result<Value> Value::from(Token t)
 {
@@ -28,7 +45,7 @@ Result<Value> Value::from(Token t)
 	case Token::Type::Chord:
 		if (t.source.size() == 1 || (t.source.size() == 2 && t.source.back() == '#')) {
 			auto maybe_note = Note::from(t.source);
-			assert(maybe_note.has_value(), "Somehow parser passed invalid note literal");
+			ensure(maybe_note.has_value(), "Somehow parser passed invalid note literal");
 			return *maybe_note;
 		}
 
@@ -104,7 +121,7 @@ Result<Value> Value::index(Interpreter &i, unsigned position) const
 	if (auto collection = get_if<Collection>(data)) {
 		return collection->index(i, position);
 	}
-	assert(false, "Block indexing is not supported for this type"); // TODO(assert)
+	ensure(false, "Block indexing is not supported for this type"); // TODO(assert)
 	unreachable();
 }
 
@@ -141,7 +158,7 @@ usize Value::size() const
 		return collection->size();
 	}
 
-	assert(false, "This type does not support Value::size()"); // TODO(assert)
+	ensure(false, "This type does not support Value::size()"); // TODO(assert)
 	unreachable();
 }
 
@@ -151,18 +168,12 @@ std::partial_ordering Value::operator<=>(Value const& rhs) const
 	return std::visit(Overloaded {
 		[](Nil, Nil) { return std::partial_ordering::equivalent; },
 		[](Array const& lhs, Array const& rhs) {
-			return std::lexicographical_compare_three_way(
-				lhs.elements.begin(), lhs.elements.end(),
-				rhs.elements.begin(), rhs.elements.end()
-			);
+			return algo::lexicographical_compare(lhs.elements, rhs.elements);
 		},
 		[](Chord const& lhs, Chord const& rhs) {
-			return std::lexicographical_compare_three_way(
-				lhs.notes.begin(), lhs.notes.end(),
-				rhs.notes.begin(), rhs.notes.end()
-			);
+			return algo::lexicographical_compare(lhs.notes, rhs.notes);
 		},
-		[]<typename T>(T const& lhs, T const& rhs) -> std::partial_ordering requires std::three_way_comparable<T> {
+		[]<typename T>(T const& lhs, T const& rhs) -> std::partial_ordering requires Three_Way_Comparable<T> {
 			return lhs <=> rhs;
 		},
 		[](auto&&...) { return std::partial_ordering::unordered; }

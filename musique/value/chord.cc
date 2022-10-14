@@ -17,7 +17,7 @@ Chord::Chord(std::vector<Note> &&notes)
 Chord Chord::from(std::string_view source)
 {
 	auto note = Note::from(source);
-	assert(note.has_value(), "don't know how this could happen");
+	ensure(note.has_value(), "don't know how this could happen");
 
 	Chord chord;
 	source.remove_prefix(1 + (source[1] == '#'));
@@ -120,7 +120,7 @@ Result<Value> Chord::operator()(Interpreter& interpreter, std::vector<Value> arg
 
 	std::move(current.begin(), current.end(), std::back_inserter(array));
 
-	assert(not array.empty(), "At least *this should be in this array");
+	ensure(not array.empty(), "At least *this should be in this array");
 	return array;
 }
 

@@ -5,13 +5,14 @@
 #include <musique/try.hh>
 #include <musique/value/value.hh>
 #include <ranges>
+#include <compare>
 
 /// Generic algorithms support
 namespace algo
 {
 	/// Check if predicate is true for all successive pairs of elements
 	constexpr bool pairwise_all(
-		std::ranges::forward_range auto &&range,
+		auto &&range,
 		auto &&binary_predicate)
 	{
 		auto it = std::begin(range);
@@ -33,6 +34,22 @@ namespace algo
 			init = Try(reducer(std::move(init), value));
 		}
 		return init;
+	}
+
+	/// Equavilent of std::lexicographical_compare_three_way
+	///
+	/// It's missing from MacOS C++ standard library
+	constexpr auto lexicographical_compare(auto&& lhs_range, auto&& rhs_range)
+	{
+		auto lhs = lhs_range.begin();
+		auto rhs = rhs_range.begin();
+		decltype(*lhs <=> *rhs) result = std::partial_ordering::equivalent;
+		for (; lhs != lhs_range.end() && rhs != rhs_range.end(); ++lhs, ++rhs) {
+			if ((result = *lhs <=> *rhs) != 0) {
+				return result;
+			} 
+		}
+		return result;
 	}
 }
 

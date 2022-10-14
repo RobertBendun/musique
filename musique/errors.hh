@@ -15,13 +15,8 @@
 #include <musique/common.hh>
 #include <musique/location.hh>
 
-// To make sure, that we don't collide with <cassert> macro
-#ifdef assert
-#undef assert
-#endif
-
 /// Guards that program exits if condition does not hold
-void assert(bool condition, std::string message, Location loc = Location::caller());
+void ensure(bool condition, std::string message, Location loc = Location::caller());
 
 /// Marks part of code that was not implemented yet
 [[noreturn]] void unimplemented(std::string_view message = {}, Location loc = Location::caller());

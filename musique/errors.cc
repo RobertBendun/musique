@@ -81,7 +81,7 @@ static void encourage_contact(std::ostream &os)
 		<< pretty::end << std::flush;
 }
 
-void assert(bool condition, std::string message, Location loc)
+void ensure(bool condition, std::string message, Location loc)
 {
 	if (condition) return;
 #if Debug

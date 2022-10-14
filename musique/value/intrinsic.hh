@@ -26,6 +26,8 @@ struct Intrinsic : Function
 
 	/// Compares if function pointers are equal
 	bool operator==(Intrinsic const&) const = default;
+
+	std::strong_ordering operator<=>(Intrinsic const& rhs) const = default;
 };
 
 #endif // MUSIQUE_VALUE_INTRINSIC_HH

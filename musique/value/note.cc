@@ -70,7 +70,7 @@ std::optional<u8> Note::into_midi_note() const
 
 u8 Note::into_midi_note(i8 default_octave) const
 {
-	assert(bool(this->base), "Pause don't translate into MIDI");
+	ensure(bool(this->base), "Pause don't translate into MIDI");
 	auto const octave = this->octave.has_value() ? *this->octave : default_octave;
 	// octave is in range [-1, 9] where Note { .base = 0, .octave = -1 } is midi note 0
 	return (octave + 1) * 12 + *base;

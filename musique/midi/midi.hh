@@ -3,7 +3,6 @@
 #include <cstdint>
 #include <functional>
 #include <optional>
-#include <stop_token>
 #include <string>
 
 // Documentation of midi messages available at http://midi.teragonaudio.com/tech/midispec.htm
@@ -47,8 +46,6 @@ namespace midi
 		void send_note_off(uint8_t channel, uint8_t note_number, uint8_t velocity) override;
 		void send_program_change(uint8_t channel, uint8_t program) override;
 		void send_controller_change(uint8_t channel, uint8_t controller_number, uint8_t value) override;
-
-		void input_event_loop(std::stop_token);
 
 		std::optional<RtMidiIn> input;
 		std::optional<RtMidiOut> output;

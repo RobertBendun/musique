@@ -14,7 +14,7 @@
 
 void Interpreter::register_callbacks()
 {
-	assert(callbacks == nullptr, "This field should be uninitialized");
+	ensure(callbacks == nullptr, "This field should be uninitialized");
 	callbacks = std::make_unique<Interpreter::Incoming_Midi_Callbacks>();
 	callbacks->add_callbacks(*midi_connection, *this);
 }
@@ -67,8 +67,8 @@ static inline std::optional<Error> create_chord(std::vector<Note> &chord, Interp
 		}
 
 		if (auto arg_chord = get_if<Chord>(arg)) {
-			std::ranges::copy_if(
-				arg_chord->notes,
+			std::copy_if(
+				arg_chord->notes.begin(), arg_chord->notes.end(),
 				std::back_inserter(chord),
 				[](Note const& n) { return n.base.has_value(); }
 			);
@@ -80,7 +80,7 @@ static inline std::optional<Error> create_chord(std::vector<Note> &chord, Interp
 			continue;
 		}
 
-		assert(false, "this type is not supported inside chord"); // TODO(assert)
+		ensure(false, "this type is not supported inside chord"); // TODO(assert)
 	}
 
 	return {};
@@ -90,7 +90,7 @@ static inline std::optional<Error> create_chord(std::vector<Note> &chord, Interp
 template<auto Mem_Ptr>
 static Result<Value> ctx_read_write_property(Interpreter &interpreter, std::vector<Value> args)
 {
-	assert(args.size() <= 1, "Ctx get or set is only supported (wrong number of arguments)"); // TODO(assert)
+	ensure(args.size() <= 1, "Ctx get or set is only supported (wrong number of arguments)"); // TODO(assert)
 
 	using Member_Type = std::remove_cvref_t<decltype(std::declval<Context>().*(Mem_Ptr))>;
 
@@ -98,7 +98,7 @@ static Result<Value> ctx_read_write_property(Interpreter &interpreter, std::vect
 		return Number(interpreter.context_stack.back().*(Mem_Ptr));
 	}
 
-	assert(std::holds_alternative<Number>(args.front().data), "Ctx only holds numeric values");
+	ensure(std::holds_alternative<Number>(args.front().data), "Ctx only holds numeric values");
 
 	if constexpr (std::is_same_v<Member_Type, Number>) {
 		interpreter.context_stack.back().*(Mem_Ptr) = std::get<Number>(args.front().data);
@@ -118,7 +118,7 @@ static Result<Array> into_flat_array(Interpreter &interpreter, std::span<Value> 
 	for (auto &arg : args) {
 		std::visit(Overloaded {
 			[&target](Array &&array) -> std::optional<Error> {
-				std::ranges::move(array.elements, std::back_inserter(target.elements));
+				std::move(array.elements.begin(), array.elements.end(), std::back_inserter(target.elements));
 				return {};
 			},
 			[&target, &interpreter](Block &&block) -> std::optional<Error> {
@@ -300,10 +300,10 @@ static inline Result<Value> builtin_play(Interpreter &i, Container args)
 static Result<Value> builtin_par(Interpreter &i, std::vector<Value> args) {
 	Try(ensure_midi_connection_available(i, Midi_Connection_Type::Output, "par"));
 
-	assert(args.size() >= 1, "par only makes sense for at least one argument"); // TODO(assert)
+	ensure(args.size() >= 1, "par only makes sense for at least one argument"); // TODO(assert)
 	if (args.size() == 1) {
 		auto chord = get_if<Chord>(args.front());
-		assert(chord, "Par expects music value as first argument"); // TODO(assert)
+		ensure(chord, "Par expects music value as first argument"); // TODO(assert)
 		Try(i.play(std::move(*chord)));
 		return Value{};
 	}
@@ -311,7 +311,7 @@ static Result<Value> builtin_par(Interpreter &i, std::vector<Value> args) {
 	// Create chord that should sustain during playing of all other notes
 	auto &ctx = i.context_stack.back();
 	auto chord = get_if<Chord>(args.front());
-	assert(chord, "par expects music value as first argument"); // TODO(assert)
+	ensure(chord, "par expects music value as first argument"); // TODO(assert)
 
 	std::for_each(chord->notes.begin(), chord->notes.end(), [&](Note &note) { note = ctx.fill(note); });
 
@@ -674,7 +674,7 @@ static Result<Value> builtin_update(Interpreter &i, std::vector<Value> args)
 /// Return typeof variable
 static Result<Value> builtin_typeof(Interpreter&, std::vector<Value> args)
 {
-	assert(args.size() == 1, "typeof expects only one argument"); // TODO(assert)
+	ensure(args.size() == 1, "typeof expects only one argument"); // TODO(assert)
 	return Symbol(type_name(args.front()));
 }
 
@@ -701,7 +701,7 @@ static Result<Value> builtin_shuffle(Interpreter &i, std::vector<Value> args)
 {
 	static std::mt19937 rnd{std::random_device{}()};
 	auto array = Try(flatten(i, std::move(args)));
-	std::ranges::shuffle(array, rnd);
+	std::shuffle(array.begin(), array.end(), rnd);
 	return array;
 }
 
@@ -709,7 +709,7 @@ static Result<Value> builtin_shuffle(Interpreter &i, std::vector<Value> args)
 static Result<Value> builtin_permute(Interpreter &i, std::vector<Value> args)
 {
 	auto array = Try(flatten(i, std::move(args)));
-	std::ranges::next_permutation(array);
+	std::next_permutation(array.begin(), array.end());
 	return array;
 }
 
@@ -717,7 +717,7 @@ static Result<Value> builtin_permute(Interpreter &i, std::vector<Value> args)
 static Result<Value> builtin_sort(Interpreter &i, std::vector<Value> args)
 {
 	auto array = Try(flatten(i, std::move(args)));
-	std::ranges::sort(array);
+	std::sort(array.begin(), array.end());
 	return array;
 }
 
@@ -725,7 +725,7 @@ static Result<Value> builtin_sort(Interpreter &i, std::vector<Value> args)
 static Result<Value> builtin_reverse(Interpreter &i, std::vector<Value> args)
 {
 	auto array = Try(flatten(i, std::move(args)));
-	std::ranges::reverse(array);
+	std::reverse(array.begin(), array.end());
 	return array;
 }
 
@@ -733,7 +733,7 @@ static Result<Value> builtin_reverse(Interpreter &i, std::vector<Value> args)
 static Result<Value> builtin_min(Interpreter &i, std::vector<Value> args)
 {
 	auto array = Try(deep_flat(i, args));
-	if (auto min = std::ranges::min_element(array); min != array.end())
+	if (auto min = std::min_element(array.begin(), array.end()); min != array.end())
 		return *min;
 	return Value{};
 }
@@ -742,7 +742,7 @@ static Result<Value> builtin_min(Interpreter &i, std::vector<Value> args)
 static Result<Value> builtin_max(Interpreter &i, std::vector<Value> args)
 {
 	auto array = Try(deep_flat(i, args));
-	if (auto max = std::ranges::max_element(array); max != array.end())
+	if (auto max = std::max_element(array.begin(), array.end()); max != array.end())
 		return *max;
 	return Value{};
 }

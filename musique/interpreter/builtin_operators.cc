@@ -5,6 +5,8 @@
 #include <musique/try.hh>
 #include <musique/value/intrinsic.hh>
 
+#include <unordered_map>
+
 /// Intrinsic implementation primitive to ease operation vectorization
 static Result<Value> vectorize(auto &&operation, Interpreter &interpreter, Value lhs, Value rhs)
 {
@@ -20,7 +22,7 @@ static Result<Value> vectorize(auto &&operation, Interpreter &interpreter, Value
 		return array;
 	}
 
-	assert(rhs_coll != nullptr, "Trying to vectorize two non-collections");
+	ensure(rhs_coll != nullptr, "Trying to vectorize two non-collections");
 
 	Array array;
 	for (auto i = 0u; i < rhs_coll->size(); ++i) {
@@ -34,7 +36,7 @@ static Result<Value> vectorize(auto &&operation, Interpreter &interpreter, Value
 /// @invariant args.size() == 2
 static Result<Value> vectorize(auto &&operation, Interpreter &interpreter, std::vector<Value> args)
 {
-	assert(args.size() == 2, "Vectorization primitive only supports two arguments");
+	ensure(args.size() == 2, "Vectorization primitive only supports two arguments");
 	return vectorize(std::move(operation), interpreter, std::move(args.front()), std::move(args.back()));
 }
 

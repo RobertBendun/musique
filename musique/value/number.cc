@@ -19,7 +19,7 @@ auto Number::as_int() const -> i64
 {
 	// We don't perform GCD simplification in place due to constness
 	auto self = simplify();
-	assert(self.den == 1 || self.num == 0, "Implicit coarce to integer while holding fractional number is not allowed");
+	ensure(self.den == 1 || self.num == 0, "Implicit coarce to integer while holding fractional number is not allowed");
 	return self.num;
 }
 
@@ -203,7 +203,7 @@ static consteval auto compute_powers(Number::value_type multiplier) -> std::arra
 static Number::value_type pow10(usize n)
 {
 	static constexpr auto Powers = compute_powers(10);
-	assert(n < Powers.size(), "Trying to compute power of 10 grater then current type can hold");
+	ensure(n < Powers.size(), "Trying to compute power of 10 grater then current type can hold");
 	return Powers[n];
 }
 

@@ -118,7 +118,7 @@ Result<Ast> Parser::parse_variable_declaration()
 		return std::move(lvalue).error();
 	}
 
-	assert(expect(Token::Type::Operator, ":="), "This function should always be called with valid sequence");
+	ensure(expect(Token::Type::Operator, ":="), "This function should always be called with valid sequence");
 	consume();
 	return Ast::variable_declaration(lvalue->location, { *std::move(lvalue) }, Try(parse_expression()));
 }
@@ -133,7 +133,7 @@ Result<Ast> Parser::parse_infix_expression()
 		|| expect(Token::Type::Keyword, "or");
 
 	if (next_is_operator) {
-		assert(not expect(Token::Type::Operator, "."), "This should be handled by parse_index_expression");
+		ensure(not expect(Token::Type::Operator, "."), "This should be handled by parse_index_expression");
 		auto op = consume();
 
 		Ast ast;
@@ -161,7 +161,7 @@ Result<Ast> Parser::parse_rhs_of_infix_expression(Ast lhs)
 		return lhs;
 	}
 
-	assert(not expect(Token::Type::Operator, "."), "This should be handled by parse_index_expression");
+	ensure(not expect(Token::Type::Operator, "."), "This should be handled by parse_index_expression");
 	auto op = consume();
 
 	if (precedense(lhs.token.source) >= precedense(op.source)) {
@@ -249,7 +249,7 @@ Result<Ast> Parser::parse_atomic_expression()
 				if (not expect(Token::Type::Close_Block)) {
 					if (expect(Token::Type::Parameter_Separator)) {
 						if (is_lambda) {
-							assert(false, "There should be error message that you cannot put multiple parameter separators in one block");
+							ensure(false, "There should be error message that you cannot put multiple parameter separators in one block");
 						} else {
 							// This may be a result of user trying to specify parameters from things that cannot be parameters (like chord literals)
 							// or accidential hit of "|" on the keyboard. We can detect first case by ensuring that all tokens between this place
@@ -467,7 +467,7 @@ Ast Ast::binary(Token token, Ast lhs, Ast rhs)
 
 Ast Ast::call(std::vector<Ast> call)
 {
-	assert(!call.empty(), "Call must have at least pice of code that is beeing called");
+	ensure(!call.empty(), "Call must have at least pice of code that is beeing called");
 
 	Ast ast;
 	ast.type = Type::Call;

@@ -4,6 +4,7 @@
 #include <musique/midi/midi.hh>
 #include <musique/interpreter/context.hh>
 #include <musique/value/value.hh>
+#include <unordered_map>
 
 /// Given program tree evaluates it into Value
 struct Interpreter

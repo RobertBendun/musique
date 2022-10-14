@@ -1,9 +1,9 @@
 MAKEFLAGS="-j $(grep -c ^processor /proc/cpuinfo)"
 
-CXXFLAGS:=$(CXXFLAGS) -std=c++20 -Wall -Wextra -Werror=switch -Werror=return-type -Werror=unused-result -Wno-maybe-uninitialized
+CXXFLAGS:=$(CXXFLAGS) -std=c++20 -Wall -Wextra -Werror=switch -Werror=return-type -Werror=unused-result
 CPPFLAGS:=$(CPPFLAGS) -Ilib/expected/ -I. -Ilib/bestline/ -Ilib/rtmidi/
 LDFLAGS=-flto
-LDLIBS= -lpthread -static-libgcc -static-libstdc++
+LDLIBS= -lpthread
 
 RELEASE_FLAGS=-O2
 DEBUG_FLAGS=-O0 -ggdb -fsanitize=undefined -DDebug
@@ -16,7 +16,7 @@ LDLIBS:=-lwinmm $(LDLIBS)
 else
 CC=gcc
 CXX=g++
-CPPFLAGS:=$(CPPFLAGS) -D __LINUX_ALSA__
-LDLIBS:=-lasound $(LDLIBS)
+CPPFLAGS:=$(CPPFLAGS) -D __MACOSX_CORE__
+LDLIBS:=-framework CoreMIDI -framework CoreAudio -framework CoreFoundation $(LDLIBS)
 endif
 
