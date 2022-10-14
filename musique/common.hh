@@ -54,4 +54,9 @@ constexpr std::size_t hash_combine(std::size_t lhs, std::size_t rhs) {
 template<typename>
 static constexpr bool always_false = false;
 
+template<typename T>
+concept Three_Way_Comparable = requires (T const& lhs, T const& rhs) {
+	{ lhs <=> rhs };
+};
+
 #endif

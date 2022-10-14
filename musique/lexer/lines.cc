@@ -23,7 +23,7 @@ void Lines::add_file(std::string filename, std::string_view source)
 
 void Lines::add_line(std::string const& filename, std::string_view source, unsigned line_number)
 {
-	assert(line_number != 0, "Line number = 0 is invalid");
+	ensure(line_number != 0, "Line number = 0 is invalid");
 	if (lines[filename].size() <= line_number)
 		lines[filename].resize(line_number);
 	lines[filename][line_number - 1] = source;

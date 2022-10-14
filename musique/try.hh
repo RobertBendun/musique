@@ -46,13 +46,13 @@ struct Try_Traits<std::optional<Error>>
 
 	static std::nullopt_t yield_value(std::optional<Error>&& err)
 	{
-		assert(not err.has_value(), "Trying to yield value from optional that contains error");
+		ensure(not err.has_value(), "Trying to yield value from optional that contains error");
 		return std::nullopt;
 	}
 
 	static Error yield_error(std::optional<Error>&& err)
 	{
-		assert(err.has_value(), "Trying to yield value from optional that NOT constains error");
+		ensure(err.has_value(), "Trying to yield value from optional that NOT constains error");
 		return std::move(*err);
 	}
 };
@@ -70,7 +70,7 @@ struct Try_Traits<Result<T>>
 
 	static auto yield_value(Result<T> val)
 	{
-		assert(val.has_value(), "Trying to yield value from expected that contains error");
+		ensure(val.has_value(), "Trying to yield value from expected that contains error");
 		if constexpr (std::is_void_v<T>) {
 		} else {
 			return std::move(*val);
@@ -79,7 +79,7 @@ struct Try_Traits<Result<T>>
 
 	static Error yield_error(Result<T>&& val)
 	{
-		assert(not val.has_value(), "Trying to yield error from expected with value");
+		ensure(not val.has_value(), "Trying to yield error from expected with value");
 		return std::move(val.error());
 	}
 };

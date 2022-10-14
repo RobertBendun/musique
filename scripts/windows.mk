@@ -1,11 +1,5 @@
-ifeq ($(os),windows)
-Release_Obj=$(addprefix bin/,$(Obj))
-
-bin/%.o: musique/%.cc
-	@echo "CXX $@"
-	@$(CXX) $(CXXFLAGS) $(RELEASE_FLAGS) $(CPPFLAGS) -o $@ $< -c
-
-bin/musique: $(Release_Obj) bin/main.o bin/rtmidi.o
-	@echo "CXX $@"
-	@$(CXX) $(CXXFLAGS) $(RELEASE_FLAGS) $(CPPFLAGS) -o $@ $(Release_Obj) bin/rtmidi.o $(LDFLAGS) $(LDLIBS)
-endif
+CC=i686-w64-mingw32-gcc
+CXX=i686-w64-mingw32-g++
+CPPFLAGS:=$(CPPFLAGS) -D__WINDOWS_MM__
+LDLIBS:=-lwinmm $(LDLIBS) -static-libgcc -static-libstdc++
+Target=musique.exe

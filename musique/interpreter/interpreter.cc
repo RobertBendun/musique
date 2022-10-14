@@ -1,5 +1,4 @@
 #include <musique/interpreter/env.hh>
-#include <musique/interpreter/incoming_midi.hh>
 #include <musique/interpreter/interpreter.hh>
 #include <musique/try.hh>
 
@@ -35,7 +34,7 @@ Interpreter::Interpreter()
 	context_stack.emplace_back();
 
 	// Environment initlialization
-	assert(!bool(Env::global), "Only one instance of interpreter can be at one time");
+	ensure(!bool(Env::global), "Only one instance of interpreter can be at one time");
 	env = Env::global = Env::make();
 
 	// Builtins initialization
@@ -83,16 +82,16 @@ Result<Value> Interpreter::eval(Ast &&ast)
 
 	case Ast::Type::Binary:
 		{
-			assert(ast.arguments.size() == 2, "Expected arguments of binary operation to be 2 long");
+			ensure(ast.arguments.size() == 2, "Expected arguments of binary operation to be 2 long");
 
 			if (ast.token.source == "=") {
 				auto lhs = std::move(ast.arguments.front());
 				auto rhs = std::move(ast.arguments.back());
-				assert(lhs.type == Ast::Type::Literal && lhs.token.type == Token::Type::Symbol,
+				ensure(lhs.type == Ast::Type::Literal && lhs.token.type == Token::Type::Symbol,
 					"Currently LHS of assigment must be an identifier"); // TODO(assert)
 
 				Value *v = env->find(std::string(lhs.token.source));
-				assert(v, "Cannot resolve variable: "s + std::string(lhs.token.source)); // TODO(assert)
+				ensure(v, "Cannot resolve variable: "s + std::string(lhs.token.source)); // TODO(assert)
 				return *v = Try(eval(std::move(rhs)).with_location(ast.token.location));
 			}
 
@@ -124,11 +123,11 @@ Result<Value> Interpreter::eval(Ast &&ast)
 					auto lhs = std::move(ast.arguments.front());
 					auto rhs = std::move(ast.arguments.back());
 					auto const rhs_loc = rhs.location;
-					assert(lhs.type == Ast::Type::Literal && lhs.token.type == Token::Type::Symbol,
+					ensure(lhs.type == Ast::Type::Literal && lhs.token.type == Token::Type::Symbol,
 						"Currently LHS of assigment must be an identifier"); // TODO(assert)
 
 					Value *v = env->find(std::string(lhs.token.source));
-					assert(v, "Cannot resolve variable: "s + std::string(lhs.token.source)); // TODO(assert)
+					ensure(v, "Cannot resolve variable: "s + std::string(lhs.token.source)); // TODO(assert)
 					return *v = Try(op->second(*this, {
 						*v, Try(eval(std::move(rhs)).with_location(rhs_loc))
 					}).with_location(ast.token.location));
@@ -179,9 +178,9 @@ Result<Value> Interpreter::eval(Ast &&ast)
 
 	case Ast::Type::Variable_Declaration:
 		{
-			assert(ast.arguments.size() == 2, "Only simple assigments are supported now");
-			assert(ast.arguments.front().type == Ast::Type::Literal, "Only names are supported as LHS arguments now");
-			assert(ast.arguments.front().token.type == Token::Type::Symbol, "Only names are supported as LHS arguments now");
+			ensure(ast.arguments.size() == 2, "Only simple assigments are supported now");
+			ensure(ast.arguments.front().type == Ast::Type::Literal, "Only names are supported as LHS arguments now");
+			ensure(ast.arguments.front().token.type == Token::Type::Symbol, "Only names are supported as LHS arguments now");
 			env->force_define(std::string(ast.arguments.front().token.source), Try(eval(std::move(ast.arguments.back()))));
 			return Value{};
 		}
@@ -191,10 +190,10 @@ Result<Value> Interpreter::eval(Ast &&ast)
 		{
 			Block block;
 			if (ast.type == Ast::Type::Lambda) {
-				auto parameters = std::span(ast.arguments.begin(), std::prev(ast.arguments.end()));
+				auto parameters = std::span<Ast>(ast.arguments.data(), ast.arguments.size() - 1);
 				block.parameters.reserve(parameters.size());
 				for (auto &param : parameters) {
-					assert(param.type == Ast::Type::Literal && param.token.type == Token::Type::Symbol, "Not a name in parameter section of Ast::lambda");
+					ensure(param.type == Ast::Type::Literal && param.token.type == Token::Type::Symbol, "Not a name in parameter section of Ast::lambda");
 					block.parameters.push_back(std::string(std::move(param).token.source));
 				}
 			}
@@ -217,13 +216,13 @@ void Interpreter::enter_scope()
 
 void Interpreter::leave_scope()
 {
-	assert(env != Env::global, "Cannot leave global scope");
+	ensure(env != Env::global, "Cannot leave global scope");
 	env = env->leave();
 }
 
 std::optional<Error> Interpreter::play(Chord chord)
 {
-	Try(ensure_midi_connection_available(*this, Midi_Connection_Type::Output, "play"));
+	Try(ensure_midi_connection_available(*this, "play"));
 	auto &ctx = context_stack.back();
 
 	if (chord.notes.size() == 0) {
@@ -260,33 +259,16 @@ std::optional<Error> Interpreter::play(Chord chord)
 	return {};
 }
 
-std::optional<Error> ensure_midi_connection_available(Interpreter &i, Midi_Connection_Type m, std::string_view operation_name)
+std::optional<Error> ensure_midi_connection_available(Interpreter &i, std::string_view operation_name)
 {
-	switch (m) {
-	break; case Midi_Connection_Type::Output:
-		if (i.midi_connection == nullptr || !i.midi_connection->supports_output()) {
-			return Error {
-				.details = errors::Operation_Requires_Midi_Connection {
-					.is_input = false,
-					.name = std::string(operation_name),
-				},
-				.location = {}
-			};
-		}
-
-	break; case Midi_Connection_Type::Input:
-		if (i.midi_connection == nullptr || !i.midi_connection->supports_input()) {
-			return Error {
-				.details = errors::Operation_Requires_Midi_Connection {
-					.is_input = false,
-					.name = std::string(operation_name),
-				},
-				.location = {}
-			};
-		}
-	break; default:
-		unreachable();
+	if (i.midi_connection == nullptr || !i.midi_connection->supports_output()) {
+		return Error {
+			.details = errors::Operation_Requires_Midi_Connection {
+				.is_input = false,
+				.name = std::string(operation_name),
+			},
+			.location = {}
+		};
 	}
-
 	return {};
 }

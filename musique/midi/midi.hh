@@ -3,7 +3,6 @@
 #include <cstdint>
 #include <functional>
 #include <optional>
-#include <stop_token>
 #include <string>
 
 // Documentation of midi messages available at http://midi.teragonaudio.com/tech/midispec.htm
@@ -14,7 +13,6 @@ namespace midi
 		virtual ~Connection() = default;
 
 		virtual bool supports_output() const = 0;
-		virtual bool supports_input () const = 0;
 
 		virtual void send_note_on (uint8_t channel, uint8_t note_number, uint8_t velocity) = 0;
 		virtual void send_note_off(uint8_t channel, uint8_t note_number, uint8_t velocity) = 0;
@@ -22,35 +20,28 @@ namespace midi
 		virtual void send_controller_change(uint8_t channel, uint8_t controller_number, uint8_t value) = 0;
 
 		void send_all_sounds_off(uint8_t channel);
-
-		std::function<void(uint8_t, uint8_t, uint8_t)> note_on_callback = nullptr;
-		std::function<void(uint8_t, uint8_t)> note_off_callback = nullptr;
 	};
 
 	struct Rt_Midi : Connection
 	{
 		~Rt_Midi() override = default;
 
+		/// Connect with MIDI virtual port
+		void connect_output();
+
 		/// Connect with specific MIDI port for outputing MIDI messages
 		void connect_output(unsigned target);
-
-		/// Connect with specific MIDI port for reading MIDI messages
-		void connect_input(unsigned target);
 
 		/// List available ports
 		void list_ports(std::ostream &out) const;
 
 		bool supports_output() const override;
-		bool supports_input () const override;
 
 		void send_note_on (uint8_t channel, uint8_t note_number, uint8_t velocity) override;
 		void send_note_off(uint8_t channel, uint8_t note_number, uint8_t velocity) override;
 		void send_program_change(uint8_t channel, uint8_t program) override;
 		void send_controller_change(uint8_t channel, uint8_t controller_number, uint8_t value) override;
 
-		void input_event_loop(std::stop_token);
-
-		std::optional<RtMidiIn> input;
 		std::optional<RtMidiOut> output;
 	};
 

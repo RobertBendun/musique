@@ -7,7 +7,7 @@ std::shared_ptr<Env> Env::global = nullptr;
 std::shared_ptr<Env> Env::make()
 {
 	auto new_env = new Env();
-	assert(new_env, "Cannot construct new env");
+	ensure(new_env, "Cannot construct new env");
 	return std::shared_ptr<Env>(new_env);
 }
 

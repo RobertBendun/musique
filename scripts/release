@@ -16,10 +16,10 @@ fi
 
 mkdir -p "$Target"
 
-make clean && make bin/musique
+make clean && make os=linux
 cp bin/musique "$Target"/
 
-make clean && make bin/musique os=windows
+make clean && make os=windows
 cp bin/musique.exe "$Target"/
 
 echo "Copy examples, license and documentation"

@@ -4,6 +4,7 @@
 #include <musique/midi/midi.hh>
 #include <musique/interpreter/context.hh>
 #include <musique/value/value.hh>
+#include <unordered_map>
 
 /// Given program tree evaluates it into Value
 struct Interpreter
@@ -23,10 +24,6 @@ struct Interpreter
 	std::vector<Context> context_stack;
 
 	std::function<std::optional<Error>(Interpreter&, Value)> default_action;
-
-	struct Incoming_Midi_Callbacks;
-	std::unique_ptr<Incoming_Midi_Callbacks> callbacks;
-	void register_callbacks();
 
 	Interpreter();
 	~Interpreter();
@@ -56,7 +53,6 @@ struct Interpreter
 	void register_builtin_operators();
 };
 
-enum class Midi_Connection_Type { Output, Input };
-std::optional<Error> ensure_midi_connection_available(Interpreter&, Midi_Connection_Type, std::string_view operation_name);
+std::optional<Error> ensure_midi_connection_available(Interpreter&, std::string_view operation_name);
 
 #endif

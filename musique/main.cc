@@ -5,6 +5,7 @@
 #include <span>
 #include <thread>
 #include <cstring>
+#include <cstdio>
 
 #include <musique/format.hh>
 #include <musique/interpreter/env.hh>
@@ -21,6 +22,7 @@ extern "C" {
 #include <io.h>
 }
 #else
+#include <unistd.h>
 extern "C" {
 #include <bestline.h>
 }
@@ -64,8 +66,6 @@ static T pop(std::span<char const*> &span)
 		"usage: musique <options> [filename]\n"
 		"  where filename is path to file with Musique code that will be executed\n"
 		"  where options are:\n"
-		"    -i,--input PORT\n"
-		"      provides input port, a place where Musique receives MIDI messages\n"
 		"    -o,--output PORT\n"
 		"      provides output port, a place where Musique produces MIDI messages\n"
 		"    -l,--list\n"
@@ -126,33 +126,22 @@ struct Runner
 
 	midi::Rt_Midi midi;
 	Interpreter interpreter;
-	std::thread midi_input_event_loop;
-	std::stop_source stop_source;
 
 	/// Setup interpreter and midi connection with given port
-	Runner(std::optional<unsigned> input_port, std::optional<unsigned> output_port)
+	explicit Runner(std::optional<unsigned> output_port)
 		: midi()
 		, interpreter{}
 	{
-		assert(the == nullptr, "Only one instance of runner is supported");
+		ensure(the == nullptr, "Only one instance of runner is supported");
 		the = this;
 
-		bool const midi_go = bool(input_port) || bool(output_port);
-		if (midi_go) {
-			interpreter.midi_connection = &midi;
-		}
+		interpreter.midi_connection = &midi;
 		if (output_port) {
-			std::cout << "Connected MIDI output to port " << *output_port << ". Ready to play!" << std::endl;
 			midi.connect_output(*output_port);
-		}
-		if (input_port) {
-			std::cout << "Connected MIDI input to port " << *input_port << ". Ready for incoming messages!" << std::endl;
-			midi.connect_input(*input_port);
-		}
-		if (midi_go) {
-			interpreter.register_callbacks();
-			midi_input_event_loop = std::thread([this] { handle_midi_event_loop(); });
-			midi_input_event_loop.detach();
+			std::cout << "Connected MIDI output to port " << *output_port << ". Ready to play!" << std::endl;
+		} else {
+			midi.connect_output();
+			std::cout << "Created new MIDI output port 'Musique'. Ready to play!" << std::endl;
 		}
 
 		Env::global->force_define("say", +[](Interpreter &interpreter, std::vector<Value> args) -> Result<Value> {
@@ -166,20 +155,10 @@ struct Runner
 		});
 	}
 
-	~Runner()
-	{
-		stop_source.request_stop();
-	}
-
 	Runner(Runner const&) = delete;
 	Runner(Runner &&) = delete;
 	Runner& operator=(Runner const&) = delete;
 	Runner& operator=(Runner &&) = delete;
-
-	void handle_midi_event_loop()
-	{
-		midi.input_event_loop(stop_source.get_token());
-	}
 
 	/// Run given source
 	std::optional<Error> run(std::string_view source, std::string_view filename, bool output = false)
@@ -221,7 +200,7 @@ bool is_tty()
 #ifdef _WIN32
 	return _isatty(STDOUT_FILENO);
 #else
-	return isatty(STDOUT_FILENO);
+	return isatty(fileno(stdout));
 #endif
 }
 
@@ -312,7 +291,6 @@ static std::optional<Error> Main(std::span<char const*> args)
 	};
 
 	// Arbitraly chosen for conviniance of the author
-	std::optional<unsigned> input_port{};
 	std::optional<unsigned> output_port{};
 
 	std::vector<Run> runnables;
@@ -349,15 +327,6 @@ static std::optional<Error> Main(std::span<char const*> args)
 			continue;
 		}
 
-		if (arg == "-i" || arg == "--input") {
-			if (args.empty()) {
-				std::cerr << "musique: error: option " << arg << " requires an argument" << std::endl;
-				std::exit(1);
-			}
-			input_port = pop<unsigned>(args);
-			continue;
-		}
-
 		if (arg == "-o" || arg == "--output") {
 			if (args.empty()) {
 				std::cerr << "musique: error: option " << arg << " requires an argument" << std::endl;
@@ -375,7 +344,7 @@ static std::optional<Error> Main(std::span<char const*> args)
 		std::exit(1);
 	}
 
-	Runner runner{input_port, output_port};
+	Runner runner{output_port};
 
 	for (auto const& [is_file, argument] : runnables) {
 		if (!is_file) {

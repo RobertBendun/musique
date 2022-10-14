@@ -12,9 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Added `scan` builtin, which computes prefix sum of passed values when provided with addition operator
 * Added [rtmidi](https://github.com/thestk/rtmidi/) dependency which should provide multiplatform MIDI support
 * Support for Windows (with only basic REPL) (`make os=windows`)
+* Support for MacOS (`make os=macos`)
 * Release package now with compiled Windows binary
 * `:load` REPL command to load Musique files inside Musique session. Allows for delayed file execution after a connection
 * `:quit` REPL command that mirrors `:exit` command
+* Virtual MIDI output port creation as default action (--output connects to existing one)
 
 ### Changed
 
