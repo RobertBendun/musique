@@ -66,8 +66,6 @@ static T pop(std::span<char const*> &span)
 		"usage: musique <options> [filename]\n"
 		"  where filename is path to file with Musique code that will be executed\n"
 		"  where options are:\n"
-		"    -i,--input PORT\n"
-		"      provides input port, a place where Musique receives MIDI messages\n"
 		"    -o,--output PORT\n"
 		"      provides output port, a place where Musique produces MIDI messages\n"
 		"    -l,--list\n"
@@ -130,24 +128,20 @@ struct Runner
 	Interpreter interpreter;
 
 	/// Setup interpreter and midi connection with given port
-	Runner(std::optional<unsigned> input_port, std::optional<unsigned> output_port)
+	explicit Runner(std::optional<unsigned> output_port)
 		: midi()
 		, interpreter{}
 	{
 		ensure(the == nullptr, "Only one instance of runner is supported");
 		the = this;
 
-		bool const midi_go = bool(input_port) || bool(output_port);
-		if (midi_go) {
-			interpreter.midi_connection = &midi;
-		}
+		interpreter.midi_connection = &midi;
 		if (output_port) {
-			std::cout << "Connected MIDI output to port " << *output_port << ". Ready to play!" << std::endl;
 			midi.connect_output(*output_port);
-		}
-		if (input_port) {
-			std::cout << "Connected MIDI input to port " << *input_port << ". Ready for incoming messages!" << std::endl;
-			midi.connect_input(*input_port);
+			std::cout << "Connected MIDI output to port " << *output_port << ". Ready to play!" << std::endl;
+		} else {
+			midi.connect_output();
+			std::cout << "Created new MIDI output port 'Musique'. Ready to play!" << std::endl;
 		}
 
 		Env::global->force_define("say", +[](Interpreter &interpreter, std::vector<Value> args) -> Result<Value> {
@@ -297,7 +291,6 @@ static std::optional<Error> Main(std::span<char const*> args)
 	};
 
 	// Arbitraly chosen for conviniance of the author
-	std::optional<unsigned> input_port{};
 	std::optional<unsigned> output_port{};
 
 	std::vector<Run> runnables;
@@ -334,15 +327,6 @@ static std::optional<Error> Main(std::span<char const*> args)
 			continue;
 		}
 
-		if (arg == "-i" || arg == "--input") {
-			if (args.empty()) {
-				std::cerr << "musique: error: option " << arg << " requires an argument" << std::endl;
-				std::exit(1);
-			}
-			input_port = pop<unsigned>(args);
-			continue;
-		}
-
 		if (arg == "-o" || arg == "--output") {
 			if (args.empty()) {
 				std::cerr << "musique: error: option " << arg << " requires an argument" << std::endl;
@@ -360,7 +344,7 @@ static std::optional<Error> Main(std::span<char const*> args)
 		std::exit(1);
 	}
 
-	Runner runner{input_port, output_port};
+	Runner runner{output_port};
 
 	for (auto const& [is_file, argument] : runnables) {
 		if (!is_file) {

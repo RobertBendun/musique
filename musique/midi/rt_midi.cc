@@ -34,24 +34,22 @@ try {
 	std::exit(33);
 }
 
-void midi::Rt_Midi::connect_output(unsigned target)
+void midi::Rt_Midi::connect_output()
 try {
 	ensure(not output.has_value(), "Reconeccting is not supported yet");
 	output.emplace();
-	output->openVirtualPort("Musique output port");
-	
-	// output->openPort(target, "Musique output port");
+	output->openVirtualPort("Musique");
 } catch (RtMidiError &error) {
 	// TODO(error)
 	std::cerr << "Failed to use MIDI connection: " << error.getMessage() << std::endl;
 	std::exit(33);
 }
 
-void midi::Rt_Midi::connect_input(unsigned target)
+void midi::Rt_Midi::connect_output(unsigned target)
 try {
-	ensure(not input.has_value(), "Reconeccting is not supported yet");
-	input.emplace();
-	input->openPort(target, "Musique input port");
+	ensure(not output.has_value(), "Reconeccting is not supported yet");
+	output.emplace();
+	output->openPort(target);
 } catch (RtMidiError &error) {
 	// TODO(error)
 	std::cerr << "Failed to use MIDI connection: " << error.getMessage() << std::endl;
@@ -61,11 +59,6 @@ try {
 bool midi::Rt_Midi::supports_output() const
 {
 	return bool(output);
-}
-
-bool midi::Rt_Midi::supports_input() const
-{
-	return bool(input);
 }
 
 template<std::size_t N>

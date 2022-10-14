@@ -1,7 +1,6 @@
 #include <musique/algo.hh>
 #include <musique/interpreter/env.hh>
 #include <musique/guard.hh>
-#include <musique/interpreter/incoming_midi.hh>
 #include <musique/interpreter/interpreter.hh>
 #include <musique/try.hh>
 
@@ -11,13 +10,6 @@
 #include <unordered_set>
 #include <chrono>
 #include <thread>
-
-void Interpreter::register_callbacks()
-{
-	ensure(callbacks == nullptr, "This field should be uninitialized");
-	callbacks = std::make_unique<Interpreter::Incoming_Midi_Callbacks>();
-	callbacks->add_callbacks(*midi_connection, *this);
-}
 
 /// Check if type has index method
 template<typename T>
@@ -276,7 +268,7 @@ static std::optional<Error> action_play(Interpreter &i, Value v)
 template<With_Index_Operator Container = std::vector<Value>>
 static inline Result<Value> builtin_play(Interpreter &i, Container args)
 {
-	Try(ensure_midi_connection_available(i, Midi_Connection_Type::Output, "play"));
+	Try(ensure_midi_connection_available(i, "play"));
 	auto previous_action = std::exchange(i.default_action, action_play);
 	i.context_stack.push_back(i.context_stack.back());
 
@@ -298,7 +290,7 @@ static inline Result<Value> builtin_play(Interpreter &i, Container args)
 
 /// Play first argument while playing all others
 static Result<Value> builtin_par(Interpreter &i, std::vector<Value> args) {
-	Try(ensure_midi_connection_available(i, Midi_Connection_Type::Output, "par"));
+	Try(ensure_midi_connection_available(i, "par"));
 
 	ensure(args.size() >= 1, "par only makes sense for at least one argument"); // TODO(assert)
 	if (args.size() == 1) {
@@ -911,28 +903,6 @@ static Result<Value> builtin_note_off(Interpreter &i, std::vector<Value> args)
 	};
 }
 
-/// Add handler for incoming midi messages
-static Result<Value> builtin_incoming(Interpreter &i, std::vector<Value> args)
-{
-	if (auto a = match<Symbol, Function>(args)) {
-		auto& [symbol, fun] = *a;
-		if (symbol == "note_on" || symbol == "noteon") {
-			i.callbacks->note_on = std::move(args[1]);
-		} else if (symbol == "note_off" || symbol == "noteoff") {
-			i.callbacks->note_off = std::move(args[1]);
-		} else {
-
-		}
-		return Value{};
-	}
-
-	return errors::Unsupported_Types_For {
-		.type = errors::Unsupported_Types_For::Function,
-		.name = "incoming",
-		.possibilities = { "(symbol, function) -> nil" }
-	};
-}
-
 /// Interleaves arguments
 static Result<Value> builtin_mix(Interpreter &i, std::vector<Value> args)
 {
@@ -999,7 +969,6 @@ void Interpreter::register_builtin_functions()
 	global.force_define("for",            builtin_for);
 	global.force_define("hash",           builtin_hash);
 	global.force_define("if",             builtin_if);
-	global.force_define("incoming",       builtin_incoming);
 	global.force_define("instrument",     builtin_program_change);
 	global.force_define("len",            builtin_len);
 	global.force_define("max",            builtin_max);

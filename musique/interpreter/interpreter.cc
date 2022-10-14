@@ -1,5 +1,4 @@
 #include <musique/interpreter/env.hh>
-#include <musique/interpreter/incoming_midi.hh>
 #include <musique/interpreter/interpreter.hh>
 #include <musique/try.hh>
 
@@ -223,7 +222,7 @@ void Interpreter::leave_scope()
 
 std::optional<Error> Interpreter::play(Chord chord)
 {
-	Try(ensure_midi_connection_available(*this, Midi_Connection_Type::Output, "play"));
+	Try(ensure_midi_connection_available(*this, "play"));
 	auto &ctx = context_stack.back();
 
 	if (chord.notes.size() == 0) {
@@ -260,33 +259,16 @@ std::optional<Error> Interpreter::play(Chord chord)
 	return {};
 }
 
-std::optional<Error> ensure_midi_connection_available(Interpreter &i, Midi_Connection_Type m, std::string_view operation_name)
+std::optional<Error> ensure_midi_connection_available(Interpreter &i, std::string_view operation_name)
 {
-	switch (m) {
-	break; case Midi_Connection_Type::Output:
-		if (i.midi_connection == nullptr || !i.midi_connection->supports_output()) {
-			return Error {
-				.details = errors::Operation_Requires_Midi_Connection {
-					.is_input = false,
-					.name = std::string(operation_name),
-				},
-				.location = {}
-			};
-		}
-
-	break; case Midi_Connection_Type::Input:
-		if (i.midi_connection == nullptr || !i.midi_connection->supports_input()) {
-			return Error {
-				.details = errors::Operation_Requires_Midi_Connection {
-					.is_input = false,
-					.name = std::string(operation_name),
-				},
-				.location = {}
-			};
-		}
-	break; default:
-		unreachable();
+	if (i.midi_connection == nullptr || !i.midi_connection->supports_output()) {
+		return Error {
+			.details = errors::Operation_Requires_Midi_Connection {
+				.is_input = false,
+				.name = std::string(operation_name),
+			},
+			.location = {}
+		};
 	}
-
 	return {};
 }
