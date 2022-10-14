@@ -9,13 +9,14 @@
 #include <iostream>
 #include <numeric>
 #include <compare>
+#include <cstring>
 
 Value::Value() = default;
 
 std::strong_ordering operator<=>(std::string const& lhs, std::string const& rhs)
 {
 	if (auto cmp = lhs.size() <=> rhs.size(); cmp == 0) {
-		if (auto cmp = strncmp(lhs.c_str(), rhs.c_str(), lhs.size()); cmp == 0) {
+		if (auto cmp = std::strncmp(lhs.c_str(), rhs.c_str(), lhs.size()); cmp == 0) {
 			return std::strong_ordering::equal;
 		} else if (cmp < 0) {
 			return std::strong_ordering::less;

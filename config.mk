@@ -8,15 +8,9 @@ LDLIBS= -lpthread
 RELEASE_FLAGS=-O2
 DEBUG_FLAGS=-O0 -ggdb -fsanitize=undefined -DDebug
 
-ifeq ($(os),windows)
-CC=i686-w64-mingw32-gcc
-CXX=i686-w64-mingw32-g++
-CPPFLAGS:=$(CPPFLAGS) -D__WINDOWS_MM__
-LDLIBS:=-lwinmm $(LDLIBS)
+ifeq ($(shell uname),Darwin)
+os=macos
 else
-CC=gcc
-CXX=g++
-CPPFLAGS:=$(CPPFLAGS) -D __MACOSX_CORE__
-LDLIBS:=-framework CoreMIDI -framework CoreAudio -framework CoreFoundation $(LDLIBS)
+os=linux
 endif
 
