@@ -445,6 +445,11 @@ static std::optional<Error> Main(std::span<char const*> args)
 		}
 	}
 
+	enable_repl = enable_repl || std::all_of(runnables.begin(), runnables.end(),
+		[](Run const& run) {
+			return run.type == Run::Deffered_File;
+		});
+
 	if (runnables.empty() || enable_repl) {
 		repl_line_number = 1;
 		enable_repl = true;
