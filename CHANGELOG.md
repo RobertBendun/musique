@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `:load` REPL command to load Musique files inside Musique session. Allows for delayed file execution after a connection
 * `:quit` REPL command that mirrors `:exit` command
 * Virtual MIDI output port creation as default action (--output connects to existing one)
+* Added build instructions
 
 ### Changed
 

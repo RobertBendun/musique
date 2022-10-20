@@ -1,0 +1,27 @@
+# Musique build instructions
+
+## Linux
+
+Consult README.md.
+
+## MacOS
+
+Required system dependency is fairly new C++ compiler. The simplest way is to type `clang` in terminal, which should launch installation of C++ compiler. Next provided compiler version:
+```
+$ clang++ --version
+```
+
+Minimal supported version is __14__. On older editions of MacOS one can aquire new editions by [Homebrew](https://brew.sh/). After homebrew installation install clang via `brew install llvm`.
+
+Next you should be able to build project by running `make` command inside main directory (in released zip file in `source_code` directory).
+
+## Windows
+
+Windows support is provided via cross compilation. Mingw GCC C++ compiler is required to produce Windows binaries.
+
+```
+$ make os=windows
+```
+
+will create `bin/musique.exe` that can be used on x86_64 Windows operating systems.
+
