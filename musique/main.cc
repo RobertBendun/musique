@@ -16,6 +16,7 @@
 #include <musique/pretty.hh>
 #include <musique/try.hh>
 #include <musique/unicode.hh>
+#include <musique/value/block.hh>
 
 #ifdef _WIN32
 extern "C" {
@@ -76,6 +77,9 @@ static T pop(std::span<char const*> &span)
 		"    -I,--interactive,--repl\n"
 		"      enables interactive mode even when another code was passed\n"
 		"\n"
+		"    -f,--as-function FILENAME\n"
+		"      deffer file execution and turn it into a file\n"
+		"\n"
 		"    --ast\n"
 		"      prints ast for given code\n"
 		"\n"
@@ -119,6 +123,37 @@ static void trim(std::string_view &s)
 	}
 }
 
+static std::string filename_to_function_name(std::string_view filename)
+{
+	if (filename == "-") {
+		return "stdin";
+	}
+
+	auto stem = fs::path(filename).stem().string();
+	auto stem_view = std::string_view(stem);
+
+	std::string name;
+
+	auto is_first = unicode::First_Character::Yes;
+	while (!stem_view.empty()) {
+		auto [rune, next_stem] = utf8::decode(stem_view);
+		if (!unicode::is_identifier(rune, is_first)) {
+			if (rune != ' ' && rune != '-') {
+				// TODO Nicer error
+				std::cerr << "[ERROR] Failed to construct function name from filename " << stem
+					        << "\n       due to presence of invalid character: " << utf8::Print{rune} << "(U+" << std::hex << rune << ")\n"
+									<< std::flush;
+				std::exit(1);
+			}
+			name += '_';
+		} else {
+			name += stem_view.substr(0, stem_view.size() - next_stem.size());
+		}
+		stem_view = next_stem;
+	}
+	return name;
+}
+
 /// Runs interpreter on given source code
 struct Runner
 {
@@ -159,6 +194,29 @@ struct Runner
 	Runner(Runner &&) = delete;
 	Runner& operator=(Runner const&) = delete;
 	Runner& operator=(Runner &&) = delete;
+
+	/// Consider given input file as new definition of parametless function
+	///
+	/// Useful for deffering execution of files to the point when all configuration of midi devices
+	/// is beeing known as working.
+	std::optional<Error> deffered_file(std::string_view source, std::string_view filename)
+	{
+		auto ast = Try(Parser::parse(source, filename, repl_line_number));
+		if (ast_only_mode) {
+			dump(ast);
+			return {};
+		}
+
+		auto name = filename_to_function_name(filename);
+
+		Block block;
+		block.location = ast.location;
+		block.body = std::move(ast);
+		block.context = Env::global;
+		std::cout << "Defined function " << name << " as file " << filename << std::endl;
+		Env::global->force_define(std::move(name), Value(std::move(block)));
+		return {};
+	}
 
 	/// Run given source
 	std::optional<Error> run(std::string_view source, std::string_view filename, bool output = false)
@@ -286,7 +344,12 @@ static std::optional<Error> Main(std::span<char const*> args)
 	/// Describes all arguments that will be run
 	struct Run
 	{
-		bool is_file = true;
+		enum Type
+		{
+			File,
+			Argument,
+			Deffered_File
+		} type;
 		std::string_view argument;
 	};
 
@@ -299,7 +362,7 @@ static std::optional<Error> Main(std::span<char const*> args)
 		std::string_view arg = pop(args);
 
 		if (arg == "-" || !arg.starts_with('-')) {
-			runnables.push_back({ .is_file = true, .argument = std::move(arg) });
+			runnables.push_back({ .type = Run::File, .argument = std::move(arg) });
 			continue;
 		}
 
@@ -313,7 +376,16 @@ static std::optional<Error> Main(std::span<char const*> args)
 				std::cerr << "musique: error: option " << arg << " requires an argument" << std::endl;
 				std::exit(1);
 			}
-			runnables.push_back({ .is_file = false, .argument = pop(args) });
+			runnables.push_back({ .type = Run::Argument, .argument = pop(args) });
+			continue;
+		}
+
+		if (arg == "-f" || arg == "--as-function") {
+			if (args.empty()) {
+				std::cerr << "musique: error: option " << arg << " requires an argument" << std::endl;
+				std::exit(1);
+			}
+			runnables.push_back({ .type = Run::Deffered_File, .argument = pop(args) });
 			continue;
 		}
 
@@ -346,8 +418,8 @@ static std::optional<Error> Main(std::span<char const*> args)
 
 	Runner runner{output_port};
 
-	for (auto const& [is_file, argument] : runnables) {
-		if (!is_file) {
+	for (auto const& [type, argument] : runnables) {
+		if (type == Run::Argument) {
 			Lines::the.add_line("<arguments>", argument, repl_line_number);
 			Try(runner.run(argument, "<arguments>"));
 			repl_line_number++;
@@ -355,7 +427,6 @@ static std::optional<Error> Main(std::span<char const*> args)
 		}
 		auto path = argument;
 		if (path == "-") {
-			path = "<stdin>";
 			eternal_sources.emplace_back(std::istreambuf_iterator<char>(std::cin), std::istreambuf_iterator<char>());
 		} else {
 			if (not fs::exists(path)) {
@@ -367,7 +438,11 @@ static std::optional<Error> Main(std::span<char const*> args)
 		}
 
 		Lines::the.add_file(std::string(path), eternal_sources.back());
-		Try(runner.run(eternal_sources.back(), path));
+		if (type == Run::File) {
+			Try(runner.run(eternal_sources.back(), path));
+		} else {
+			Try(runner.deffered_file(eternal_sources.back(), argument));
+		}
 	}
 
 	if (runnables.empty() || enable_repl) {
@@ -442,4 +517,5 @@ int main(int argc, char const** argv)
 		std::cerr << result.value() << std::flush;
 		return 1;
 	}
+	return 0;
 }

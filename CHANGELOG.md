@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `:quit` REPL command that mirrors `:exit` command
 * Virtual MIDI output port creation as default action (--output connects to existing one)
 * Added build instructions
+* `-f` commandline argument that will turn file into deffered function
 
 ### Changed
 
