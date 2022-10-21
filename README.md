@@ -64,7 +64,7 @@ au BufRead,BufNewFile *.mq set filetype=musique
 
 ### Visual Studio Code
 
-Skopiuj katalog [etc/editor/musique-vscode](etc/editor/musique-vscode) do folderu `<user home>/.vscode/extensions` i uruchom ponownie program VSCode.
+Skopiuj katalog [editor/vscode-musique](editor/vscode-musique) do folderu `<user home>/.vscode/extensions` i uruchom ponownie program VSCode.
 
 # Thanks to
 

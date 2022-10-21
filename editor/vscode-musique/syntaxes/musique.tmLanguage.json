@@ -1,0 +1,64 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Musique",
+	"foldingStartMarker": "\\[",
+	"foldingStopMarker": "^\\s*\\]|^\\s\\]",
+	"fileTypes": [
+		".mq"
+	],
+	"patterns": [
+		{
+			"include": "#numeric"
+		},
+		{
+			"match": ":=",
+			"name": "keyword.operator.declaration"
+		},
+		{
+			"match": "--[^-].*$",
+			"name": "comment.line.double-dash"
+		},
+		{
+			"begin": "--+",
+			"end": "--+",
+			"name": "comment.block"
+		},
+		{
+			"match": "\\b(nil)\\b",
+			"name": "constant.language.nil"
+		},
+		{
+			"match": "\\b(a|b|c|d|e|f|g|h)[#sfb]?\\d*\\b",
+			"name": "constant.language.music"
+		},
+		{
+			"match": "\\b(true|false)\\b",
+			"name": "constant.language.boolean"
+		},
+		{
+			"match": "\\b(bpm|call|ceil|chord|down|flat|floor|fold|for|hash|if|instrument|len|max|min|mix|note_off|note_on|nprimes|oct|par|partition|permute|pgmchange|play|program_change|range|reverse|rotate|round|scan|shuffle|sim|sort|try|typeof|uniq|unique|up|update|say)\\b",
+			"name": "entity.name.function.builtins"
+		},
+		{
+			"match": "(\\*|\\+|\\-|\/|\\\\)",
+			"name": "keyword.operator.arithmetic"
+		},
+		{
+			"match": "---+()",
+			"begin": "/---+/",
+			"end": "/---+/",
+      "name": "comment.block.musique"
+		}
+	],
+	"repository": {
+		"numeric": {
+			"patterns": [
+				{
+					"match": "(?<!\\w)-?[0-9]+",
+					"name": "constant.numeric.integer.musique"
+				}
+			]
+		}
+	},
+	"scopeName": "source.musique"
+}

@@ -1,0 +1,25 @@
+{
+  "name": "musique",
+  "displayName": "Musique",
+  "description": "Support for Musique, programming language for musical expression",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.72.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [{
+      "id": "musique",
+      "aliases": ["Musique", "musique"],
+      "extensions": [".mq"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "musique",
+      "scopeName": "source.musique",
+      "path": "./syntaxes/musique.tmLanguage.json"
+    }]
+  }
+}
