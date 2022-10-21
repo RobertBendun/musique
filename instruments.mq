@@ -4,161 +4,161 @@ This may be unsupported by your device.
 ---------------------------------------------------------
 
 -- Piano ------------------------------------------------
-var AcousticGrandPiano   = 0;
-var BrightAcousticPiano  = 1;
-var ElectricGrandPiano   = 2;
-var HonkyTonkPiano       = 3;
-var RhodesPiano          = 4;
-var ChorusedPiano        = 5;
-var Harpsichord          = 6;
-var Clavinet             = 7;
+AcousticGrandPiano   := 0;
+BrightAcousticPiano  := 1;
+ElectricGrandPiano   := 2;
+HonkyTonkPiano       := 3;
+RhodesPiano          := 4;
+ChorusedPiano        := 5;
+Harpsichord          := 6;
+Clavinet             := 7;
 
 -- Chromatic percussion ---------------------------------
-var Celesta              = 8;
-var Glockenspiel         = 9;
-var MusicBox             = 10;
-var Vibraphone           = 11;
-var Marimba              = 12;
-var Xylophone            = 13;
-var TubularBells         = 14;
-var Dulcimer             = 15;
+Celesta              := 8;
+Glockenspiel         := 9;
+MusicBox             := 10;
+Vibraphone           := 11;
+Marimba              := 12;
+Xylophone            := 13;
+TubularBells         := 14;
+Dulcimer             := 15;
 
 -- Organ ------------------------------------------------
-var HammondOrgan         = 16;
-var PercussiveOrgan      = 17;
-var RockOrgan            = 18;
-var ChurchOrgan          = 19;
-var ReedOrgan            = 20;
-var Accordion            = 21;
-var Harmonica            = 22;
-var TangoAccordion       = 23;
+HammondOrgan         := 16;
+PercussiveOrgan      := 17;
+RockOrgan            := 18;
+ChurchOrgan          := 19;
+ReedOrgan            := 20;
+Accordion            := 21;
+Harmonica            := 22;
+TangoAccordion       := 23;
 
 -- Guitar -----------------------------------------------
-var AcousticGuitarNylon  = 24;
-var AcousticGuitarSteel  = 25;
-var ElectricGuitarJazz   = 26;
-var ElectricGuitarClean  = 27;
-var ElectricGuitarMuted  = 28;
-var OverdrivenGuitar     = 29;
-var DistortionGuitar     = 30;
-var GuitarHarmonics      = 31;
+AcousticGuitarNylon  := 24;
+AcousticGuitarSteel  := 25;
+ElectricGuitarJazz   := 26;
+ElectricGuitarClean  := 27;
+ElectricGuitarMuted  := 28;
+OverdrivenGuitar     := 29;
+DistortionGuitar     := 30;
+GuitarHarmonics      := 31;
 
 -- Bass -------------------------------------------------
-var AcousticBass         = 32;
-var ElectricBassFingered = 33;
-var ElectricBassPicked   = 34;
-var FretlessBass         = 35;
-var SlapBass1            = 36;
-var SlapBass2            = 37;
-var SynthBass1           = 38;
-var SynthBass2           = 39;
+AcousticBass         := 32;
+ElectricBassFingered := 33;
+ElectricBassPicked   := 34;
+FretlessBass         := 35;
+SlapBass1            := 36;
+SlapBass2            := 37;
+SynthBass1           := 38;
+SynthBass2           := 39;
 
 -- Solo strings -----------------------------------------
-var Violin               = 40;
-var Viola                = 41;
-var Cello                = 42;
-var Contrabass           = 43;
-var TremoloStrings       = 44;
-var PizzicatoStrings     = 45;
-var OrchestralHarp       = 46;
-var Timpani              = 47;
+Violin               := 40;
+Viola                := 41;
+Cello                := 42;
+Contrabass           := 43;
+TremoloStrings       := 44;
+PizzicatoStrings     := 45;
+OrchestralHarp       := 46;
+Timpani              := 47;
 
 -- Ensamble ---------------------------------------------
-var StringEnsemble1      = 48;
-var StringEnsemble2      = 49;
-var SynthStrings1        = 50;
-var SynthStrings2        = 51;
-var ChoirAahs            = 52;
-var VoiceOohs            = 53;
-var SynthVoice           = 54;
-var OrchestraHit         = 55;
+StringEnsemble1      := 48;
+StringEnsemble2      := 49;
+SynthStrings1        := 50;
+SynthStrings2        := 51;
+ChoirAahs            := 52;
+VoiceOohs            := 53;
+SynthVoice           := 54;
+OrchestraHit         := 55;
 
 -- Brass ------------------------------------------------
-var Trumpet              = 56;
-var Trombone             = 57;
-var Tuba                 = 58;
-var MutedTrumpet         = 59;
-var FrenchHorn           = 60;
-var BrassSection         = 61;
-var SynthBrass1          = 62;
-var SynthBrass2          = 63;
+Trumpet              := 56;
+Trombone             := 57;
+Tuba                 := 58;
+MutedTrumpet         := 59;
+FrenchHorn           := 60;
+BrassSection         := 61;
+SynthBrass1          := 62;
+SynthBrass2          := 63;
 
 -- Reed -------------------------------------------------
-var SopranoSax           = 64;
-var AltoSax              = 65;
-var TenorSax             = 66;
-var BaritoneSax          = 67;
-var Oboe                 = 68;
-var EnglishHorn          = 69;
-var Bassoon              = 70;
-var Clarinet             = 71;
+SopranoSax           := 64;
+AltoSax              := 65;
+TenorSax             := 66;
+BaritoneSax          := 67;
+Oboe                 := 68;
+EnglishHorn          := 69;
+Bassoon              := 70;
+Clarinet             := 71;
 
 -- Pipe -------------------------------------------------
-var Piccolo              = 72;
-var Flute                = 73;
-var Recorder             = 74;
-var PanFlute             = 75;
-var BlownBottle          = 76;
-var Shakuhachi           = 77;
-var Whistle              = 78;
-var Ocarina              = 79;
+Piccolo              := 72;
+Flute                := 73;
+Recorder             := 74;
+PanFlute             := 75;
+BlownBottle          := 76;
+Shakuhachi           := 77;
+Whistle              := 78;
+Ocarina              := 79;
 
 -- Synth lead -------------------------------------------
-var Lead1Square          = 80;
-var Lead2Sawtooth        = 81;
-var Lead3Calliope        = 82;
-var Lead4Chiff           = 83;
-var Lead5Charang         = 84;
-var Lead6Voice           = 85;
-var Lead7Fifths          = 86;
-var Lead8BassLead        = 87;
+Lead1Square          := 80;
+Lead2Sawtooth        := 81;
+Lead3Calliope        := 82;
+Lead4Chiff           := 83;
+Lead5Charang         := 84;
+Lead6Voice           := 85;
+Lead7Fifths          := 86;
+Lead8BassLead        := 87;
 
 -- Synth pad --------------------------------------------
-var Pad1NewAge           = 88;
-var Pad2Warm             = 89;
-var Pad3Polysynth        = 90;
-var Pad4Choir            = 91;
-var Pad5Bowed            = 92;
-var Pad6Metallic         = 93;
-var Pad7Halo             = 94;
-var Pad8Sweep            = 95;
+Pad1NewAge           := 88;
+Pad2Warm             := 89;
+Pad3Polysynth        := 90;
+Pad4Choir            := 91;
+Pad5Bowed            := 92;
+Pad6Metallic         := 93;
+Pad7Halo             := 94;
+Pad8Sweep            := 95;
 
 -- Synth effects ----------------------------------------
-var FX1Train             = 96;
-var FX2Soundtrack        = 97;
-var FX3Crystal           = 98;
-var FX4Atmosphere        = 99;
-var FX5Brightness        = 100;
-var FX6Goblins           = 101;
-var FX7Echoes            = 102;
-var FX8SciFi             = 103;
+FX1Train             := 96;
+FX2Soundtrack        := 97;
+FX3Crystal           := 98;
+FX4Atmosphere        := 99;
+FX5Brightness        := 100;
+FX6Goblins           := 101;
+FX7Echoes            := 102;
+FX8SciFi             := 103;
 
 -- Ethnic -----------------------------------------------
-var Sitar                = 104;
-var Banjo                = 105;
-var Shamisen             = 106;
-var Koto                 = 107;
-var Kalimba              = 108;
-var Bagpipe              = 109;
-var Fiddle               = 110;
-var Shanai               = 111;
+Sitar                := 104;
+Banjo                := 105;
+Shamisen             := 106;
+Koto                 := 107;
+Kalimba              := 108;
+Bagpipe              := 109;
+Fiddle               := 110;
+Shanai               := 111;
 
 -- Percussive -------------------------------------------
-var TinkleBell           = 112;
-var Agogo                = 113;
-var SteelDrums           = 114;
-var Woodblock            = 115;
-var TaikoDrum            = 116;
-var MelodicDrum          = 117;
-var SynthDrum            = 118;
-var ReverseCymbal        = 119;
+TinkleBell           := 112;
+Agogo                := 113;
+SteelDrums           := 114;
+Woodblock            := 115;
+TaikoDrum            := 116;
+MelodicDrum          := 117;
+SynthDrum            := 118;
+ReverseCymbal        := 119;
 
 -- Sound effects ----------------------------------------
-var GuitarFretNoise      = 120;
-var BreathNoise          = 121;
-var Seashore             = 122;
-var BirdTweet            = 123;
-var TelephoneRing        = 124;
-var Helicopter           = 125;
-var Applause             = 126;
-var Gunshot              = 127;
+GuitarFretNoise      := 120;
+BreathNoise          := 121;
+Seashore             := 122;
+BirdTweet            := 123;
+TelephoneRing        := 124;
+Helicopter           := 125;
+Applause             := 126;
+Gunshot              := 127;
