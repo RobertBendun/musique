@@ -60,7 +60,7 @@ inline std::optional<Value> symetric(Value &lhs, Value &rhs, auto binary)
 ///   n: number, m: music  -> music
 ///   m: music,  n: number -> music  moves m by n semitones (+ goes up, - goes down)
 template<typename Binary_Operation>
-static Result<Value> plus_minus_operator(Interpreter &interpreter, std::vector<Value> args)
+static Result<Value> builtin_operator_add_subtract(Interpreter &interpreter, std::vector<Value> args)
 {
 	if (args.empty()) {
 		return Number(0);
@@ -86,7 +86,7 @@ static Result<Value> plus_minus_operator(Interpreter &interpreter, std::vector<V
 		}
 
 		if (holds_alternative<Collection>(lhs) != holds_alternative<Collection>(rhs)) {
-			return vectorize(plus_minus_operator<Binary_Operation>, interpreter, std::move(lhs), std::move(rhs));
+			return vectorize(builtin_operator_add_subtract<Binary_Operation>, interpreter, std::move(lhs), std::move(rhs));
 		}
 
 		static_assert(std::is_same_v<std::plus<>, Binary_Operation> || std::is_same_v<std::minus<>, Binary_Operation>,
@@ -107,7 +107,7 @@ static Result<Value> plus_minus_operator(Interpreter &interpreter, std::vector<V
 }
 
 template<typename Binary_Operation, char ...Chars>
-static Result<Value> binary_operator(Interpreter& interpreter, std::vector<Value> args)
+static Result<Value> builtin_operator_arithmetic(Interpreter& interpreter, std::vector<Value> args)
 {
 	static constexpr char Name[] = { Chars..., '\0' };
 	if (args.empty()) {
@@ -121,7 +121,7 @@ static Result<Value> binary_operator(Interpreter& interpreter, std::vector<Value
 			}
 
 			if (holds_alternative<Collection>(lhs) != holds_alternative<Collection>(rhs)) {
-				return vectorize(binary_operator<Binary_Operation, Chars...>, interpreter, std::move(lhs), std::move(rhs));
+				return vectorize(builtin_operator_arithmetic<Binary_Operation, Chars...>, interpreter, std::move(lhs), std::move(rhs));
 			}
 
 			return errors::Unsupported_Types_For {
@@ -138,7 +138,7 @@ static Result<Value> binary_operator(Interpreter& interpreter, std::vector<Value
 }
 
 template<typename Binary_Predicate>
-static Result<Value> comparison_operator(Interpreter &interpreter, std::vector<Value> args)
+static Result<Value> builtin_operator_compare(Interpreter &interpreter, std::vector<Value> args)
 {
 	if (args.size() != 2) {
 		return algo::pairwise_all(std::move(args), Binary_Predicate{});
@@ -167,7 +167,7 @@ static Result<Value> comparison_operator(Interpreter &interpreter, std::vector<V
 	return Binary_Predicate{}(std::move(args.front()), std::move(args.back()));
 }
 
-static Result<Value> multiplication_operator(Interpreter &i, std::vector<Value> args)
+static Result<Value> builtin_operator_multiply(Interpreter &i, std::vector<Value> args)
 {
 	if (args.empty()) {
 		return Number(1);
@@ -185,9 +185,9 @@ static Result<Value> multiplication_operator(Interpreter &i, std::vector<Value> 
 			}
 		}
 
-		// If binary_operator returns an error that lists all possible overloads
+		// If builtin_operator_arithmetic returns an error that lists all possible overloads
 		// of this operator we must inject overloads that we provided above
-		auto result = binary_operator<std::multiplies<>, '*'>(i, { std::move(lhs), std::move(rhs) });
+		auto result = builtin_operator_arithmetic<std::multiplies<>, '*'>(i, { std::move(lhs), std::move(rhs) });
 		if (!result.has_value()) {
 			auto &details = result.error().details;
 			if (auto p = std::get_if<errors::Unsupported_Types_For>(&details)) {
@@ -200,6 +200,90 @@ static Result<Value> multiplication_operator(Interpreter &i, std::vector<Value> 
 	});
 }
 
+static Result<Value> builtin_operator_index(Interpreter &interpreter, std::vector<Value> args)
+{
+	if (auto a = match<Collection, Number>(args)) {
+		auto& [coll, pos] = *a;
+		return coll.index(interpreter, pos.as_int());
+	}
+
+	if (auto a = match<Collection, Bool>(args)) {
+		if (auto& [coll, pos] = *a; pos) {
+			return coll.index(interpreter, 0);
+		}
+		return Value{};
+	}
+
+	if (auto a = match<Collection, Collection>(args)) {
+		auto& [source, positions] = *a;
+
+		std::vector<Value> result;
+		for (size_t n = 0; n < positions.size(); ++n) {
+			auto const v = Try(positions.index(interpreter, n));
+
+			auto index = std::visit(Overloaded {
+				[](Number n) -> std::optional<size_t> { return n.floor().as_int(); },
+				[n](Bool b)  -> std::optional<size_t> { return b ? std::optional(n) : std::nullopt; },
+				[](auto &&)  -> std::optional<size_t> { return std::nullopt; }
+			}, v.data);
+
+			if (index) {
+				result.push_back(Try(source.index(interpreter, *index)));
+			}
+		}
+		return Array(std::move(result));
+	}
+
+	return Error {
+		.details = errors::Unsupported_Types_For {
+			.type = errors::Unsupported_Types_For::Operator,
+			.name = ".",
+			.possibilities = {
+				"array . bool -> bool",
+				"array . number -> any",
+				"array . (array of numbers) -> array",
+			},
+		},
+	};
+}
+
+static Result<Value> builtin_operator_join(Interpreter &interpreter, std::vector<Value> args)
+{
+	constexpr auto guard = Guard<2> {
+		.name = "&",
+		.possibilities = {
+			"(array, array) -> array",
+			"(music, music) -> music",
+		},
+		.type = errors::Unsupported_Types_For::Operator
+	};
+
+	if (auto a = match<Chord, Chord>(args)) {
+		auto [lhs, rhs] = *a;
+		auto &l = lhs.notes, &r = rhs.notes;
+		if (l.size() < r.size()) {
+			std::swap(l, r);
+			std::swap(lhs, rhs);
+		}
+
+		// Append one set of notes to another to make bigger chord!
+		l.reserve(l.size() + r.size());
+		std::move(r.begin(), r.end(), std::back_inserter(l));
+
+		return lhs;
+	}
+
+	auto result = Array {};
+	for (auto&& a : args) {
+		auto &array = *Try(guard.match<Collection>(a));
+		for (auto n = 0u; n < array.size(); ++n) {
+			result.elements.push_back(Try(array.index(interpreter, n)));
+		}
+	}
+	return result;
+}
+
+
 using Operator_Entry = std::tuple<char const*, Intrinsic::Function_Pointer>;
 
 using power = decltype([](Number lhs, Number rhs) -> Result<Number> {
@@ -208,100 +292,22 @@ using power = decltype([](Number lhs, Number rhs) -> Result<Number> {
 
 /// Operators definition table
 static constexpr auto Operators = std::array {
-	Operator_Entry { "+", plus_minus_operator<std::plus<>> },
-	Operator_Entry { "-", plus_minus_operator<std::minus<>> },
-	Operator_Entry { "*", multiplication_operator },
-	Operator_Entry { "/", binary_operator<std::divides<>, '/'> },
-	Operator_Entry { "%", binary_operator<std::modulus<>, '%'> },
-	Operator_Entry { "**", binary_operator<power, '*', '*'> },
+	Operator_Entry { "+",  builtin_operator_add_subtract<std::plus<>> },
+	Operator_Entry { "-",  builtin_operator_add_subtract<std::minus<>> },
+	Operator_Entry { "*",  builtin_operator_multiply },
+	Operator_Entry { "/",  builtin_operator_arithmetic<std::divides<>, '/'> },
+	Operator_Entry { "%",  builtin_operator_arithmetic<std::modulus<>, '%'> },
+	Operator_Entry { "**", builtin_operator_arithmetic<power, '*', '*'> },
 
-	Operator_Entry { "!=", comparison_operator<std::not_equal_to<>> },
-	Operator_Entry { "<",  comparison_operator<std::less<>> },
-	Operator_Entry { "<=", comparison_operator<std::less_equal<>> },
-	Operator_Entry { "==", comparison_operator<std::equal_to<>> },
-	Operator_Entry { ">",  comparison_operator<std::greater<>> },
-	Operator_Entry { ">=", comparison_operator<std::greater_equal<>> },
+	Operator_Entry { "!=", builtin_operator_compare<std::not_equal_to<>> },
+	Operator_Entry { "<",  builtin_operator_compare<std::less<>> },
+	Operator_Entry { "<=", builtin_operator_compare<std::less_equal<>> },
+	Operator_Entry { "==", builtin_operator_compare<std::equal_to<>> },
+	Operator_Entry { ">",  builtin_operator_compare<std::greater<>> },
+	Operator_Entry { ">=", builtin_operator_compare<std::greater_equal<>> },
 
-	Operator_Entry { ".",
-		+[](Interpreter &interpreter, std::vector<Value> args) -> Result<Value> {
-			if (auto a = match<Collection, Number>(args)) {
-				auto& [coll, pos] = *a;
-				return coll.index(interpreter, pos.as_int());
-			}
-			if (auto a = match<Collection, Bool>(args)) {
-				auto& [coll, pos] = *a;
-				return coll.index(interpreter, pos ? 1 : 0);
-			}
-			if (auto a = match<Collection, Collection>(args)) {
-				auto& [source, positions] = *a;
-
-				std::vector<Value> result;
-				for (size_t n = 0; n < positions.size(); ++n) {
-					auto const v = Try(positions.index(interpreter, n));
-
-					auto index = std::visit(Overloaded {
-						[](Number n) -> std::optional<size_t> { return n.floor().as_int(); },
-						[](Bool b)   -> std::optional<size_t> { return b ? 1 : 0; },
-						[](auto &&)  -> std::optional<size_t> { return std::nullopt; }
-					}, v.data);
-
-					if (index) {
-						result.push_back(Try(source.index(interpreter, *index)));
-					}
-				}
-				return Array(std::move(result));
-			}
-
-			return Error {
-				.details = errors::Unsupported_Types_For {
-					.type = errors::Unsupported_Types_For::Operator,
-					.name = ".",
-					.possibilities = {
-						"array . bool -> bool",
-						"array . number -> any",
-						"array . (array of numbers) -> array",
-					},
-				},
-			};
-		}
-	},
-
-	Operator_Entry { "&",
-		+[](Interpreter& i, std::vector<Value> args) -> Result<Value> {
-			constexpr auto guard = Guard<2> {
-				.name = "&",
-				.possibilities = {
-					"(array, array) -> array",
-					"(music, music) -> music",
-				},
-				.type = errors::Unsupported_Types_For::Operator
-			};
-
-			if (auto a = match<Chord, Chord>(args)) {
-				auto [lhs, rhs] = *a;
-				auto &l = lhs.notes, &r = rhs.notes;
-				if (l.size() < r.size()) {
-					std::swap(l, r);
-					std::swap(lhs, rhs);
-				}
-
-				// Append one set of notes to another to make bigger chord!
-				l.reserve(l.size() + r.size());
-				std::move(r.begin(), r.end(), std::back_inserter(l));
-
-				return lhs;
-			}
-
-			auto result = Array {};
-			for (auto&& a : args) {
-				auto &array = *Try(guard.match<Collection>(a));
-				for (auto n = 0u; n < array.size(); ++n) {
-					result.elements.push_back(Try(array.index(i, n)));
-				}
-			}
-			return result;
-		}
-	},
+	Operator_Entry { ".", builtin_operator_index },
+	Operator_Entry { "&", builtin_operator_join },
 };
 
 // All operators should be defined here except 'and' and 'or' which handle evaluation differently
