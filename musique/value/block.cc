@@ -36,7 +36,7 @@ Result<Value> Block::operator()(Interpreter &i, std::vector<Value> arguments) co
 	auto old_scope = std::exchange(i.env, context);
 	i.enter_scope();
 
-	if (parameters.size() != arguments.size()) {
+	if (parameters.size() > arguments.size()) {
 		return errors::Wrong_Arity_Of {
 			.type = errors::Wrong_Arity_Of::Function,
 			 // TODO Let user defined functions have name of their first assigment (Zig like)
@@ -47,7 +47,7 @@ Result<Value> Block::operator()(Interpreter &i, std::vector<Value> arguments) co
 		};
 	}
 
-	for (usize j = 0; j < parameters.size(); ++j) {
+	for (usize j = 0; j < std::min(parameters.size(), arguments.size()); ++j) {
 		i.env->force_define(parameters[j], std::move(arguments[j]));
 	}
 
