@@ -10,5 +10,5 @@ say (false and 4);
 say (true  and 4);
 
 -- Test lazy evaluation
-(say 32; false) and (say 42);
-(say 32; true) and (say 42);
+call (say 32; false) and (say 42);
+call (say 32; true) and (say 42);

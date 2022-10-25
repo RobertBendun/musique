@@ -9,5 +9,5 @@ say (0 or 0);
 say (4 or 3);
 
 -- Test lazy evaluation
-(say 42; false) or say 10;
-(say 42; true) or say 10;
+call (say 42; false) or say 10;
+call (say 42; true) or say 10;

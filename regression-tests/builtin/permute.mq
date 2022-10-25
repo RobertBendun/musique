@@ -26,8 +26,8 @@ say (permute 3 2 1 0);
 
 
 -- This array should be flattened to support case (permute array)
-say (permute 3 2 [1; 0]);
+say (permute 3 2 (1; 0));
 
 -- Test if nested arrays are preserved
-say (permute [[3; 2]; 4] [1; 0]);
-say (permute [0; 1; 4; [3; 2]]);
+say (permute ((3; 2); 4) (1; 0));
+say (permute (0; 1; 4; (3; 2)));

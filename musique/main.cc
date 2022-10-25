@@ -31,6 +31,7 @@ extern "C" {
 
 namespace fs = std::filesystem;
 
+static bool quiet_mode = false;
 static bool ast_only_mode = false;
 static bool enable_repl = false;
 static unsigned repl_line_number = 1;
@@ -173,10 +174,14 @@ struct Runner
 		interpreter.midi_connection = &midi;
 		if (output_port) {
 			midi.connect_output(*output_port);
-			std::cout << "Connected MIDI output to port " << *output_port << ". Ready to play!" << std::endl;
+			if (!quiet_mode) {
+				std::cout << "Connected MIDI output to port " << *output_port << ". Ready to play!" << std::endl;
+			}
 		} else {
 			midi.connect_output();
-			std::cout << "Created new MIDI output port 'Musique'. Ready to play!" << std::endl;
+			if (!quiet_mode) {
+				std::cout << "Created new MIDI output port 'Musique'. Ready to play!" << std::endl;
+			}
 		}
 
 		Env::global->force_define("say", +[](Interpreter &interpreter, std::vector<Value> args) -> Result<Value> {
@@ -389,6 +394,10 @@ static std::optional<Error> Main(std::span<char const*> args)
 			continue;
 		}
 
+		if (arg == "--quiet" || arg == "-q") {
+			quiet_mode = true;
+			continue;
+		}
 		if (arg == "--ast") {
 			ast_only_mode = true;
 			continue;

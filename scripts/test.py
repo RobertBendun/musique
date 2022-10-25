@@ -5,7 +5,7 @@ import os
 import subprocess
 
 TEST_DB = "test_db.json"
-INTERPRETER = "bin/debug/musique"
+INTERPRETER = "bin/linux/debug/musique"
 
 @dataclasses.dataclass
 class Result:
@@ -24,7 +24,7 @@ class TestCase:
 
     def run(self, interpreter: str, source: str, cwd: str):
         result = subprocess.run(
-            args=[interpreter, source],
+            args=[interpreter, source, "-q"],
             capture_output=True,
             cwd=cwd,
             text=True
