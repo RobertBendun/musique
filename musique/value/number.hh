@@ -56,6 +56,10 @@ struct Number
 
 std::ostream& operator<<(std::ostream& os, Number const& num);
 
-template<> struct std::hash<Number> { std::size_t operator()(Number const&) const; };
+template<>
+struct std::hash<Number>
+{
+	std::size_t operator()(Number const&) const;
+};
 
 #endif

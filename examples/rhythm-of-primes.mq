@@ -25,9 +25,9 @@ play c d c e (c & d) c d (c & e)
 
 --------------------------------------------------------------
 
-Length := 20;
+Length := 40;
 
-cmajor := [c;d;e;f;g];
+cmajor := (c;d;e;f;g);
 scale := reverse cmajor;
 primes := nprimes (len scale);
 indicies := up (len scale);
@@ -35,4 +35,6 @@ indicies := up (len scale);
 oct 3;
 len (1/16);
 
-for (2 + up Length) [ i | play (chord scale.(indicies.(i % primes == 0))); ];
+for (2 + up Length) ( i |
+	play (chord scale.(indicies.(i % primes == 0)));
+);

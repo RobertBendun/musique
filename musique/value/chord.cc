@@ -121,6 +121,9 @@ Result<Value> Chord::operator()(Interpreter& interpreter, std::vector<Value> arg
 	std::move(current.begin(), current.end(), std::back_inserter(array));
 
 	ensure(not array.empty(), "At least *this should be in this array");
+	if (array.size() == 1) {
+		return array.front();
+	}
 	return array;
 }
 

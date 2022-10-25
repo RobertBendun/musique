@@ -5,26 +5,26 @@ using Musique programming language
 ----------------------------------------------------------------------------
 
 -- Calculate factorial using recursive approach
-factorial_recursive := [n |
+factorial_recursive := (n |
 	if (n <= 1)
-		[1]
-		[n * (factorial_recursive (n-1))]
-];
+		(| 1)
+		(| n * (factorial_recursive (n-1)))
+);
 
 -- Calculate factorial using iterative approach
-factorial_iterative := [n |
+factorial_iterative := (n |
 	x := 1;
-	for (range 1 (n+1)) [i|x *= i];
+	for (range 1 (n+1)) (i | x *= i);
 	x
-];
+);
 
 -- Calculate factorial using composition of functions
-factorial := [n| fold (1 + up n) 1 '*];
+factorial := (n | fold (1 + up n) 1 '*);
 
 -- Gather all functions into array, and iterate over it
 -- This allows to reduce repeatition of this test case
-for [factorial_recursive; factorial_iterative; factorial] [ factorial |
-	for (up 10) [ n |
+for (factorial_recursive; factorial_iterative; factorial) ( factorial |
+	for (up 10) ( n |
 		say (factorial (n));
-	];
-];
+	)
+);

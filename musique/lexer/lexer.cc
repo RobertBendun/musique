@@ -88,10 +88,8 @@ auto Lexer::next_token() -> Result<std::variant<Token, End_Of_File>>
 	}
 
 	switch (peek()) {
-	case '(': consume(); return Token { Token::Type::Open_Paren,           finish(), token_location };
-	case ')': consume(); return Token { Token::Type::Close_Paren,          finish(), token_location };
-	case '[': consume(); return Token { Token::Type::Open_Block,           finish(), token_location };
-	case ']': consume(); return Token { Token::Type::Close_Block,          finish(), token_location };
+	case '(': consume(); return Token { Token::Type::Open_Block,           finish(), token_location };
+	case ')': consume(); return Token { Token::Type::Close_Block,          finish(), token_location };
 	case ';': consume(); return Token { Token::Type::Expression_Separator, finish(), token_location };
 
 	case '|':
@@ -258,12 +256,10 @@ std::ostream& operator<<(std::ostream& os, Token::Type type)
 	switch (type) {
 	case Token::Type::Chord:                 return os << "CHORD";
 	case Token::Type::Close_Block:           return os << "CLOSE BLOCK";
-	case Token::Type::Close_Paren:           return os << "CLOSE PAREN";
 	case Token::Type::Expression_Separator:  return os << "EXPRESSION SEPARATOR";
 	case Token::Type::Keyword:               return os << "KEYWORD";
 	case Token::Type::Numeric:               return os << "NUMERIC";
 	case Token::Type::Open_Block:            return os << "OPEN BLOCK";
-	case Token::Type::Open_Paren:            return os << "OPEN PAREN";
 	case Token::Type::Operator:              return os << "OPERATOR";
 	case Token::Type::Parameter_Separator:   return os << "PARAMETER SEPARATOR";
 	case Token::Type::Symbol:                return os << "SYMBOL";
@@ -275,13 +271,11 @@ std::string_view type_name(Token::Type type)
 {
 	switch (type) {
 	case Token::Type::Chord:                 return "chord";
-	case Token::Type::Close_Block:           return "]";
-	case Token::Type::Close_Paren:           return ")";
+	case Token::Type::Close_Block:           return ")";
 	case Token::Type::Expression_Separator:  return "|";
 	case Token::Type::Keyword:               return "keyword";
 	case Token::Type::Numeric:               return "numeric";
-	case Token::Type::Open_Block:            return "[";
-	case Token::Type::Open_Paren:            return "(";
+	case Token::Type::Open_Block:            return "(";
 	case Token::Type::Operator:              return "operator";
 	case Token::Type::Parameter_Separator:   return "parameter separator";
 	case Token::Type::Symbol:                return "symbol";

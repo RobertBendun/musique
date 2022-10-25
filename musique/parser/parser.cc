@@ -68,13 +68,11 @@ Result<Ast> Parser::parse(std::string_view source, std::string_view filename, un
 	auto const result = parser.parse_sequence();
 
 	if (result.has_value() && parser.token_id < parser.tokens.size()) {
-		if (parser.expect(Token::Type::Close_Paren) || parser.expect(Token::Type::Close_Block)) {
+		if (parser.expect(Token::Type::Close_Block)) {
 			auto const tok = parser.consume();
 			return Error {
 				.details = errors::Closing_Token_Without_Opening {
-					.type = tok.type == Token::Type::Close_Paren
-						? errors::Closing_Token_Without_Opening::Paren
-						: errors::Closing_Token_Without_Opening::Block
+						errors::Closing_Token_Without_Opening::Paren
 				},
 				.location = tok.location
 			};
@@ -287,28 +285,13 @@ Result<Ast> Parser::parse_atomic_expression()
 				if (is_lambda) {
 					return Ast::lambda(opening.location, std::move(ast), std::move(parameters));
 				} else {
+					ensure(ast.type == Ast::Type::Sequence, "I dunno if this is a valid assumption tbh");
+					if (ast.arguments.size() == 1) {
+						return std::move(ast.arguments.front());
+					}
 					return Ast::block(opening.location, std::move(ast));
 				}
 			});
-		}
-
-	case Token::Type::Open_Paren:
-		{
-			consume();
-			auto ast = Try(parse_sequence());
-			if (not expect(Token::Type::Close_Paren)) {
-				auto const& token = Try(peek());
-				return Error {
-					.details = errors::internal::Unexpected_Token {
-						.type = type_name(token.type),
-						.source = token.source,
-						.when = "waiting for closing paren ')'"
-					},
-					.location = token.location
-				};
-			}
-			consume();
-			return ast;
 		}
 
 	break; case Token::Type::Operator:

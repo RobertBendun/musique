@@ -1,7 +1,7 @@
 bpm 150;
 len sn;
 
-play [
+play (
 	oct 3; 4 * h; h 3 en;
 	oct 3; 6 * h; h 3 en;
 	oct 4; 7 * e;
@@ -9,5 +9,5 @@ play [
 	oct 3; a; a; 5 * h;
 	oct 3; 7 * h;
 	oct 4; 2 * d; 4 * (h 3); h 3 en
-];
+);
 

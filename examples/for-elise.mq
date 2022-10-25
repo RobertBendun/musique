@@ -4,12 +4,12 @@ WIP implemntation
 ----------------------------------------------
 oct 5; bpm 72; len (1/16);
 
-subsection1 := [
+subsection1 := (
   sim (a 4 en) (a 2 e 3 a 3);
-  play [oct 4; c e a];
+  play (oct 4; c e a);
 
   sim (b 4 en) (e 2 e 3 g# 3);
-  play [oct 4; e g# b];
+  play (oct 4; e g# b);
 
   sim (c 5 en) (a 2 e 3 a 3);
   play (e 4 e 5 d# 5);
@@ -21,22 +21,22 @@ subsection1 := [
 
   sim (b 4 en) (e 2 e 3 g# 3);
   play (d 4 c 5 b 4);
-];
+);
 
-section1 := [ n |
-  play (e d#);
+section1 := ( n |
+  play e d#;
   play (e d# e b 4 d c);
 
   call subsection1;
 
   if (n == 1)
-    [ sim (a 4 qn) (a 2 e 3 a 3); ]
-    [ sim (a 4 en) (a 2 e 3 a 3)
+    (| sim (a 4 qn) (a 2 e 3 a 3) )
+    ( sim (a 4 en) (a 2 e 3 a 3)
     ; play (b 4 c 5 d 5)
-    ]
-];
+    )
+);
 
-section2 := [ n |
+section2 := ( n |
   sim (e 5 den) (c 3 g 3 c 4);
   play (g 4 f e);
 
@@ -55,10 +55,10 @@ section2 := [ n |
   call subsection1;
 
   if (n == 1)
-    [ sim (a 4 en) (a 2 e 3 a 3)
+    ( sim (a 4 en) (a 2 e 3 a 3)
     ; play (b 4 c 5 d 5)
-    ]
-];
+    )
+);
 
 section1 1;
 section1 2;

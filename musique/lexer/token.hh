@@ -19,8 +19,6 @@ struct Token
 		Expression_Separator, ///< ";" separates expressions. Used mainly to separate calls, like `foo 1 2; bar 3 4`
 		Open_Block,           ///< "[" delimits anonymous block of code (potentially a function)
 		Close_Block,          ///< "]" delimits anonymous block of code (potentially a function)
-		Open_Paren,           ///< "(" used in arithmetic or as function invocation sarrounding
-		Close_Paren           ///< ")" used in arithmetic or as function invocation sarrounding
 	};
 
 	/// Type of token
