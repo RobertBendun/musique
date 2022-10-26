@@ -1,4 +1,4 @@
-factorial := (n | fold (1 + up n) '*);
+factorial := (n | fold '* (1 + up n));
 
 
 list_all_permutations := ( array |

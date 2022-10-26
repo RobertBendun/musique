@@ -7,9 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- new builtins: map, while, set_len, duration
+
 ### Changed
 
 - Block can be called with more parameters then it requires
+- Removed `[]` sequence notation in favour of `()`
+- reorganized fold argument order
+
+### Fixed
+
+- Index operation using booleans behaves like a mask and not fancy way of spelling 0 and 1
 
 ## [0.2.1] - 2022-10-21
 

@@ -525,35 +525,57 @@ static Result<Value> builtin_fold(Interpreter &interpreter, std::vector<Value> a
 	constexpr auto guard = Guard<2> {
 		.name = "fold",
 		.possibilities = {
-			"(array, callback) -> any",
-			"(array, init, callback) -> any"
+			"(callback, ...values) -> any",
 		}
 	};
 
-	Value array, init, callback;
-	switch (args.size()) {
-	break; case 2:
-		array    = std::move(args[0]);
-		callback = std::move(args[1]);
-		if (array.size() != 0) {
-			init = Try(array.index(interpreter, 0));
+	if (args.size()) {
+		if (auto p = get_if<Function>(args.front())) {
+			auto xs = Try(flatten(interpreter, std::span(args).subspan(1)));
+			if (xs.empty()) {
+				return Value{};
+			}
+			auto init = xs[0];
+			for (auto i = 1u; i < xs.size(); ++i) {
+				init = Try((*p)(interpreter, { std::move(init), std::move(xs[i]) }));
+			}
+			return init;
 		}
-	break; case 3:
-		array    = std::move(args[0]);
-		init     = std::move(args[1]);
-		callback = std::move(args[2]);
-	break; default:
+	}
+
+	return guard.yield_error();
+}
+
+static Result<Value> builtin_map(Interpreter &interpreter, std::vector<Value> args)
+{
+	static constexpr auto guard = Guard<2> {
+		.name = "fold",
+		.possibilities = {
+			"(callback, array) -> any",
+			"(callback, array, init) -> any"
+		}
+	};
+
+	if (args.empty()) {
 		return guard.yield_error();
 	}
 
-	auto collection = Try(guard.match<Collection>(array));
-	auto function = Try(guard.match<Function>(callback));
+	auto function = Try(guard.match<Function>(args.front()));
 
-	for (auto i = 0u; i < collection->size(); ++i) {
-		auto element = Try(collection->index(interpreter, i));
-		init = Try((*function)(interpreter, { std::move(init), std::move(element) }));
+	std::vector<Value> result;
+
+	for (auto &arg : std::span(args).subspan(1)) {
+		if (auto collection = get_if<Collection>(arg)) {
+			for (auto i = 0u; i < collection->size(); ++i) {
+				auto element = Try(collection->index(interpreter, i));
+				result.push_back(Try((*function)(interpreter, { std::move(element) })));
+			}
+		} else {
+			result.push_back(Try((*function)(interpreter, { std::move(arg) })));
+		}
 	}
-	return init;
+
+	return result;
 }
 
 /// Scan computes inclusive prefix sum
@@ -598,6 +620,29 @@ static Result<Value> builtin_if(Interpreter &i, std::span<Ast> args)  {
 		return i.eval((Ast)args[2]);
 	}
 
+	return Value{};
+}
+
+/// Loop block depending on condition
+static Result<Value> builtin_while(Interpreter &i, std::span<Ast> args)  {
+	static constexpr auto guard = Guard<2> {
+		.name = "while",
+		.possibilities = {
+			"(any, function) -> any"
+		}
+	};
+
+	if (args.size() != 2) {
+		return guard.yield_error();
+	}
+
+	while (Try(i.eval((Ast)args.front())).truthy()) {
+		if (args[1].type == Ast::Type::Block) {
+			Try(i.eval((Ast)args[1].arguments.front()));
+		} else {
+			Try(i.eval((Ast)args[1]));
+		}
+	}
 	return Value{};
 }
 
@@ -678,6 +723,65 @@ static Result<Value> builtin_len(Interpreter &i, std::vector<Value> args)
 	}
 	// TODO Add overload that tells length of array to error reporting
 	return ctx_read_write_property<&Context::length>(i, std::move(args));
+}
+
+Result<Value> traverse(Interpreter &interpreter, Value &&value, auto &&lambda)
+{
+	if (auto collection = get_if<Collection>(value)) {
+		std::vector<Value> flat;
+		for (auto i = 0u; i < collection->size(); ++i) {
+			Value v = Try(collection->index(interpreter, i));
+			flat.push_back(Try(traverse(interpreter, std::move(v), lambda)));
+		}
+		return flat;
+	}
+
+	std::visit([&lambda]<typename T>(T &value) {
+		if constexpr (requires { {lambda(value)}; }) {
+			lambda(value);
+		}
+	}, value.data);
+	return value;
+}
+
+/// Set length (first argument) to all other arguments preserving their shape
+static Result<Value> builtin_set_len(Interpreter &interpreter, std::vector<Value> args)
+{
+	if (auto len = get_if<Number>(args.front())) {
+		std::vector<Value> result;
+		for (auto &arg : std::span(args).subspan(1)) {
+			auto arg_result = Try(traverse(interpreter, std::move(arg), [&](Chord &c) {
+				for (Note &note : c.notes) {
+					note.length = *len;
+				}
+			}));
+			result.push_back(std::move(arg_result));
+		}
+		return result;
+	}
+
+	return errors::Unsupported_Types_For {
+		.type = errors::Unsupported_Types_For::Function,
+		.name = "set_len",
+		.possibilities = {
+			"TODO"
+		}
+	};
+}
+
+static Result<Value> builtin_duration(Interpreter &interpreter, std::vector<Value> args)
+{
+	auto total = Number{};
+	for (auto &arg : args) {
+		Try(traverse(interpreter, std::move(arg), [&](Chord &c) {
+			for (Note &note : c.notes) {
+				if (note.length) {
+					total += *note.length;
+				}
+			}
+		}));
+	}
+	return total;
 }
 
 /// Join arguments into flat array
@@ -961,6 +1065,7 @@ void Interpreter::register_builtin_functions()
 	global.force_define("ceil",           apply_numeric_transform<&Number::ceil>);
 	global.force_define("chord",          builtin_chord);
 	global.force_define("down",           builtin_range<Range_Direction::Down>);
+	global.force_define("duration",       builtin_duration);
 	global.force_define("flat",           builtin_flat);
 	global.force_define("floor",          apply_numeric_transform<&Number::floor>);
 	global.force_define("fold",           builtin_fold);
@@ -969,6 +1074,7 @@ void Interpreter::register_builtin_functions()
 	global.force_define("if",             builtin_if);
 	global.force_define("instrument",     builtin_program_change);
 	global.force_define("len",            builtin_len);
+	global.force_define("map",            builtin_map);
 	global.force_define("max",            builtin_max);
 	global.force_define("min",            builtin_min);
 	global.force_define("mix",            builtin_mix);
@@ -987,6 +1093,7 @@ void Interpreter::register_builtin_functions()
 	global.force_define("rotate",         builtin_rotate);
 	global.force_define("round",          apply_numeric_transform<&Number::round>);
 	global.force_define("scan",           builtin_scan);
+	global.force_define("set_len",        builtin_set_len);
 	global.force_define("shuffle",        builtin_shuffle);
 	global.force_define("sim",            builtin_sim);
 	global.force_define("sort",           builtin_sort);
@@ -996,4 +1103,5 @@ void Interpreter::register_builtin_functions()
 	global.force_define("unique",         builtin_unique);
 	global.force_define("up",             builtin_range<Range_Direction::Up>);
 	global.force_define("update",         builtin_update);
+	global.force_define("while",          builtin_while);
 }

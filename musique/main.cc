@@ -190,7 +190,7 @@ struct Runner
 				if (std::next(it) != args.end())
 					std::cout << ' ';
 			}
-			std::cout << '\n';
+			std::cout << std::endl;
 			return {};
 		});
 	}

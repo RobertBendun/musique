@@ -1,0 +1,13 @@
+
+say (if true 4 2);
+say (if false 4 2);
+
+if true  (say 4) (say 2);
+if false (say 4) (say 2);
+
+n := 0;
+while (n < 5) (
+	say 'while n;
+	n = n + 1;
+);
+

@@ -19,7 +19,7 @@ factorial_iterative := (n |
 );
 
 -- Calculate factorial using composition of functions
-factorial := (n | fold (1 + up n) 1 '*);
+factorial := (n | fold '* 1 (1 + up n));
 
 -- Gather all functions into array, and iterate over it
 -- This allows to reduce repeatition of this test case
