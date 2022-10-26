@@ -579,7 +579,7 @@ static Result<Value> builtin_scan(Interpreter &interpreter, std::vector<Value> a
 }
 
 /// Execute blocks depending on condition
-static Result<Value> builtin_if(Interpreter &i, std::vector<Value> args)  {
+static Result<Value> builtin_if(Interpreter &i, std::span<Ast> args)  {
 	static constexpr auto guard = Guard<2> {
 		.name = "if",
 		.possibilities = {
@@ -592,12 +592,10 @@ static Result<Value> builtin_if(Interpreter &i, std::vector<Value> args)  {
 		return guard.yield_error();
 	}
 
-	if (args.front().truthy()) {
-		auto fun = Try(guard.match<Function>(args[1]));
-		return (*fun)(i, {});
+	if (Try(i.eval((Ast)args.front())).truthy()) {
+		return i.eval((Ast)args[1]);
 	} else if (args.size() == 3) {
-		auto fun = Try(guard.match<Function>(args[2]));
-		return (*fun)(i, {});
+		return i.eval((Ast)args[2]);
 	}
 
 	return Value{};

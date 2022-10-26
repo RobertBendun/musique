@@ -167,6 +167,10 @@ Result<Value> Interpreter::eval(Ast &&ast)
 			auto call_location = ast.arguments.front().location;
 			Value func = Try(eval(std::move(ast.arguments.front())));
 
+			if (auto macro = std::get_if<Macro>(&func.data)) {
+				return (*macro)(*this, std::span(ast.arguments).subspan(1));
+			}
+
 			std::vector<Value> values;
 			values.reserve(ast.arguments.size());
 			for (auto& a : std::span(ast.arguments).subspan(1)) {

@@ -7,8 +7,8 @@ using Musique programming language
 -- Calculate factorial using recursive approach
 factorial_recursive := (n |
 	if (n <= 1)
-		(| 1)
-		(| n * (factorial_recursive (n-1)))
+		1
+		(n * (factorial_recursive (n-1)))
 );
 
 -- Calculate factorial using iterative approach

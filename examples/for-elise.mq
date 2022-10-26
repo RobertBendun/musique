@@ -30,7 +30,7 @@ section1 := ( n |
   call subsection1;
 
   if (n == 1)
-    (| sim (a 4 qn) (a 2 e 3 a 3) )
+    ( sim (a 4 qn) (a 2 e 3 a 3) )
     ( sim (a 4 en) (a 2 e 3 a 3)
     ; play (b 4 c 5 d 5)
     )

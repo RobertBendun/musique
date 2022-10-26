@@ -1,6 +1,6 @@
 for (up 10) ( n |
 	snd := c + (shuffle (up 12)).0;
-	oct := if (n % 2 == 0) (| 3 ) (| 4 );
+	oct := if (n % 2 == 0) 3 4;
 	say snd oct;
 	play (snd oct qn);
 );

@@ -19,6 +19,8 @@ struct Nil
 using Bool   = bool;
 using Symbol = std::string;
 
+using Macro = Result<Value>(*)(Interpreter &i, std::span<Ast>);
+
 /// Representation of any value in language
 struct Value
 {
@@ -52,7 +54,8 @@ struct Value
 		Intrinsic,
 		Block,
 		Array,
-		Chord
+		Chord,
+		Macro
 	> data = Nil{};
 
 	Value();
@@ -68,6 +71,10 @@ struct Value
 	}
 
 	inline Value(Intrinsic const& intr) : data(intr)
+	{
+	}
+
+	inline Value(Macro m) : data(m)
 	{
 	}
 
