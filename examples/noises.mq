@@ -1,25 +1,25 @@
 -- todo: cicho, ostatni parametr midi
 -- todo: for doesn't forwards implicit play context
 
-pick := (array | (shuffle array).0);
+pick := (array | (shuffle array).0),
 
 hand1_pool := (
-	chord (g# 3) (g 4);
-	chord (d# 3)  (d 4);
-	chord (g 3) (g# 4);
-	chord (d 3) (d# 4)
-);
+	chord g#3 g4,
+	chord d#3 d4,
+	chord g3  g#4,
+	chord d3  d#4,
+),
 
-hand2_pool := (d 8; d# 8; g 8; g# 8; d 9; d# 9);
+hand2_pool := (d8, d#8, g8, g#8, d9, d#9),
 
 for (up 10) (
-	hand1_length := pick (hn; dhn);
-	hand1 := (set_len hand1_length (pick hand1_pool));
+	hand1_length := pick (hn, dhn),
+	hand1 := (set_len hand1_length (pick hand1_pool)),
 
-	hand2 := ();
+	hand2 := (),
 	while (fold '+ (map duration hand2) != hand1_length) (
-		hand2 = flat hand2 (set_len (1/64) (pick hand2_pool));
-	);
+		hand2 = flat hand2 (set_len (1/64) (pick hand2_pool)),
+	),
 
-	sim hand1 hand2;
-);
+	sim hand1 hand2,
+),

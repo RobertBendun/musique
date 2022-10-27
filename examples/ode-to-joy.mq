@@ -1,13 +1,13 @@
-C := chord (c 3 1) (g 3 1) (c 4 1);
-G := chord (g 3 1) (d 4 1) (g 4 1);
+C := chord c3 g3 c4,
+G := chord g3 d4 g4,
 
-oct 5;
-par C e e f g;
-par G g f e d;
-par C c c d e;
-par G (e 5 (3/8) d 5 (1/8) d 5 (1/2));
-par C e e f g;
-par G g f e d;
-par C c c d e;
-par G (d 5 (1/2) c 5 (1/8));
-par C (c 5 1);
+oct 5,
+par C e e f g,
+par G g f e d,
+par C c c d e,
+par G (e5 (3/8) d5 (1/8) d5 (1/2)),
+par C e e f g,
+par G g f e d,
+par C c c d e,
+par G (d5 (1/2) c5 (1/8)),
+par C (c5 1),

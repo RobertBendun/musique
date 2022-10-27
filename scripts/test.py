@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import argparse
 import dataclasses
 import json
@@ -139,6 +140,9 @@ def test():
     print(f"Passed {successful} out of {total} ({100 * successful // total}%)")
 
 if __name__ == "__main__":
+    if not os.path.exists(INTERPRETER):
+        subprocess.run("make debug", shell=True, check=True)
+
     parser = argparse.ArgumentParser(description="Regression test runner for Musique programming language")
     parser.add_argument("-d", "--discover", action="store_true", help="Discover all tests that are not in testing database")
     parser.add_argument("-u", "--update", action="store_true", help="Update all tests")

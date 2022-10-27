@@ -123,7 +123,7 @@ std::ostream& operator<<(std::ostream& os, Chord const& chord)
 	for (auto it = chord.notes.begin(); it != chord.notes.end(); ++it) {
 		os << *it;
 		if (std::next(it) != chord.notes.end())
-			os << "; ";
+			os << ", ";
 	}
 	return os << ')';
 }

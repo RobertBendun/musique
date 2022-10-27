@@ -2,79 +2,64 @@
 "Für Elise in A Minor" by Ludwig van Beethoven
 WIP implemntation
 ----------------------------------------------
-oct 5; bpm 72; len (1/16);
+oct 5, bpm 72, len (1/16),
 
 subsection1 := (
-  sim (a 4 en) (a 2 e 3 a 3);
-  play (oct 4; c e a);
+  sim (a4 en) (a2 e3 a3),
+  play (oct 4, c e a),
 
-  sim (b 4 en) (e 2 e 3 g# 3);
-  play (oct 4; e g# b);
+  sim (b4 en) (e2 e3 g#3),
+  play (oct 4, e g# b),
 
-  sim (c 5 en) (a 2 e 3 a 3);
-  play (e 4 e 5 d# 5);
+  sim (c5 en) (a2 e3 a3),
+  play (e4 e5 d#5),
 
-  play (e d# e b 4 d c);
+  play e d# e b4 d c,
 
-  sim (a 4 en) (a 2 e 3 a 3);
-  play (c 4 e 4 a 4);
+  sim (a4 en) (a2 e3 a3),
+  play c4 e4 a4,
 
-  sim (b 4 en) (e 2 e 3 g# 3);
-  play (d 4 c 5 b 4);
-);
+  sim (b4 en) (e2 e3 g#3),
+  play d4 c5 b4,
+),
 
 section1 := ( n |
-  play e d#;
-  play (e d# e b 4 d c);
+  play e d#,
+  play e d# e b4 d c,
 
-  call subsection1;
+  call subsection1,
 
   if (n == 1)
-    ( sim (a 4 qn) (a 2 e 3 a 3) )
-    ( sim (a 4 en) (a 2 e 3 a 3)
-    ; play (b 4 c 5 d 5)
+    ( sim (a4 qn) (a2 e3 a3) )
+    ( sim (a4 en) (a2 e3 a3)
+    , play b4 c5 d5
     )
-);
+),
 
 section2 := ( n |
-  sim (e 5 den) (c 3 g 3 c 4);
-  play (g 4 f e);
+  sim (e5 den) (c3 g3 c4),
+  play g4 f e,
 
-  sim (d 5 den) (g 2 g 3 b 4);
-  play (f 4 e d);
+  sim (d 5 den) (g2 g3 b4),
+  play f4 e d,
 
-  sim (c 5 den) (a 2 e 3 a 3);
-  play (e 4 d c);
+  sim (c5 den) (a2 e3 a3),
+  play e4 d c,
 
-  sim (b 4 en) (e 2 e 3 e 4);
-  play (e 4 e 5 e 4 e 4 e 5 e 6 d# 5 e 5 d# 5 e 5 en);
+  sim (b4 en) (e2 e3 e4),
+  play (e4 e5 e4 e4 e5 e6 d#5 e5 d#5 e5 en),
 
-  play (d# e d# e d#);
-  play (e d# e b 4 d c);
+  play d# e d# e d#,
+  play e d# e b4 d c,
 
-  call subsection1;
+  call subsection1,
 
   if (n == 1)
-    ( sim (a 4 en) (a 2 e 3 a 3)
-    ; play (b 4 c 5 d 5)
+    ( sim (a4 en) (a2 e3 a3)
+    , play (b4 c5 d5)
     )
-);
+),
 
-section1 1;
-section1 2;
-section2 1;
-
-sim (a 4 en p    e8  4 f7 4 e38 4)
-    (a 2 e 3 a 3 a#2 3 a3 3 g35 3);
-
-sim (c 5 qn f 5 dsn e 5 tn)
-    (f 3 a 3 c 4 a 3 c 4 a 3);
-
-sim (e 5 en d 5 en a# 5 dsn a 5 tn)
-    (f 3 a# 3 d 4 a# 3 d 4 a# 3);
-
-sim (a g f e d c)
-    (f 3 a# 3 d 4 a# 3 d 4 a# 3);
-
-sim (a# 4 a 4 a 4 tn g 4 tn a 4 tn a# 4 tn)
-    (f 3 a 3 c 4 a 3 c 4 a 3);
+section1 1,
+section1 2,
+section2 1,

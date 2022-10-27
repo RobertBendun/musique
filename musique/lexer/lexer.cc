@@ -90,7 +90,7 @@ auto Lexer::next_token() -> Result<std::variant<Token, End_Of_File>>
 	switch (peek()) {
 	case '(': consume(); return Token { Token::Type::Open_Block,           finish(), token_location };
 	case ')': consume(); return Token { Token::Type::Close_Block,          finish(), token_location };
-	case ';': consume(); return Token { Token::Type::Expression_Separator, finish(), token_location };
+	case ',': consume(); return Token { Token::Type::Expression_Separator, finish(), token_location };
 
 	case '|':
 		consume();

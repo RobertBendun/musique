@@ -1,13 +1,13 @@
-say (false or false);
-say (false or true);
-say (true or false);
-say (true or true);
+say (false or false),
+say (false or true),
+say (true or false),
+say (true or true),
 
 -- Test value preservation
-say (0 or 1);
-say (0 or 0);
-say (4 or 3);
+say (0 or 1),
+say (0 or 0),
+say (4 or 3),
 
 -- Test lazy evaluation
-call (say 42; false) or say 10;
-call (say 42; true) or say 10;
+call (say 42, false) or say 10,
+call (say 42, true) or say 10,

@@ -1,11 +1,11 @@
-factorial := (n | fold '* (1 + up n));
+factorial := (n | fold '* (1 + up n)),
 
 
 list_all_permutations := ( array |
 	for (up (factorial (len array))) (|
-		say array;
-		array = permute array;
-	);
-);
+		say array,
+		array = permute array,
+	),
+),
 
-list_all_permutations (1 + up 5);
+list_all_permutations (1 + up 5),

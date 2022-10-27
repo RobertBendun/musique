@@ -1,5 +1,5 @@
-say (uniq (up 10 & down 10));
-say (uniq [1;1;1;3;5;3;4;4;1]);
+say (uniq (up 10 & down 10)),
+say (uniq [1,1,1,3,5,3,4,4,1]),
 
 -- Multiple uniq applications shouldn't matter
-say (uniq (uniq [1;1;1;3;5;3;4;4;1]));
+say (uniq (uniq [1,1,1,3,5,3,4,4,1])),

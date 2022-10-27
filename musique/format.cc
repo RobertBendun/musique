@@ -30,25 +30,25 @@ std::optional<Error> Value_Formatter::format(std::ostream& os, Interpreter &inte
 			return {};
 		},
 		[&](Array const& array) -> std::optional<Error> {
-			os << '[';
+			os << '(';
 			for (auto i = 0u; i < array.elements.size(); ++i) {
 				if (i > 0) {
-					os << "; ";
+					os << ", ";
 				}
 				Try(nest(Inside_Block).format(os, interpreter, array.elements[i]));
 			}
-			os << ']';
+			os << ')';
 			return {};
 		},
 		[&](Block const& block) -> std::optional<Error> {
-			os << '[';
+			os << '(';
 			for (auto i = 0u; i < block.size(); ++i) {
 				if (i > 0) {
-					os << "; ";
+					os << ", ";
 				}
 				Try(nest(Inside_Block).format(os, interpreter, Try(block.index(interpreter, i))));
 			}
-			os << ']';
+			os << ')';
 			return {};
 		},
 		[&](auto&&) -> std::optional<Error> {

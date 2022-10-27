@@ -29,12 +29,12 @@ usize Array::size() const
 
 std::ostream& operator<<(std::ostream& os, Array const& v)
 {
-	os << '[';
+	os << '(';
 	for (auto it = v.elements.begin(); it != v.elements.end(); ++it) {
 		os << *it;
 		if (std::next(it) != v.elements.end()) {
-			os << "; ";
+			os << ", ";
 		}
 	}
-	return os << ']';
+	return os << ')';
 }

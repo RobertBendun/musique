@@ -1,27 +1,27 @@
 ----------------------------------
 Simple variable assigment
 ----------------------------------
-x := 10;
-y := 20;
-say x;
-say y;
+x := 10,
+y := 20,
+say x,
+say y,
 
-x = 30;
-say x;
-say y;
+x = 30,
+say x,
+say y,
 
-x = y;
-say x;
-say y;
+x = y,
+say x,
+say y,
 
 ----------------------------------
 Array updates
 ----------------------------------
-array := flat 1 2 3;
-say array;
+array := flat 1 2 3,
+say array,
 
-array = update array 1 10;
-say array;
+array = update array 1 10,
+say array,
 
-array = update array 1 (array.2);
-say array;
+array = update array 1 (array.2),
+say array,
