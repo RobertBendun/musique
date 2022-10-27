@@ -32,6 +32,8 @@ struct Array : Collection
 	/// Arrays are equal if all of their elements are equal
 	bool operator==(Array const&) const = default;
 
+	bool is_collection() const override;
+
 	/// Print array
 	friend std::ostream& operator<<(std::ostream& os, Array const& v);
 };

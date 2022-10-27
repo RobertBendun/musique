@@ -549,10 +549,9 @@ static Result<Value> builtin_fold(Interpreter &interpreter, std::vector<Value> a
 static Result<Value> builtin_map(Interpreter &interpreter, std::vector<Value> args)
 {
 	static constexpr auto guard = Guard<2> {
-		.name = "fold",
+		.name = "map",
 		.possibilities = {
-			"(callback, array) -> any",
-			"(callback, array, init) -> any"
+			"(callback, array) -> any"
 		}
 	};
 

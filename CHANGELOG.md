@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - new builtins: map, while, set_len, duration
 - `<note><octave>` notation like `c4` that mimics [scientific notation](https://en.wikipedia.org/wiki/Scientific_pitch_notation)
+- operator pretty printing while printing values
 
 ### Changed
 
@@ -22,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Index operation using booleans behaves like a mask and not fancy way of spelling 0 and 1
+- Blocks are check against beeing a collection at runtime to prevent treating anonymous functions as collections and cousing assertions
 
 ### Removed
 

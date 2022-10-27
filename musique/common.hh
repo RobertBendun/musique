@@ -38,6 +38,9 @@ struct is_template<Template, Template<T...>> : std::true_type {};
 template<template<typename ...> typename Template, typename T>
 constexpr auto is_template_v = is_template<Template, T>::value;
 
+template<typename T, template<typename ...> typename Template>
+concept same_template_as = is_template_v<Template, std::remove_cvref_t<T>>;
+
 /// Drop in replacement for bool when C++ impilcit conversions stand in your way
 struct Explicit_Bool
 {

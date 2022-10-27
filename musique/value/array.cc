@@ -38,3 +38,8 @@ std::ostream& operator<<(std::ostream& os, Array const& v)
 	}
 	return os << ')';
 }
+
+bool Array::is_collection() const
+{
+	return true;
+}

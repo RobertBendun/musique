@@ -17,6 +17,8 @@ struct Collection
 	/// Return elements count
 	virtual usize size() const = 0;
 
+	virtual bool is_collection() const = 0;
+
 	bool operator==(Collection const&) const = default;
 };
 

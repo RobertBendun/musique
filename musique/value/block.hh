@@ -36,6 +36,8 @@ struct Block : Collection, Function
 
 	/// Count of elements in block
 	usize size() const override;
+
+	bool is_collection() const override;
 };
 
 #endif

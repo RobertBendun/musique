@@ -3,6 +3,7 @@
 #include <musique/format.hh>
 #include <musique/try.hh>
 #include <musique/value/value.hh>
+#include <musique/interpreter/interpreter.hh>
 
 Result<std::string> format(Interpreter &i, Value const& value)
 {
@@ -21,8 +22,14 @@ std::optional<Error> Value_Formatter::format(std::ostream& os, Interpreter &inte
 	return std::visit(Overloaded {
 		[&](Intrinsic const& intrinsic) -> std::optional<Error> {
 			for (auto const& [key, val] : Env::global->variables) {
-				if (auto other = get_if<Intrinsic>(val); intrinsic == *other) {
+				if (auto other = get_if<Intrinsic>(val); other && intrinsic == *other) {
 					os << "<intrinsic '" << key << "'>";
+					return {};
+				}
+			}
+			for (auto const& [key, val] : interpreter.operators) {
+				if (intrinsic == val) {
+					os << "<operator '" << key << "'>";
 					return {};
 				}
 			}
@@ -41,14 +48,18 @@ std::optional<Error> Value_Formatter::format(std::ostream& os, Interpreter &inte
 			return {};
 		},
 		[&](Block const& block) -> std::optional<Error> {
-			os << '(';
-			for (auto i = 0u; i < block.size(); ++i) {
-				if (i > 0) {
-					os << ", ";
+			if (block.is_collection()) {
+				os << '(';
+				for (auto i = 0u; i < block.size(); ++i) {
+					if (i > 0) {
+						os << ", ";
+					}
+					Try(nest(Inside_Block).format(os, interpreter, Try(block.index(interpreter, i))));
 				}
-				Try(nest(Inside_Block).format(os, interpreter, Try(block.index(interpreter, i))));
+				os << ')';
+			} else {
+				os << "<block>";
 			}
-			os << ')';
 			return {};
 		},
 		[&](auto&&) -> std::optional<Error> {

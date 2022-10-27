@@ -16,7 +16,7 @@ static inline std::optional<Error> guard_index(unsigned index, unsigned size)
 // TODO Add memoization
 Result<Value> Block::index(Interpreter &i, unsigned position) const
 {
-	ensure(parameters.size() == 0, "cannot index into block with parameters (for now)");
+	ensure(parameters.empty(), "cannot index into block with parameters (for now)");
 	if (body.type != Ast::Type::Sequence) {
 		Try(guard_index(position, 1));
 		return i.eval((Ast)body);
@@ -56,4 +56,9 @@ Result<Value> Block::operator()(Interpreter &i, std::vector<Value> arguments) co
 
 	i.env = old_scope;
 	return result;
+}
+
+bool Block::is_collection() const
+{
+	return parameters.empty();
 }
