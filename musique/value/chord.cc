@@ -30,23 +30,21 @@ Result<Value> Chord::operator()(Interpreter& interpreter, std::vector<Value> arg
 	std::vector<Chord> current = { *this };
 
 	enum State {
-		Waiting_For_Octave,
 		Waiting_For_Length,
 		Waiting_For_Note
-	} state = Waiting_For_Octave;
+	} state = Waiting_For_Length;
 
 	static constexpr auto guard = Guard<1> {
 		.name = "note creation",
 		.possibilities = {
-			"(note:music [octave:number [duration:number]])+"
+			"(note:music [duration:number])+"
 		}
 	};
 
 	auto const next = [&state] {
 		switch (state) {
 		break; case Waiting_For_Length: state = Waiting_For_Note;
-		break; case Waiting_For_Note:   state = Waiting_For_Octave;
-		break; case Waiting_For_Octave: state = Waiting_For_Length;
+		break; case Waiting_For_Note:   state = Waiting_For_Length;
 		}
 	};
 
@@ -58,10 +56,6 @@ Result<Value> Chord::operator()(Interpreter& interpreter, std::vector<Value> arg
 		};
 
 		switch (state) {
-		break; case Waiting_For_Octave:
-			resolve(&Note::octave, number.floor().as_int());
-			return {};
-
 		break; case Waiting_For_Length:
 			resolve(&Note::length, number);
 			return {};
@@ -73,7 +67,7 @@ Result<Value> Chord::operator()(Interpreter& interpreter, std::vector<Value> arg
 
 	for (auto &arg : args) {
 		if (auto collection = get_if<Collection>(arg)) {
-			if (state != Waiting_For_Length && state != Waiting_For_Octave) {
+			if (state != Waiting_For_Length) {
 				return guard.yield_error();
 			}
 
@@ -106,7 +100,7 @@ Result<Value> Chord::operator()(Interpreter& interpreter, std::vector<Value> arg
 				[](Chord &c) { return std::move(c); });
 			current.clear();
 			current.push_back(std::move(*chord));
-			state = Waiting_For_Octave;
+			state = Waiting_For_Length;
 		}
 	}
 

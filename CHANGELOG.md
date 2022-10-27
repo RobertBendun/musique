@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Block can be called with more parameters then it requires
 - Removed `[]` sequence notation in favour of `()`
 - reorganized fold argument order
+- Moved from `(<note> <octave> <length>)` invocation to `(<note> <length>)`
 
 ### Fixed
 
