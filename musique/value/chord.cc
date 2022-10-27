@@ -20,15 +20,7 @@ Chord Chord::from(std::string_view source)
 	ensure(note.has_value(), "don't know how this could happen");
 
 	Chord chord;
-	source.remove_prefix(1 + (source[1] == '#'));
 	chord.notes.push_back(*std::move(note));
-
-	if (note->base) {
-		for (char digit : source) {
-			chord.notes.push_back(Note { .base = note->base.value() + i32(digit - '0') });
-		}
-	}
-
 	return chord;
 }
 
@@ -133,11 +125,11 @@ std::ostream& operator<<(std::ostream& os, Chord const& chord)
 		return os << chord.notes.front();
 	}
 
-	os << "chord[";
+	os << "chord (";
 	for (auto it = chord.notes.begin(); it != chord.notes.end(); ++it) {
 		os << *it;
 		if (std::next(it) != chord.notes.end())
 			os << "; ";
 	}
-	return os << ']';
+	return os << ')';
 }

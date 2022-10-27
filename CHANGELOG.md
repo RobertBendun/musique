@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - new builtins: map, while, set_len, duration
+- `<note><octave>` notation like `c4` that mimics [scientific notation](https://en.wikipedia.org/wiki/Scientific_pitch_notation)
 
 ### Changed
 
@@ -20,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Index operation using booleans behaves like a mask and not fancy way of spelling 0 and 1
+
+### Removed
+
+- Removed `<note><absolute notes indexes>` chord notation like `c47` meaning c-major
 
 ## [0.2.1] - 2022-10-21
 

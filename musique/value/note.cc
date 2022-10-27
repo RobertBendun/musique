@@ -1,4 +1,5 @@
 #include <musique/value/note.hh>
+#include <charconv>
 
 /// Finds numeric value of note. This form is later used as in
 /// note to midi resolution in formula octave * 12 + note_index
@@ -44,23 +45,34 @@ constexpr std::string_view note_index_to_string(int note_index)
 
 std::optional<Note> Note::from(std::string_view literal)
 {
-	if (literal.starts_with('p')) {
-		return Note {};
-	}
+	std::optional<Note> note;
 
-	if (auto const base = note_index(literal[0]); base != u8(-1)) {
-		Note note { .base = base };
+	if (literal.starts_with("p")) {
+		note = Note{};
+	} else if (auto const base = note_index(literal[0]); base != u8(-1)) {
+		note = Note { .base = base };
 
 		while (literal.remove_prefix(1), not literal.empty()) {
 			switch (literal.front()) {
-			case '#': case 's': ++*note.base; break;
-			case 'b': case 'f': --*note.base; break;
-			default:  return note;
+			case '#': case 's': ++*note->base; break;
+			case 'b': case 'f': --*note->base; break;
+			default:
+				goto endloop;
 			}
 		}
-		return note;
+endloop:
+		;
 	}
-	return std::nullopt;
+
+	if (note && literal.size()) {
+		auto &octave = note->octave.emplace();
+		auto [p, ec] = std::from_chars(&literal.front(), 1 + &literal.back(), octave);
+		ensure(p == &literal.back() + 1,          "Parser must have failed in recognizing what is considered a valid note token #1");
+		ensure(ec != std::errc::invalid_argument, "Parser must have failed in recognizing what is considered a valid note token #2");
+		ensure(ec != std::errc::result_out_of_range, "Octave number is too high"); // TODO(assert)
+	}
+
+	return note;
 }
 
 std::optional<u8> Note::into_midi_note() const
@@ -111,13 +123,13 @@ std::ostream& operator<<(std::ostream& os, Note note)
 	if (note.base) {
 		os << note_index_to_string(*note.base);
 		if (note.octave) {
-			os << ":oct=" << int(*note.octave);
+			os << int(*note.octave);
 		}
 	} else {
 		os << "p";
 	}
 	if (note.length) {
-		os << ":len=" << *note.length;
+		os << " " << *note.length;
 	}
 	return os;
 }
