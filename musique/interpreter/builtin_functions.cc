@@ -615,9 +615,17 @@ static Result<Value> builtin_if(Interpreter &i, std::span<Ast> args)  {
 	}
 
 	if (Try(i.eval((Ast)args.front())).truthy()) {
-		return i.eval((Ast)args[1]);
+		if (args[1].type == Ast::Type::Block) {
+			return Try(i.eval((Ast)args[1].arguments.front()));
+		} else {
+			return Try(i.eval((Ast)args[1]));
+		}
 	} else if (args.size() == 3) {
-		return i.eval((Ast)args[2]);
+		if (args[2].type == Ast::Type::Block) {
+			return Try(i.eval((Ast)args[2].arguments.front()));
+		} else {
+			return Try(i.eval((Ast)args[2]));
+		}
 	}
 
 	return Value{};

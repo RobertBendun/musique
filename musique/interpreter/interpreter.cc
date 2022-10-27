@@ -11,8 +11,9 @@
 static inline void register_note_length_constants()
 {
 	auto &global = *Env::global;
+	global.force_define("wn",   Number(1,  1));
 	global.force_define("fn",   Number(1,  1));
-	global.force_define("dfn",  Number(3,  2));
+	global.force_define("dwn",  Number(3,  2));
 	global.force_define("hn",   Number(1,  2));
 	global.force_define("dhn",  Number(3,  4));
 	global.force_define("ddhn", Number(7,  8));
