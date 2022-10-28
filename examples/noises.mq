@@ -1,8 +1,3 @@
--- todo: cicho, ostatni parametr midi
--- todo: for doesn't forwards implicit play context
-
-pick := (array | (shuffle array).0),
-
 hand1_pool := (
 	chord g#3 g4,
 	chord d#3 d4,
@@ -14,10 +9,11 @@ hand2_pool := (d8, d#8, g8, g#8, d9, d#9),
 
 for (up 10) (
 	hand1_length := pick (hn, dhn),
+	say hand1_length,
 	hand1 := (set_len hand1_length (pick hand1_pool)),
 
 	hand2 := (),
-	while (fold '+ (map duration hand2) != hand1_length) (
+	while (duration hand2 != hand1_length) (
 		hand2 = flat hand2 (set_len (1/64) (pick hand2_pool)),
 	),
 
