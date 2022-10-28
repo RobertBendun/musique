@@ -764,12 +764,45 @@ static Result<Value> builtin_set_len(Interpreter &interpreter, std::vector<Value
 			}));
 			result.push_back(std::move(arg_result));
 		}
-		return result;
+		if (result.size() == 1) {
+			return result.front();
+		} else {
+			return result;
+		}
 	}
 
 	return errors::Unsupported_Types_For {
 		.type = errors::Unsupported_Types_For::Function,
 		.name = "set_len",
+		.possibilities = {
+			"TODO"
+		}
+	};
+}
+
+/// Set octave (first argument) to all other arguments preserving their shape
+static Result<Value> builtin_set_oct(Interpreter &interpreter, std::vector<Value> args)
+{
+	if (auto oct = get_if<Number>(args.front())) {
+		std::vector<Value> result;
+		for (auto &arg : std::span(args).subspan(1)) {
+			auto arg_result = Try(traverse(interpreter, std::move(arg), [&](Chord &c) {
+				for (Note &note : c.notes) {
+					note.octave = oct->round().as_int();
+				}
+			}));
+			result.push_back(std::move(arg_result));
+		}
+		if (result.size() == 1) {
+			return result.front();
+		} else {
+			return result;
+		}
+	}
+
+	return errors::Unsupported_Types_For {
+		.type = errors::Unsupported_Types_For::Function,
+		.name = "set_oct",
 		.possibilities = {
 			"TODO"
 		}
@@ -795,6 +828,18 @@ static Result<Value> builtin_duration(Interpreter &interpreter, std::vector<Valu
 static Result<Value> builtin_flat(Interpreter &i, std::vector<Value> args)
 {
 	return Try(into_flat_array(i, std::move(args)));
+}
+
+/// Pick random value from arugments
+static Result<Value> builtin_pick(Interpreter &i, std::vector<Value> args)
+{
+	static std::mt19937 rnd{std::random_device{}()};
+	auto array = Try(flatten(i, std::move(args)));
+	if (array.empty()) {
+		return array;
+	}
+	std::uniform_int_distribution<std::size_t> dist(0, array.size()-1);
+	return array[dist(rnd)];
 }
 
 /// Shuffle arguments
@@ -1093,6 +1138,7 @@ void Interpreter::register_builtin_functions()
 	global.force_define("partition",      builtin_partition);
 	global.force_define("permute",        builtin_permute);
 	global.force_define("pgmchange",      builtin_program_change);
+	global.force_define("pick",           builtin_pick);
 	global.force_define("play",           builtin_play);
 	global.force_define("program_change", builtin_program_change);
 	global.force_define("range",          builtin_range<Range_Direction::Up>);
@@ -1101,6 +1147,7 @@ void Interpreter::register_builtin_functions()
 	global.force_define("round",          apply_numeric_transform<&Number::round>);
 	global.force_define("scan",           builtin_scan);
 	global.force_define("set_len",        builtin_set_len);
+	global.force_define("set_oct",        builtin_set_oct);
 	global.force_define("shuffle",        builtin_shuffle);
 	global.force_define("sim",            builtin_sim);
 	global.force_define("sort",           builtin_sort);
