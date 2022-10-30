@@ -131,7 +131,6 @@ Result<Ast> Parser::parse_infix_expression()
 		|| expect(Token::Type::Keyword, "or");
 
 	if (next_is_operator) {
-		ensure(not expect(Token::Type::Operator, "."), "This should be handled by parse_index_expression");
 		auto op = consume();
 
 		Ast ast;
@@ -159,7 +158,6 @@ Result<Ast> Parser::parse_rhs_of_infix_expression(Ast lhs)
 		return lhs;
 	}
 
-	ensure(not expect(Token::Type::Operator, "."), "This should be handled by parse_index_expression");
 	auto op = consume();
 
 	if (precedense(lhs.token.source) >= precedense(op.source)) {
@@ -181,18 +179,61 @@ Result<Ast> Parser::parse_rhs_of_infix_expression(Ast lhs)
 	return lhs;
 }
 
+Result<Ast> parse_sequence_inside(
+	Parser &parser,
+	Token::Type closing_token,
+	Location start_location,
+	bool is_lambda,
+	std::vector<Ast> &&parameters,
+	auto &&dont_arrived_at_closing_token
+)
+{
+	auto ast = Try(parser.parse_sequence());
+	if (not parser.expect(closing_token)) {
+		Try(dont_arrived_at_closing_token());
+		return Error {
+			.details = errors::Unexpected_Empty_Source {
+				.reason = errors::Unexpected_Empty_Source::Block_Without_Closing_Bracket,
+				.start = start_location
+			},
+			.location = parser.tokens.back().location
+		};
+	}
+
+	parser.consume();
+
+	if (is_lambda) {
+		return Ast::lambda(start_location, std::move(ast), std::move(parameters));
+	}
+
+	ensure(ast.type == Ast::Type::Sequence, "I dunno if this is a valid assumption tbh");
+	if (ast.arguments.size() == 1) {
+		return std::move(ast.arguments.front());
+	}
+	return Ast::block(start_location, std::move(ast));
+}
+
 Result<Ast> Parser::parse_index_expression()
 {
 	auto result = Try(parse_atomic_expression());
 
-	while (expect(Token::Type::Operator, ".")) {
+	while (expect(Token::Type::Open_Index)) {
 		auto op = consume();
-		if (auto maybe_index = parse_atomic_expression(); maybe_index.has_value()) {
-			result = Ast::binary(std::move(op), std::move(result), *std::move(maybe_index));
-		} else {
-			// TODO Report that error occured during parsing of index expression
-			return std::move(maybe_index).error();
-		}
+		auto start_location = op.location;
+		result = Ast::binary(
+			std::move(op),
+			std::move(result),
+			Try(parse_sequence_inside(
+				*this,
+				Token::Type::Close_Index,
+				start_location,
+				false,
+				{},
+				[]() -> std::optional<Error> {
+					return std::nullopt;
+				}
+			))
+		);
 	}
 
 	return result;
@@ -243,55 +284,45 @@ Result<Ast> Parser::parse_atomic_expression()
 				}
 			}
 
-			return parse_sequence().and_then([&](Ast &&ast) -> Result<Ast> {
-				if (not expect(Token::Type::Close_Block)) {
-					if (expect(Token::Type::Parameter_Separator)) {
-						if (is_lambda) {
-							ensure(false, "There should be error message that you cannot put multiple parameter separators in one block");
-						} else {
-							// This may be a result of user trying to specify parameters from things that cannot be parameters (like chord literals)
-							// or accidential hit of "|" on the keyboard. We can detect first case by ensuring that all tokens between this place
-							// and beggining of a block are identifier looking: keywords, symbols, literal chord declarations, boolean literals etc
-							std::optional<Token> invalid_token = std::nullopt;
-							auto const success = std::all_of(tokens.begin() + start, tokens.begin() + (token_id - start + 1), [&](Token const& token) {
-								if (!invalid_token && token.type != Token::Type::Symbol) {
-									// TODO Maybe gather all tokens to provide all the help needed in the one iteration
-									invalid_token = token;
-								}
-								return is_identifier_looking(token.type);
-							});
+			return parse_sequence_inside(
+				*this,
+				Token::Type::Close_Block,
+				opening.location,
+				is_lambda,
+				std::move(parameters),
+				[&]() -> std::optional<Error> {
+					if (!expect(Token::Type::Parameter_Separator)) {
+						return std::nullopt;
+					}
+					if (is_lambda) {
+						ensure(false, "There should be error message that you cannot put multiple parameter separators in one block");
+					}
 
-							if (success && invalid_token) {
-								return Error {
-									.details = errors::Literal_As_Identifier {
-										.type_name = type_name(invalid_token->type),
-										.source = invalid_token->source,
-										.context = "block parameter list"
-									},
-									.location = invalid_token->location
-								};
-							}
+					// This may be a result of user trying to specify parameters from things that cannot be parameters (like chord literals)
+					// or accidential hit of "|" on the keyboard. We can detect first case by ensuring that all tokens between this place
+					// and beggining of a block are identifier looking: keywords, symbols, literal chord declarations, boolean literals etc
+					std::optional<Token> invalid_token = std::nullopt;
+					auto const success = std::all_of(tokens.begin() + start, tokens.begin() + (token_id - start + 1), [&](Token const& token) {
+						if (!invalid_token && token.type != Token::Type::Symbol) {
+							// TODO Maybe gather all tokens to provide all the help needed in the one iteration
+							invalid_token = token;
 						}
+						return is_identifier_looking(token.type);
+					});
+
+					if (success && invalid_token) {
+						return Error {
+							.details = errors::Literal_As_Identifier {
+								.type_name = type_name(invalid_token->type),
+								.source = invalid_token->source,
+								.context = "block parameter list"
+							},
+							.location = invalid_token->location
+						};
 					}
-					return Error {
-						.details = errors::Unexpected_Empty_Source {
-							.reason = errors::Unexpected_Empty_Source::Block_Without_Closing_Bracket,
-							.start = opening.location
-						},
-						.location = tokens.back().location
-					};
+					return std::nullopt;
 				}
-				consume();
-				if (is_lambda) {
-					return Ast::lambda(opening.location, std::move(ast), std::move(parameters));
-				} else {
-					ensure(ast.type == Ast::Type::Sequence, "I dunno if this is a valid assumption tbh");
-					if (ast.arguments.size() == 1) {
-						return std::move(ast.arguments.front());
-					}
-					return Ast::block(opening.location, std::move(ast));
-				}
-			});
+			);
 		}
 
 	break; case Token::Type::Operator:
@@ -516,7 +547,8 @@ constexpr bool one_of(std::string_view id, auto const& ...args)
 static usize precedense(std::string_view op)
 {
 	// Operators that are not included below are
-	//  '.' since it have own precedense rules and is not binary expression but its own kind of expression
+	//  postfix index operator [] since it have own precedense rules and is not binary expression but its own kind of expression
+	//  in terms of our parsing function hierarchy
 	//
 	//  Exclusion of them is marked by subtracting total number of excluded operators.
 	static_assert(Operators_Count - 1 == 16, "Ensure that all operators have defined precedense below");
@@ -529,9 +561,6 @@ static usize precedense(std::string_view op)
 	if (one_of(op, "+", "-")) return 300;
 	if (one_of(op, "*", "/", "%", "&")) return 400;
 	if (one_of(op, "**")) return 500;
-
-
-	std::cerr << op << std::endl;
 
 	unreachable();
 }

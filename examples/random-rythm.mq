@@ -1,5 +1,5 @@
 for (up 10) (n |
-	snd := c + (shuffle (up 12)).0,
+	snd := c + (pick (up 12)),
 	o := if (n % 2 == 0) 3 4,
 	say snd o,
 	play (oct o, snd qn),

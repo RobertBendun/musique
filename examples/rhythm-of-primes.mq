@@ -36,5 +36,5 @@ oct 3,
 len (1/16),
 
 for (2 + up Length) ( i |
-	play (chord scale.(indicies.(i % primes == 0))),
+	play (chord scale[indicies[i % primes == 0]]),
 ),

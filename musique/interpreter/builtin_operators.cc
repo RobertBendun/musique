@@ -306,11 +306,11 @@ static constexpr auto Operators = std::array {
 	Operator_Entry { ">",  builtin_operator_compare<std::greater<>> },
 	Operator_Entry { ">=", builtin_operator_compare<std::greater_equal<>> },
 
-	Operator_Entry { ".", builtin_operator_index },
+	Operator_Entry { "[", builtin_operator_index },
 	Operator_Entry { "&", builtin_operator_join },
 };
 
-// All operators should be defined here except 'and' and 'or' which handle evaluation differently
+// All operators should be defined here except '=', 'and' and 'or' which handle evaluation differently
 // and are need unevaluated expressions for their proper evaluation. Exclusion of them is marked
 // as subtraction of total excluded operators from expected constant
 static_assert(Operators.size() == Operators_Count - 3, "All operators handlers are defined here");

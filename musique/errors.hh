@@ -1,10 +1,6 @@
 #ifndef MUSIQUE_ERRORS_HH
 #define MUSIQUE_ERRORS_HH
 
-#if defined(__cpp_lib_source_location)
-#include <source_location>
-#endif
-
 #include <optional>
 #include <system_error>
 #include <variant>

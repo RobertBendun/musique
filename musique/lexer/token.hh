@@ -13,12 +13,14 @@ struct Token
 		Symbol,               ///< like repeat or choose or chord
 		Keyword,              ///< like true, false, nil
 		Operator,             ///< like "+", "-", "++", "<"
-		Chord,                ///< chord or single note literal, like "c125"
+		Chord,                ///< chord or single note literal, like "c4"
 		Numeric,              ///< numeric literal (floating point or integer)
 		Parameter_Separator,  ///< "|" separaters arguments from block body
-		Expression_Separator, ///< ";" separates expressions. Used mainly to separate calls, like `foo 1 2; bar 3 4`
-		Open_Block,           ///< "[" delimits anonymous block of code (potentially a function)
-		Close_Block,          ///< "]" delimits anonymous block of code (potentially a function)
+		Expression_Separator, ///< "," separates expressions. Used mainly to separate calls, like `foo 1 2; bar 3 4`
+		Open_Block,           ///< "(" starts anonymous block of code (potentially a function)
+		Close_Block,          ///< ")" ends anonymous block of code (potentially a function)
+		Open_Index,           ///< "[" starts index section of index expression
+		Close_Index						///< "]" ends index section of index expression
 	};
 
 	/// Type of token

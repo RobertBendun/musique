@@ -1,6 +1,10 @@
 #ifndef MUSIQUE_LOCATION_HH
 #define MUSIQUE_LOCATION_HH
 
+#if defined(__cpp_lib_source_location)
+#include <source_location>
+#endif
+
 #include <musique/common.hh>
 #include <ostream>
 
