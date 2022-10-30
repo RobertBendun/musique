@@ -1,6 +1,6 @@
 say (typeof (call flat)),
 say (typeof 0),
-say (typeof []),
+say (typeof ()),
 say (typeof c),
 say (typeof false),
 say (typeof nil),

@@ -3,4 +3,4 @@ say (min (200 + up 10)),
 say (min (100 + down 10)),
 
 -- Min should do deep search
-say (min 1 2 [3, 4, [5, 0, 8], 1] 2),
+say (min 1 2 (3, 4, (5, 0, 8), 1) 2),

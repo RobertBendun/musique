@@ -3,4 +3,4 @@ say (max (200 + up 10)),
 say (max (100 + down 10)),
 
 -- Max should do deep search
-say (max 1 2 [3, 4, [5, 10, 8], 1] 2),
+say (max 1 2 (3, 4, (5, 10, 8), 1) 2),
