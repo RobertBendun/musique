@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Moved from `a.n` index operator to `a[n]`
 - Moved from ';' to ',' notation for expression separator
 - Moved 'if', 'while' from beeing functions to macros - side effect of new notation
+- Build system uses now Docker
 
 ### Fixed
 
