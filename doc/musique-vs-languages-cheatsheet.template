@@ -192,6 +192,20 @@ m Musique
 r SonicPi
 c Komentarz
 
+n Zmiana tempa na 90
+m bpm 90
+r use_bpm 90
+
+n Zmiana domyślnej długości nuty na półnutę
+m len 1/2
+c w SonicPi nie ma domyślnej długości nuty;
+c za każdym razem trzeba ją definiować
+
+n Zmiana oktawy do 4tej
+m oct 4;
+c w SonicPi domyślna oktawa
+c jest ustalona jako 4
+
 n C w 4 oktawie
 m play (c 4)
 r play 60
@@ -211,5 +225,65 @@ r play :C8
 r play :E8
 r play :G8
 r lub play chord(:C8, :major)
+
+n C w 4 oktawie, półnuta
+m play (c 4 hn)
+m lub play (c 4 (1/2))
+m lub play (c 4 0.5)
+r play 60, sustain: 2
+c w SonicPi możliwa jest kontrola obwiedni ADSR za pomocą
+c parametrów attack, delay, sustain i release
+
+n Sekwencja C, E i G w oktawie 4, półnuty, zagrane jedno po drugim
+m play [oct 4; len 1/2; c e g]
+r [:C4, :E4, :G4].each do |i|
+r 	play i, sustain: 2
+r 	sleep 2
+r end
+
+n Sekwencja C, D, E, F, G, z nutą A graną przez cały czas trwania sekwencji
+m par A [c; d; e; f; g] 
+r in_thread do
+r 	[:C4, :D4, :E4, :F4, :G4].each do |i|
+r 		play i
+r 		sleep 1
+r 	end
+r end
+r in_thread do
+r 	play :A4, sustain: 5
+r end
+
+n Dwie melodie grane współbieżnie
+m sim [c 4; c 3; c 2] [e 4; e 3; e 2]
+r in_thread do
+r 	[:C4, :C3, :C2].each do |i|
+r 		play i
+r 		sleep 1
+r 	end
+r end
+r in_thread do
+r 	[:E4, :E3, :E2].each do |i|
+r 		play i
+r 		sleep 1
+r 	end
+r end
+
+n Zagranie losowej nuty spośród C, E, G
+m play (shuffle [c; e; g]).0
+r play choose([:C, :E, :G])
+
+n Zagranie sekwencji nut C, E, G w losowej kolejności
+m play (shuffle [c; e; g])
+r [:C, :E, :G].shuffle().each do |i|
+r 	play i, sustain: 1
+r 	sleep 1
+r end
+
+n Zagranie sekwencji C, E, G od tyłu
+m play (reverse [c; e; g])
+r [:C, :E, :G].reverse.each do |i|
+r   play i, sustain: 1
+r   sleep 1
+r END
 
 END TABLE
