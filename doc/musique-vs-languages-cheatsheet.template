@@ -1,11 +1,13 @@
 TITLE Porównanie Musique z typowymi językami programowania
 
 BEGIN CSS
+
 table, tr, td {
  font-size: 12pt;
  border: 1pt solid #DDDDDD;
  border-collapse: collapse;
  vertical-align: top;
+ tab-size: 2;
 }
 
 td, th {
@@ -29,13 +31,13 @@ p Python
 r Ruby (SonicPi)
 c Komentarz
 
-n Deklaracja
+n Deklaracja zmiennej
 m x := 0
 p x = 0
 r x = 0
 c Zmienne należy zadeklarować by móc z nich korzystać
 
-n Aktualizacja
+n Aktualizacja wartości zmiennej
 m x = 1
 r x = 1
 p x = 1
@@ -47,15 +49,15 @@ r x = 10 * 30 - 40 ** 2
 c Zarówno Python, Ruby jak i Musique posiadają operator potęgi **
 
 n Funkcja anonimowa
-m add := [x y | x + y]
+m add := (x y | x + y)
 p add = lambda x, y: x + y
 r add = ->(x, y) { x + y }
 
 n Deklaracja funkcji
-m add := [x y |
-m   say x y;
+m add := (x y |
+m   say x y,
 m   x + y
-m ]
+m )
 p def add(x, y):
 p     print(x, y)
 p     return x + y
@@ -72,7 +74,7 @@ r add 1, 3
 
 n Wywołanie funkcji
 n nie przymujących argumentów
-m constant := [ say 42; 10 ];
+m constant := (say 42, 10);
 m say (call foo)
 p def constant():
 p   print(42)
@@ -86,8 +88,8 @@ r puts constant
 
 n Instrukcja warunkowa
 m if (n == 42)
-m   [ say 1 ]
-m   [ say 2 ]
+m   (say 1)
+m   (say 2)
 p if n == 42:
 p   print(1)
 p else:
@@ -97,13 +99,9 @@ r   puts 1
 r else
 r   puts 2
 r end
-c Musique nie posiada instrukcji warunkowej, a funkcję if,
-c która przyjmuje wartość logiczną i dwa bloki (funkcje anonimowe)
-c - jeden z nich zostanie wykonany jeśli warunek jest prawdziwy,
-c a drugi jeśli jest fałszywy.
 
 n Wyrażenie warunkowe
-m x := if (n == 42) [1] [2]
+m x := if (n == 42) 1 2
 p x = 1 if n == 42 else 2
 r x = n == 42 ? 1 : 2
 
@@ -116,14 +114,14 @@ r Ruby (SonicPi)
 c Komentarz
 
 n Tablice
-m x = [1; 2; 3; 4]
+m x = (1, 2, 3, 4)
 p x = [1, 2, 3, 4]
 r x = [1, 2, 3, 4]
 c W Musique funkcja anonimowa nie przyjmująca argumentów
 c jak i tablica są tożsame.
 
 n Nty element tablicy
-m x.n
+m x[n]
 p x[n]
 r x[n]
 
@@ -159,22 +157,21 @@ c Musique pozwala zmienić dowolny operator w funkcję
 c poprzez zapis 'operator jak '* w przykładzie
 
 n Iteracja po elementach tablicy
-m for (up 5) [ i | say i ]
+m for (up 5) (i | say i)
 p for i in range(5):
 p   print(i)
 r (0..4).each do |i|
 r   puts i
 r end
-c Podobnie jak w przypadku instrukcji warunkowej, Musique używa funkcji.
 
 n Sortowanie tablicy
-m xs := sort [1; 5; 3; 3; 2]
+m xs := sort (1, 5, 3, 3, 2)
 p xs = sorted([1, 5, 3, 3, 2])
 r xs = [1, 5, 3, 3, 2].sort
 
 n Sortowanie wielu tablic w jedną
-m xs := sort [1; 5; 3; 3; 2]
-m   [3; 4; 5] 1 2 3
+m xs := sort (1, 5, 3, 3, 2)
+m   (3, 4, 5) 1 2 3
 p xs = sorted(itertools.chain(
 p   [1, 5, 3, 3, 2], [3, 4, 5],
 p   [1], [2], [3]
@@ -207,42 +204,41 @@ c w SonicPi domyślna oktawa
 c jest ustalona jako 4
 
 n C w 4 oktawie
-m play (c 4)
+m play c4
 r play 60
 
 n Akord C-dur
-m play (c47 4)
-m lub oct 4; play c47
-m lub play [oct 4; c & e & g]
+m play (c & e & g)
+m lub play (chord c e g)
 r play :C4
 r play :E4
 r play :G4
 r lub play chord(:C4, :major)
 
 n Akord C-dur w 8 oktawie
-m play (c47 8)
+m play (c8 & e8 & g8)
 r play :C8
 r play :E8
 r play :G8
 r lub play chord(:C8, :major)
 
 n C w 4 oktawie, półnuta
-m play (c 4 hn)
-m lub play (c 4 (1/2))
-m lub play (c 4 0.5)
+m play (c4 hn)
+m lub play (c4 (1/2))
+m lub play (c4 0.5)
 r play 60, sustain: 2
 c w SonicPi możliwa jest kontrola obwiedni ADSR za pomocą
 c parametrów attack, delay, sustain i release
 
-n Sekwencja C, E i G w oktawie 4, półnuty, zagrane jedno po drugim
-m play [oct 4; len 1/2; c e g]
+n Sekwencja C, E i G w oktawie 4, półnuty, <br />zagrane jedna po drugiej
+m play (len (1/2), c4 e4 g4)
 r [:C4, :E4, :G4].each do |i|
 r 	play i, sustain: 2
 r 	sleep 2
 r end
 
-n Sekwencja C, D, E, F, G, z nutą A graną przez cały czas trwania sekwencji
-m par A [c; d; e; f; g] 
+n Sekwencja C, D, E, F, G,<br/>z nutą A graną przez cały czas trwania sekwencji
+m par a (c, d, e, f, g)
 r in_thread do
 r 	[:C4, :D4, :E4, :F4, :G4].each do |i|
 r 		play i
@@ -254,7 +250,7 @@ r 	play :A4, sustain: 5
 r end
 
 n Dwie melodie grane współbieżnie
-m sim [c 4; c 3; c 2] [e 4; e 3; e 2]
+m sim (c 4 c 3 c 2) (e 4 e 3 e 2)
 r in_thread do
 r 	[:C4, :C3, :C2].each do |i|
 r 		play i
@@ -269,21 +265,21 @@ r 	end
 r end
 
 n Zagranie losowej nuty spośród C, E, G
-m play (shuffle [c; e; g]).0
+m play (pick (c e g))
 r play choose([:C, :E, :G])
 
 n Zagranie sekwencji nut C, E, G w losowej kolejności
-m play (shuffle [c; e; g])
+m play (shuffle (c e g))
 r [:C, :E, :G].shuffle().each do |i|
 r 	play i, sustain: 1
 r 	sleep 1
 r end
 
 n Zagranie sekwencji C, E, G od tyłu
-m play (reverse [c; e; g])
+m play (reverse (c e g))
 r [:C, :E, :G].reverse.each do |i|
 r   play i, sustain: 1
 r   sleep 1
-r END
+r end
 
 END TABLE
