@@ -9,16 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- new builtins: map, while, set_len, duration
+- new builtins: map, while, set_len, set_oct, duration, pick
 - `<note><octave>` notation like `c4` that mimics [scientific notation](https://en.wikipedia.org/wiki/Scientific_pitch_notation)
 - operator pretty printing while printing values
+- macros: builtin functions that takes AST and produces value
 
 ### Changed
 
 - Block can be called with more parameters then it requires
-- Removed `[]` sequence notation in favour of `()`
 - reorganized fold argument order
 - Moved from `(<note> <octave> <length>)` invocation to `(<note> <length>)`
+- Moved from '[]' to '()' notation for blocks
+- Moved from `a.n` index operator to `a[n]`
+- Moved from ';' to ',' notation for expression separator
+- Moved 'if', 'while' from beeing functions to macros - side effect of new notation
 
 ### Fixed
 
@@ -28,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - Removed `<note><absolute notes indexes>` chord notation like `c47` meaning c-major
+- Removed obsolete documentation
 
 ## [0.2.1] - 2022-10-21
 
