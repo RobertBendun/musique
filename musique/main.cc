@@ -314,6 +314,18 @@ static Result<bool> handle_repl_session_commands(std::string_view input, Runner 
 				return runner.run(eternal_sources.back(), path);
 			}
 		},
+		Command {
+			"snap",
+			+[](Runner &runner, std::optional<std::string_view> arg) -> std::optional<Error> {
+				std::ostream *out = &std::cout;
+				std::fstream file;
+				if (arg.has_value() && arg->size()) {
+					file.open(std::string(*arg));
+				}
+				runner.interpreter.snapshot(*out);
+				return std::nullopt;
+			}
+		},
 	};
 
 	if (input.starts_with('!')) {

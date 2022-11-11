@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `<note><octave>` notation like `c4` that mimics [scientific notation](https://en.wikipedia.org/wiki/Scientific_pitch_notation)
 - operator pretty printing while printing values
 - macros: builtin functions that takes AST and produces value
+- early text-based snapshot system available via `:snap` command inside interactive session
 
 ### Changed
 

@@ -51,6 +51,9 @@ struct Interpreter
 	///
 	/// Invoked during construction
 	void register_builtin_operators();
+
+	/// Dumps snapshot of interpreter into stream
+	void snapshot(std::ostream& out);
 };
 
 std::optional<Error> ensure_midi_connection_available(Interpreter&, std::string_view operation_name);
