@@ -44,7 +44,10 @@ static Result<Value> vectorize(auto &&operation, Interpreter &interpreter, std::
 ///
 /// Calls binary if values matches types any permutation of {t1, t2}, always in shape (t1, t2)
 template<typename T1, typename T2>
-inline std::optional<Value> symetric(Value &lhs, Value &rhs, auto binary)
+inline auto symetric(Value &lhs, Value &rhs, auto binary)
+	-> std::optional<decltype(
+		std::apply(std::move(binary), *match<T1, T2>(lhs, rhs))
+	)>
 {
 	if (auto a = match<T1, T2>(lhs, rhs)) {
 		return std::apply(std::move(binary), *a);
@@ -167,14 +170,14 @@ static Result<Value> builtin_operator_compare(Interpreter &interpreter, std::vec
 	return Binary_Predicate{}(std::move(args.front()), std::move(args.back()));
 }
 
-static Result<Value> builtin_operator_multiply(Interpreter &i, std::vector<Value> args)
+static Result<Value> builtin_operator_multiply(Interpreter &interpreter, std::vector<Value> args)
 {
 	if (args.empty()) {
 		return Number(1);
 	}
 
 	auto init = std::move(args.front());
-	return algo::fold(std::span(args).subspan(1), std::move(init), [&i](Value lhs, Value &rhs) -> Result<Value> {
+	return algo::fold(std::span(args).subspan(1), std::move(init), [&interpreter](Value lhs, Value &rhs) -> Result<Value> {
 		{
 			auto result = symetric<Number, Chord>(lhs, rhs, [](Number lhs, Chord &rhs) {
 				return Array { std::vector<Value>(lhs.floor().as_int(), std::move(rhs)) };
@@ -184,10 +187,26 @@ static Result<Value> builtin_operator_multiply(Interpreter &i, std::vector<Value
 				return *std::move(result);
 			}
 		}
+		{
+			auto result = symetric<Number, Collection>(lhs, rhs, [&interpreter](Number lhs, Collection &rhs) -> Result<Value> {
+				std::vector<Value> values;
+				values.reserve(rhs.size() * lhs.floor().as_int());
+				for (unsigned j = 0; j < lhs.floor().as_int(); ++j) {
+					for (unsigned i = 0; i < rhs.size(); ++i) {
+						values.push_back(Try(rhs.index(interpreter, i)));
+					}
+				}
+				return values;
+			});
+
+			if (result.has_value()) {
+				return *std::move(result);
+			}
+		}
 
 		// If builtin_operator_arithmetic returns an error that lists all possible overloads
 		// of this operator we must inject overloads that we provided above
-		auto result = builtin_operator_arithmetic<std::multiplies<>, '*'>(i, { std::move(lhs), std::move(rhs) });
+		auto result = builtin_operator_arithmetic<std::multiplies<>, '*'>(interpreter, { std::move(lhs), std::move(rhs) });
 		if (!result.has_value()) {
 			auto &details = result.error().details;
 			if (auto p = std::get_if<errors::Unsupported_Types_For>(&details)) {

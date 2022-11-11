@@ -63,7 +63,7 @@ endloop:
 		;
 	}
 
-	if (note && literal.size()) {
+	if (note && note->base && literal.size()) {
 		auto &octave = note->octave.emplace();
 		auto [p, ec] = std::from_chars(&literal.front(), 1 + &literal.back(), octave);
 		ensure(p == &literal.back() + 1,          "Parser must have failed in recognizing what is considered a valid note token #1");

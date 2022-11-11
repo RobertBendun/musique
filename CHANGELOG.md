@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Moved from ';' to ',' notation for expression separator
 - Moved 'if', 'while' from beeing functions to macros - side effect of new notation
 - Build system uses now Docker
+- Array repetition using `number * array` like `3 * (c, e) == (c, e, c, e, c, e)`
 
 ### Fixed
 
