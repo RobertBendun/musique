@@ -12,7 +12,6 @@ constexpr u8 note_index(u8 note)
 	case 'f':  return  5;
 	case 'g':  return  7;
 	case 'a':  return  9;
-	case 'h':  return 11;
 	case 'b':  return 11;
 	}
 	// Parser should limit range of characters that is called with this function

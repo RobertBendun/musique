@@ -35,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Removed `<note><absolute notes indexes>` chord notation like `c47` meaning c-major
 - Removed obsolete documentation
+- `h` as note literal
 
 ## [0.2.1] - 2022-10-21
 

@@ -4,7 +4,7 @@
 #include <iomanip>
 #include <cstring>
 
-constexpr std::string_view Notes_Symbols = "abcedefghp";
+constexpr std::string_view Notes_Symbols = "abcedefgp";
 constexpr std::string_view Valid_Operator_Chars =
 	"+-*/:%" // arithmetic
 	"|&^"    // logic & bit operations
