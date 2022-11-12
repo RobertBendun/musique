@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - operator pretty printing while printing values
 - macros: builtin functions that takes AST and produces value
 - early text-based snapshot system available via `:snap` command inside interactive session
+- polish basic tutorial
 
 ### Changed
 

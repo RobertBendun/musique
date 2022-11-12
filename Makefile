@@ -41,6 +41,9 @@ install: bin/musique
 doc/musique-vs-languages-cheatsheet.html: doc/musique-vs-languages-cheatsheet.template
 	scripts/language-cmp-cheatsheet.py $<
 
+doc/wprowadzenie.html: doc/wprowadzenie.md
+	pandoc -o $@ $< -s --toc
+
 .PHONY: clean doc doc-open all test unit-tests release install
 
 $(shell mkdir -p $(subst musique/,bin/$(os)/,$(shell find musique/* -type d)))
