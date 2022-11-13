@@ -34,6 +34,22 @@ try {
 	std::exit(33);
 }
 
+bool midi::Rt_Midi::connect_or_create_output()
+try {
+	output.emplace();
+	if (auto pc = output->getPortCount()) {
+		output->openPort(0);
+		return true;
+	}
+	output->openVirtualPort("Musique");
+	return false;
+}
+catch (RtMidiError &error) {
+	// TODO(error)
+	std::cerr << "Failed to use MIDI connection: " << error.getMessage() << std::endl;
+	std::exit(33);
+}
+
 void midi::Rt_Midi::connect_output()
 try {
 	ensure(not output.has_value(), "Reconeccting is not supported yet");

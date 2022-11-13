@@ -26,6 +26,8 @@ namespace midi
 	{
 		~Rt_Midi() override = default;
 
+		bool connect_or_create_output();
+
 		/// Connect with MIDI virtual port
 		void connect_output();
 
@@ -34,6 +36,7 @@ namespace midi
 
 		/// List available ports
 		void list_ports(std::ostream &out) const;
+
 
 		bool supports_output() const override;
 

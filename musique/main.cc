@@ -178,9 +178,13 @@ struct Runner
 				std::cout << "Connected MIDI output to port " << *output_port << ". Ready to play!" << std::endl;
 			}
 		} else {
-			midi.connect_output();
+			bool connected_to_existing_port = midi.connect_or_create_output();
 			if (!quiet_mode) {
-				std::cout << "Created new MIDI output port 'Musique'. Ready to play!" << std::endl;
+				if (connected_to_existing_port) {
+					std::cout << "Connected MIDI output to port " << midi.output->getPortName(0) << std::endl;
+				} else {
+					std::cout << "Created new MIDI output port 'Musique'. Ready to play!" << std::endl;
+				}
 			}
 		}
 
