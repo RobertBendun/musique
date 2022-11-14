@@ -23,7 +23,7 @@ W tym przykładzie wykonujemy `3 + 4` , zatwierdzając ENTERM, w zwrocie otrzymu
 Nawiasem mówiąc – przykłady w tym wprowadzeniu mogą rozpoczynać się od `>` – oznacza to, że polecenia wprowadzono w sesji interaktywnej, lub bez tego znaku – wtedy traktujemy przykład jako zapisany plik z poleceniami.
 Nie ma różnic pomiędzy wykonywaniem poleceń języka Musique zawartych w pliku, a poleceniami wprowadzanymi w sesji interaktywnej – wybór pozostawiamy użytkownikowi.
 
-Można wykonać złożone polecenia (które w pliku rozstałby rozbite na kilka linii) w sesji interaktywnej - należy wtedy wpisać je w formie jednej linii.
+Można wykonać złożone polecenia (które w pliku zostałby rozbite na kilka linii) w sesji interaktywnej - należy wtedy wpisać je w formie jednej linii.
 
 ## Nuty, pauzy, akordy
 
@@ -56,9 +56,9 @@ Dostępne dźwięki bazowe to kolejno: `c`, `d`, `e`, `f`, `g`, `a`, `b`. Można
 
 pozwala to przykładowo tworzyć:
 
-- `c#` - dźwięk cis
-- `c##` - dźwięk d
-- `eb` - dźwięk dis
+- `c#` - dźwięk Cis
+- `c##` - dźwięk D
+- `eb` - dźwięk Dis
 
 Aby dźwięk został odtworzony w wybranej oktawie można dołączyć do znaku dźwięku liczbową wartość oktawy - `c4` to dźwięk c w 4 oktawie, `c#8` to dźwięk cis w 8 oktawie, itp.
 
