@@ -92,6 +92,8 @@
 * `shuffle args` – tasuje elementy `args`:
 	- `args` – powinna być to tablica;
 
+* `sim` – #TODO
+
 * `sort args` – sortuje elementy `args`:
 	- `args` – powinna być to tablica;
 
