@@ -18,12 +18,12 @@ Przykładowo:
 >
 ```
 
-W tym przykładzie wykonujemy `3 + 4` , zatwierdzając ENTERM, w zwrocie otrzymując – w tym konkretnym przypadku – wynik operacji.
+W tym przykładzie wykonujemy `3 + 4` , zatwierdzając ENTEREM, w zwrocie otrzymując – w tym konkretnym przypadku – wynik operacji.
 
 Nawiasem mówiąc – przykłady w tym wprowadzeniu mogą rozpoczynać się od `>` – oznacza to, że polecenia wprowadzono w sesji interaktywnej, lub bez tego znaku – wtedy traktujemy przykład jako zapisany plik z poleceniami.
 Nie ma różnic pomiędzy wykonywaniem poleceń języka Musique zawartych w pliku, a poleceniami wprowadzanymi w sesji interaktywnej – wybór pozostawiamy użytkownikowi.
 
-Można wykonać złożone polecenia (które w pliku zostałby rozbite na kilka linii) w sesji interaktywnej - należy wtedy wpisać je w formie jednej linii.
+Można wykonać złożone polecenia (które w pliku zostałyby rozbite na kilka linii) w sesji interaktywnej - należy wtedy wpisać je w formie jednej linii.
 
 ## Nuty, pauzy, akordy
 
@@ -51,8 +51,8 @@ lub wiele nut po kolei – należy umieścić je w nawiasach okrągłych, rozdzi
 
 Dostępne dźwięki bazowe to kolejno: `c`, `d`, `e`, `f`, `g`, `a`, `b`. Można je modyfikować poprzez znaki:
 
-- `#` lub `s` podwyższający wysokość dźwięku o pół tonu (**s**harp)
-- `b` lub `f` obniżający wysokość dźwięku o pół tonu (**b**mol, **f**lat)
+- `#` lub `s` podwyższający wysokość dźwięku o pół tonu (krzyżyk, **s**harp)
+- `b` lub `f` obniżający wysokość dźwięku o pół tonu (**b**emol, **f**lat)
 
 pozwala to przykładowo tworzyć:
 
@@ -60,7 +60,7 @@ pozwala to przykładowo tworzyć:
 - `c##` - dźwięk D
 - `eb` - dźwięk Dis
 
-Aby dźwięk został odtworzony w wybranej oktawie można dołączyć do znaku dźwięku liczbową wartość oktawy - `c4` to dźwięk c w 4 oktawie, `c#8` to dźwięk cis w 8 oktawie, itp.
+Aby dźwięk został odtworzony w wybranej oktawie można dołączyć do znaku dźwięku liczbową wartość oktawy - `c4` to dźwięk c w 4. oktawie, `c#8` to dźwięk cis w 8. oktawie, itp.
 
 ```
 > play (c4, c5, c6)
@@ -68,13 +68,13 @@ Aby dźwięk został odtworzony w wybranej oktawie można dołączyć do znaku 
 
 Aby dźwięk trwał określoną długość należy podać jako dodatkowy parametr pożądaną wartość, przykładowo:
 
-Sekwencja złożona z dźwięku C w 4 oktawie trwającym ćwierćnutę, dźwięku D w 5 oktawie trwającym półnutę oraz dźwięku E w 4 oktawie trwającym całą nutę wygląda następująco:
+Sekwencja złożona z dźwięku C w 4. oktawie trwającym ćwierćnutę, dźwięku D w 5. oktawie trwającym półnutę oraz dźwięku E w 4. oktawie trwającym całą nutę wygląda następująco:
 
 ```
 > play (c4 (1/4), d5 (1/2), e4 1)
 ```
 
-Można zapis uprościć korzystając z predefiniowanych czasów dźwięków:
+Można uprościć zapis korzystając z predefiniowanych czasów dźwięków:
 
 | nazwa | czas trwania | liczbowo |
 | :-: | :-: | :-: |
@@ -168,7 +168,7 @@ Funkcja `pick` pozwala na wybór losowego elementu z sekwencji. Można użyć je
 > play (c4 (pick qn hn))
 ```
 
-W powyższym przykładzie dźwięk C w oktawie 4 zostanie zagrany losowo z długością ćwierćnuty lub półnuty.
+W powyższym przykładzie dźwięk C w oktawie 4. zostanie zagrany losowo z długością ćwierćnuty lub półnuty.
 
 ### Losowe ustawienie elementów sekwencji
 
@@ -232,7 +232,7 @@ Musique posiada trzy główne metody odtwarzania sekwencji:
 - `par` które odtwarza pierwszy dźwięk równocześnie z pozostałymi
 - `sim` który odtwarza każdą podaną mu sekwencję równocześnie
 
-Każda z nich w momencie napotkania dźwięku z nieokreśloną oktawą lub długością wypełni ją według wartości *domyślnej* (wartości domyślne to: 4 oktawa, 120 bpm, ćwierćnuta).
+Każda z nich w momencie napotkania dźwięku z nieokreśloną oktawą lub długością wypełni ją według wartości *domyślnej* (wartości domyślne to: 4. oktawa, 120 bpm, ćwierćnuta).
 
 Wartości domyślne można ustawiać przy pomocy funkcji `oct`, `len` oraz `bpm`. Poniższy przykład ustawia domyślną oktawę na 5, domyślną długość na półnutę oraz domyślne tempo na 100 uderzeń na minutę:
 
@@ -289,7 +289,7 @@ Poniżej "niepoprawna" metoda stworzenia akordu poprzez równocześne odtworzeni
 > sim c e g
 ```
 
-Trzy dźwięki C w domyślnej oktawie o długości ćwierćnuty odtwarzane równocześnie wraz z pauzą ćwierćnutową i czterema dźwiękami D w piątek oktawie o długości szesnastki:
+Trzy dźwięki C w domyślnej oktawie o długości ćwierćnuty odtwarzane równocześnie wraz z pauzą ćwierćnutową i czterema dźwiękami D w 5. oktawie o długości szesnastki:
 
 ```
 > sim (3 * c qn) (p qn, 4 * (d5 sn))
