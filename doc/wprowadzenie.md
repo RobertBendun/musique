@@ -20,7 +20,7 @@ Przykładowo:
 
 W tym przykładzie wykonujemy `3 + 4` , zatwierdzając ENTEREM, w zwrocie otrzymując – w tym konkretnym przypadku – wynik operacji.
 
-Nawiasem mówiąc – przykłady w tym wprowadzeniu mogą rozpoczynać się od `>` – oznacza to, że polecenia wprowadzono w sesji interaktywnej, lub bez tego znaku – wtedy traktujemy przykład jako zapisany plik z poleceniami.
+Przykłady w tym wprowadzeniu mogą rozpoczynać się od `>` – oznacza to, że polecenia wprowadzono w sesji interaktywnej, lub bez tego znaku – wtedy traktujemy przykład jako zapisany plik z poleceniami.
 Nie ma różnic pomiędzy wykonywaniem poleceń języka Musique zawartych w pliku, a poleceniami wprowadzanymi w sesji interaktywnej – wybór pozostawiamy użytkownikowi.
 
 Można wykonać złożone polecenia (które w pliku zostałyby rozbite na kilka linii) w sesji interaktywnej - należy wtedy wpisać je w formie jednej linii.
@@ -60,7 +60,7 @@ pozwala to przykładowo tworzyć:
 - `c##` - dźwięk D
 - `eb` - dźwięk Dis
 
-Aby dźwięk został odtworzony w wybranej oktawie można dołączyć do znaku dźwięku liczbową wartość oktawy - `c4` to dźwięk c w 4. oktawie, `c#8` to dźwięk cis w 8. oktawie, itp.
+Aby dźwięk został odtworzony w wybranej oktawie można dołączyć do znaku dźwięku liczbową wartość oktawy - `c4` to dźwięk C w 4 oktawie, `c#8` to dźwięk Cis w 8 oktawie, itp.
 
 ```
 > play (c4, c5, c6)
@@ -103,6 +103,8 @@ Pauzy stosuje się poprzez użycie litery `p`:
 ```
 > play (c4 hn, p qn, c4 hn, p qn, c4 hn)
 ```
+
+Pauzy zachowują się identycznie jak nuty opisane powyżej.
 
 ### Akordy
 
