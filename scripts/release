@@ -22,11 +22,11 @@ fi
 sudo rm -rf bin/
 docker run -it --rm -v "$(pwd):/musique" -w /musique "$Image" make os=linux CC=gcc-11 CXX=g++-11 >/dev/null
 
-cp bin/musique "$Target"/
+cp bin/musique "$Target"/musique-x86_64-linux
 
 sudo rm -rf bin/
 make os=windows >/dev/null
-cp bin/musique.exe "$Target"/
+cp bin/musique.exe "$Target"/musique-x86_64-windows
 
 cp LICENSE "$Target"/LICENSE
 cp CHANGELOG.md "$Target/CHANGELOG.md"
