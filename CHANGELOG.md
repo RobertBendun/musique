@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Index operation using booleans behaves like a mask and not fancy way of spelling 0 and 1
 - Blocks are check against beeing a collection at runtime to prevent treating anonymous functions as collections and cousing assertions
+- On Windows default terminal emulator ansi escape codes are conditionally supported. Review musique/pretty.cc for details
 
 ### Removed
 

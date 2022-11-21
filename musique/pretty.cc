@@ -1,5 +1,11 @@
 #include <musique/pretty.hh>
 
+#ifdef _WIN32
+extern "C" {
+#include <windows.h>
+}
+#endif
+
 namespace starters
 {
 	static std::string_view Error;
@@ -30,6 +36,26 @@ std::ostream& pretty::end(std::ostream& os)
 
 void pretty::terminal_mode()
 {
+	// Windows 10 default commandline window doesn't support ANSI escape codes
+	// by default in terminal output. This feature can be enabled via
+	// ENABLE_VIRTUAL_TERMINAL_INPUT flag. Windows Terminal shouldn't have this issue.
+#ifdef _WIN32 // FIXME replace this preprocessor hack with if constexpr
+	{
+		auto standard_output = GetStdHandle(STD_OUTPUT_HANDLE);
+		DWORD mode;
+		if (!GetConsoleMode(standard_output, &mode) ) {
+			return;
+		}
+		if ((mode & ENABLE_VIRTUAL_TERMINAL_INPUT) != ENABLE_VIRTUAL_TERMINAL_INPUT) {
+			mode |= ENABLE_VIRTUAL_TERMINAL_INPUT;
+			if (!SetConsoleMode(standard_output, mode)) {
+				return;
+			}
+		}
+	}
+#endif
+
+
 	starters::Error    = "\x1b[31;1m";
 	starters::Path     = "\x1b[34;1m";
 	starters::Comment  = "\x1b[30;1m";
