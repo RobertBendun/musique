@@ -11,24 +11,24 @@ struct Interpreter
 {
 	/// MIDI connection that is used to play music.
 	/// It's optional for simple interpreter testing.
-	midi::Connection *midi_connection = nullptr;
+	static midi::Connection *midi_connection;
 
 	/// Operators defined for language
-	std::unordered_map<std::string, Intrinsic> operators;
+	static std::unordered_map<std::string, Intrinsic> operators;
 
 	/// Current environment (current scope)
 	std::shared_ptr<Env> env;
 
 	/// Context stack. `constext_stack.back()` is a current context.
 	/// There is always at least one context
-	std::vector<Context> context_stack;
+	std::shared_ptr<Context> current_context;
 
 	std::function<std::optional<Error>(Interpreter&, Value)> default_action;
 
 	Interpreter();
 	~Interpreter();
+	Interpreter(Interpreter &&) = delete;
 	Interpreter(Interpreter const&) = delete;
-	Interpreter(Interpreter &&) = default;
 
 	/// Try to evaluate given program tree
 	Result<Value> eval(Ast &&ast);

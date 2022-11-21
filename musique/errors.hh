@@ -97,7 +97,7 @@ namespace errors
 		enum Type { Operator, Function } type;
 
 		/// Name of operation
-		std::string_view name;
+		std::string name;
 
 		/// Possible ways to use it correctly
 		std::vector<std::string> possibilities;

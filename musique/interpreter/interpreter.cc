@@ -7,6 +7,9 @@
 #include <random>
 #include <thread>
 
+midi::Connection *Interpreter::midi_connection = nullptr;
+std::unordered_map<std::string, Intrinsic> Interpreter::operators {};
+
 /// Registers constants like `fn = full note = 1/1`
 static inline void register_note_length_constants()
 {
@@ -32,7 +35,7 @@ static inline void register_note_length_constants()
 Interpreter::Interpreter()
 {
 	// Context initialization
-	context_stack.emplace_back();
+	current_context = std::make_shared<Context>();
 
 	// Environment initlialization
 	ensure(!bool(Env::global), "Only one instance of interpreter can be at one time");
@@ -228,7 +231,7 @@ void Interpreter::leave_scope()
 std::optional<Error> Interpreter::play(Chord chord)
 {
 	Try(ensure_midi_connection_available(*this, "play"));
-	auto &ctx = context_stack.back();
+	auto &ctx = *current_context;
 
 	if (chord.notes.size() == 0) {
 		std::this_thread::sleep_for(ctx.length_to_duration(ctx.length));
@@ -389,7 +392,7 @@ static void snapshot(std::ostream& out, Value const& value) {
 
 void Interpreter::snapshot(std::ostream& out)
 {
-	auto const& ctx = context_stack.back();
+	auto const& ctx = *current_context;
 	out << ", oct " << int(ctx.octave) << '\n';
 	out << ", len (" << ctx.length.num << "/" << ctx.length.den << ")\n";
 	out << ", bpm " << ctx.bpm << '\n';

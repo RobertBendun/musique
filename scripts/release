@@ -26,7 +26,7 @@ cp bin/musique "$Target"/musique-x86_64-linux
 
 sudo rm -rf bin/
 make os=windows >/dev/null
-cp bin/musique.exe "$Target"/musique-x86_64-windows
+cp bin/musique.exe "$Target"/musique-x86_64-windows.exe
 
 cp LICENSE "$Target"/LICENSE
 cp CHANGELOG.md "$Target/CHANGELOG.md"
@@ -37,6 +37,7 @@ chmod 0755 "$Target"/install.sh
 lowdown -s doc/functions.md -m "title:Lista funkcji języka Musique" -o "$Target"/functions.html
 python scripts/language-cmp-cheatsheet.py doc/musique-vs-languages-cheatsheet.template
 mv doc/musique-vs-languages-cheatsheet.html "${Target}/musique-vs-others-cheatsheet.html"
+make doc/wprowadzenie.html && mv doc/wprowadzenie.html "${Target}/wprowadzenie.html"
 
 git clone --recursive --quiet --depth=1 "$(git remote -v | awk '{ print $2 }' | head -n1)" "$Target"/source_code
 rm -rf "$Target"/source_code/.git

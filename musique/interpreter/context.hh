@@ -5,6 +5,7 @@
 #include <musique/value/note.hh>
 #include <musique/value/number.hh>
 #include <chrono>
+#include <memory>
 
 /// Context holds default values for music related actions
 struct Context
@@ -23,6 +24,8 @@ struct Context
 
 	/// Converts length to seconds with current bpm
 	std::chrono::duration<float> length_to_duration(std::optional<Number> length) const;
+
+	std::shared_ptr<Context> parent;
 };
 
 #endif

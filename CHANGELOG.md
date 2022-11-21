@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- release build script was producing executable with wrong path
+- `examples/for-elise.mq` had bug in it
+- in error reporting printing garbage instead of function name was fixed
+
+## [0.3.0]
+
 ### Added
 
 - new builtins: map, while, set_len, set_oct, duration, pick

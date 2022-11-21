@@ -87,15 +87,15 @@ static Result<Value> ctx_read_write_property(Interpreter &interpreter, std::vect
 	using Member_Type = std::remove_cvref_t<decltype(std::declval<Context>().*(Mem_Ptr))>;
 
 	if (args.size() == 0) {
-		return Number(interpreter.context_stack.back().*(Mem_Ptr));
+		return Number((*interpreter.current_context).*(Mem_Ptr));
 	}
 
 	ensure(std::holds_alternative<Number>(args.front().data), "Ctx only holds numeric values");
 
 	if constexpr (std::is_same_v<Member_Type, Number>) {
-		interpreter.context_stack.back().*(Mem_Ptr) = std::get<Number>(args.front().data);
+		(*interpreter.current_context).*(Mem_Ptr) = std::get<Number>(args.front().data);
 	} else {
-		interpreter.context_stack.back().*(Mem_Ptr) = static_cast<Member_Type>(
+		(*interpreter.current_context).*(Mem_Ptr) = static_cast<Member_Type>(
 			std::get<Number>(args.front().data).as_int()
 		);
 	}
@@ -266,19 +266,20 @@ static std::optional<Error> action_play(Interpreter &i, Value v)
 
 /// Play notes
 template<With_Index_Operator Container = std::vector<Value>>
-static inline Result<Value> builtin_play(Interpreter &i, Container args)
+static inline Result<Value> builtin_play(Interpreter &interpreter, Container args)
 {
-	Try(ensure_midi_connection_available(i, "play"));
-	auto previous_action = std::exchange(i.default_action, action_play);
-	i.context_stack.push_back(i.context_stack.back());
+	Try(ensure_midi_connection_available(interpreter, "play"));
+	auto const previous_action  = std::exchange(interpreter.default_action, action_play);
+	auto const previous_context = std::exchange(interpreter.current_context,
+		std::make_shared<Context>(*interpreter.current_context));
 
 	auto const finally = [&] {
-		i.default_action = std::move(previous_action);
-		i.context_stack.pop_back();
+		interpreter.default_action = std::move(previous_action);
+		interpreter.current_context = previous_context;
 	};
 
 	for (auto &el : args) {
-		if (std::optional<Error> error = sequential_play(i, std::move(el))) {
+		if (std::optional<Error> error = sequential_play(interpreter, std::move(el))) {
 			finally();
 			return *std::move(error);
 		}
@@ -289,19 +290,19 @@ static inline Result<Value> builtin_play(Interpreter &i, Container args)
 }
 
 /// Play first argument while playing all others
-static Result<Value> builtin_par(Interpreter &i, std::vector<Value> args) {
-	Try(ensure_midi_connection_available(i, "par"));
+static Result<Value> builtin_par(Interpreter &interpreter, std::vector<Value> args) {
+	Try(ensure_midi_connection_available(interpreter, "par"));
 
 	ensure(args.size() >= 1, "par only makes sense for at least one argument"); // TODO(assert)
 	if (args.size() == 1) {
 		auto chord = get_if<Chord>(args.front());
 		ensure(chord, "Par expects music value as first argument"); // TODO(assert)
-		Try(i.play(std::move(*chord)));
+		Try(interpreter.play(std::move(*chord)));
 		return Value{};
 	}
 
 	// Create chord that should sustain during playing of all other notes
-	auto &ctx = i.context_stack.back();
+	auto &ctx = *interpreter.current_context;
 	auto chord = get_if<Chord>(args.front());
 	ensure(chord, "par expects music value as first argument"); // TODO(assert)
 
@@ -309,15 +310,15 @@ static Result<Value> builtin_par(Interpreter &i, std::vector<Value> args) {
 
 	for (auto const& note : chord->notes) {
 		if (note.base) {
-			i.midi_connection->send_note_on(0, *note.into_midi_note(), 127);
+			interpreter.midi_connection->send_note_on(0, *note.into_midi_note(), 127);
 		}
 	}
 
-	auto result = builtin_play(i, std::span(args).subspan(1));
+	auto result = builtin_play(interpreter, std::span(args).subspan(1));
 
 	for (auto const& note : chord->notes) {
 		if (note.base) {
-			i.midi_connection->send_note_off(0, *note.into_midi_note(), 127);
+			interpreter.midi_connection->send_note_off(0, *note.into_midi_note(), 127);
 		}
 	}
 	return result;
@@ -386,7 +387,7 @@ static Result<Value> builtin_sim(Interpreter &interpreter, std::vector<Value> ar
 	};
 	std::vector<Instruction> schedule;
 
-	auto const& ctx = interpreter.context_stack.back();
+	auto const& ctx = *interpreter.current_context;
 
 	for (auto const& track : tracks) {
 		auto passed_time = Number(0);
@@ -997,19 +998,19 @@ static Result<Value> builtin_chord(Interpreter &i, std::vector<Value> args)
 }
 
 /// Send MIDI message Note On
-static Result<Value> builtin_note_on(Interpreter &i, std::vector<Value> args)
+static Result<Value> builtin_note_on(Interpreter &interpreter, std::vector<Value> args)
 {
 	if (auto a = match<Number, Number, Number>(args)) {
 		auto [chan, note, vel] = *a;
-		i.midi_connection->send_note_on(chan.as_int(), note.as_int(), vel.as_int());
+		interpreter.midi_connection->send_note_on(chan.as_int(), note.as_int(), vel.as_int());
 		return Value {};
 	}
 
 	if (auto a = match<Number, Chord, Number>(args)) {
 		auto [chan, chord, vel] = *a;
 		for (auto note : chord.notes) {
-			note = i.context_stack.back().fill(note);
-			i.midi_connection->send_note_on(chan.as_int(), *note.into_midi_note(), vel.as_int());
+			note = interpreter.current_context->fill(note);
+			interpreter.midi_connection->send_note_on(chan.as_int(), *note.into_midi_note(), vel.as_int());
 		}
 	}
 
@@ -1027,11 +1028,11 @@ static Result<Value> builtin_note_on(Interpreter &i, std::vector<Value> args)
 }
 
 /// Send MIDI message Note Off
-static Result<Value> builtin_note_off(Interpreter &i, std::vector<Value> args)
+static Result<Value> builtin_note_off(Interpreter &interpreter, std::vector<Value> args)
 {
 	if (auto a = match<Number, Number>(args)) {
 		auto [chan, note] = *a;
-		i.midi_connection->send_note_off(chan.as_int(), note.as_int(), 127);
+		interpreter.midi_connection->send_note_off(chan.as_int(), note.as_int(), 127);
 		return Value {};
 	}
 
@@ -1039,8 +1040,8 @@ static Result<Value> builtin_note_off(Interpreter &i, std::vector<Value> args)
 		auto& [chan, chord] = *a;
 
 		for (auto note : chord.notes) {
-			note = i.context_stack.back().fill(note);
-			i.midi_connection->send_note_off(chan.as_int(), *note.into_midi_note(), 127);
+			note = interpreter.current_context->fill(note);
+			interpreter.midi_connection->send_note_off(chan.as_int(), *note.into_midi_note(), 127);
 		}
 	}
 
