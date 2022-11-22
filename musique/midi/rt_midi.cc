@@ -97,11 +97,13 @@ enum : std::uint8_t
 
 void midi::Rt_Midi::send_note_on(uint8_t channel, uint8_t note_number, uint8_t velocity)
 {
+	std::cout << "NOTE ON  " << int(channel) << '\t' << int(note_number) << '\t' << int(velocity) << std::endl;
 	send_message(*output, std::array { std::uint8_t(Note_On + channel), note_number, velocity });
 }
 
 void midi::Rt_Midi::send_note_off(uint8_t channel, uint8_t note_number, uint8_t velocity)
 {
+	std::cout << "NOTE OFF " << int(channel) << '\t' << int(note_number) << '\t' << int(velocity) << std::endl;
 	send_message(*output, std::array { std::uint8_t(Note_Off + channel), note_number, velocity });
 }
 

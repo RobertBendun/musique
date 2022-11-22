@@ -17,18 +17,25 @@ struct Interpreter
 	static std::unordered_map<std::string, Intrinsic> operators;
 
 	/// Current environment (current scope)
-	std::shared_ptr<Env> env;
+	std::shared_ptr<Env> env = nullptr;
 
 	/// Context stack. `constext_stack.back()` is a current context.
 	/// There is always at least one context
-	std::shared_ptr<Context> current_context;
+	std::shared_ptr<Context> current_context = nullptr;
 
-	std::function<std::optional<Error>(Interpreter&, Value)> default_action;
+	std::function<std::optional<Error>(Interpreter&, Value)> default_action = nullptr;
 
 	Interpreter();
-	~Interpreter();
-	Interpreter(Interpreter &&) = delete;
+	~Interpreter() = default;
 	Interpreter(Interpreter const&) = delete;
+	Interpreter(Interpreter &&) = default;
+
+private:
+	struct Clone {};
+	Interpreter(Clone);
+public:
+
+	Interpreter clone() const;
 
 	/// Try to evaluate given program tree
 	Result<Value> eval(Ast &&ast);

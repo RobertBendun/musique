@@ -4,12 +4,14 @@
 #include <musique/interpreter/interpreter.hh>
 #include <musique/try.hh>
 
-#include <random>
-#include <memory>
-#include <iostream>
-#include <unordered_set>
 #include <chrono>
+#include <future>
+#include <iostream>
+#include <latch>
+#include <memory>
+#include <random>
 #include <thread>
+#include <unordered_set>
 
 /// Check if type has index method
 template<typename T>
@@ -600,6 +602,39 @@ static Result<Value> builtin_scan(Interpreter &interpreter, std::vector<Value> a
 	};
 }
 
+static Result<Value> builtin_concurrent(Interpreter &interpreter, std::span<Ast> args)
+{
+	auto const jobs_count = args.size();
+	std::vector<std::jthread> threads;
+	std::vector<std::future<Value>> futures;
+	std::optional<Error> error;
+	std::mutex mutex;
+
+	for (unsigned i = 0; i < jobs_count; ++i) {
+		futures.push_back(std::async(std::launch::async, [interpreter = interpreter.clone(), i, args, &mutex, &error]() mutable -> Value {
+			auto result = interpreter.eval((Ast)args[i]);
+			if (result.has_value()) {
+				return *std::move(result);
+			}
+
+			std::lock_guard guard{mutex};
+			if (!error) {
+				error = result.error();
+			}
+		 return Value{};
+		}));
+	}
+
+	std::vector<Value> results;
+	for (auto& future : futures) {
+		if (error) {
+			return *error;
+		}
+		results.push_back(future.get());
+	}
+	return results;
+}
+
 /// Execute blocks depending on condition
 static Result<Value> builtin_if(Interpreter &i, std::span<Ast> args)  {
 	static constexpr auto guard = Guard<2> {
@@ -1117,6 +1152,7 @@ void Interpreter::register_builtin_functions()
 	global.force_define("call",           builtin_call);
 	global.force_define("ceil",           apply_numeric_transform<&Number::ceil>);
 	global.force_define("chord",          builtin_chord);
+	global.force_define("concurrent",     builtin_concurrent);
 	global.force_define("down",           builtin_range<Range_Direction::Down>);
 	global.force_define("duration",       builtin_duration);
 	global.force_define("flat",           builtin_flat);

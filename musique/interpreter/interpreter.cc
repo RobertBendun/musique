@@ -10,6 +10,16 @@
 midi::Connection *Interpreter::midi_connection = nullptr;
 std::unordered_map<std::string, Intrinsic> Interpreter::operators {};
 
+Interpreter Interpreter::clone() const
+{
+	Interpreter interpreter(Clone{});
+	interpreter.default_action = default_action;
+	interpreter.env = env->enter();
+	interpreter.current_context = std::make_shared<Context>(*current_context);
+	interpreter.current_context->parent = current_context;
+	return interpreter;
+}
+
 /// Registers constants like `fn = full note = 1/1`
 static inline void register_note_length_constants()
 {
@@ -47,9 +57,8 @@ Interpreter::Interpreter()
 	register_builtin_functions();
 }
 
-Interpreter::~Interpreter()
+Interpreter::Interpreter(Interpreter::Clone)
 {
-	Env::global.reset();
 }
 
 Result<Value> Interpreter::eval(Ast &&ast)

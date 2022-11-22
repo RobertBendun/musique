@@ -22,10 +22,10 @@ struct Context
 	/// Fills empty places in Note like octave and length with default values from context
 	Note fill(Note) const;
 
+	std::shared_ptr<Context> parent = nullptr;
+
 	/// Converts length to seconds with current bpm
 	std::chrono::duration<float> length_to_duration(std::optional<Number> length) const;
-
-	std::shared_ptr<Context> parent;
 };
 
 #endif
