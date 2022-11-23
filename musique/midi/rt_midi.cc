@@ -1,11 +1,14 @@
 #include <musique/midi/midi.hh>
 #include <musique/errors.hh>
+#include <mutex>
 
 // Copyright notice for RtMidi library
 __asm__(R"license(.ident  "\
 RtMidi: realtime MIDI i/o C++ classes\
 Copyright (c) 2003-2021 Gary P. Scavone"
 )license");
+
+static std::mutex midi_output_mutex;
 
 void midi::Rt_Midi::list_ports(std::ostream &out) const
 try {
@@ -80,6 +83,7 @@ bool midi::Rt_Midi::supports_output() const
 template<std::size_t N>
 inline void send_message(RtMidiOut &out, std::array<std::uint8_t, N> message)
 try {
+	std::lock_guard guard{midi_output_mutex};
 	out.sendMessage(message.data(), message.size());
 } catch (RtMidiError &error) {
 	// TODO(error)
@@ -97,13 +101,11 @@ enum : std::uint8_t
 
 void midi::Rt_Midi::send_note_on(uint8_t channel, uint8_t note_number, uint8_t velocity)
 {
-	std::cout << "NOTE ON  " << int(channel) << '\t' << int(note_number) << '\t' << int(velocity) << std::endl;
 	send_message(*output, std::array { std::uint8_t(Note_On + channel), note_number, velocity });
 }
 
 void midi::Rt_Midi::send_note_off(uint8_t channel, uint8_t note_number, uint8_t velocity)
 {
-	std::cout << "NOTE OFF " << int(channel) << '\t' << int(note_number) << '\t' << int(velocity) << std::endl;
 	send_message(*output, std::array { std::uint8_t(Note_Off + channel), note_number, velocity });
 }
 

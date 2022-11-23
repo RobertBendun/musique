@@ -605,7 +605,6 @@ static Result<Value> builtin_scan(Interpreter &interpreter, std::vector<Value> a
 static Result<Value> builtin_concurrent(Interpreter &interpreter, std::span<Ast> args)
 {
 	auto const jobs_count = args.size();
-	std::vector<std::jthread> threads;
 	std::vector<std::future<Value>> futures;
 	std::optional<Error> error;
 	std::mutex mutex;
@@ -613,7 +612,7 @@ static Result<Value> builtin_concurrent(Interpreter &interpreter, std::span<Ast>
 	for (unsigned i = 0; i < jobs_count; ++i) {
 		futures.push_back(std::async(std::launch::async, [interpreter = interpreter.clone(), i, args, &mutex, &error]() mutable -> Value {
 			auto result = interpreter.eval((Ast)args[i]);
-			if (result.has_value()) {
+			if (result) {
 				return *std::move(result);
 			}
 
@@ -621,7 +620,7 @@ static Result<Value> builtin_concurrent(Interpreter &interpreter, std::span<Ast>
 			if (!error) {
 				error = result.error();
 			}
-		 return Value{};
+			return Value{};
 		}));
 	}
 

@@ -6,6 +6,7 @@
 #include <thread>
 #include <cstring>
 #include <cstdio>
+#include <mutex>
 
 #include <musique/format.hh>
 #include <musique/interpreter/env.hh>
@@ -188,7 +189,9 @@ struct Runner
 			}
 		}
 
-		Env::global->force_define("say", +[](Interpreter &interpreter, std::vector<Value> args) -> Result<Value> {
+		Env::global->force_define("print", +[](Interpreter &interpreter, std::vector<Value> args) -> Result<Value> {
+			static std::mutex stdio_mutex;
+			std::lock_guard guard{stdio_mutex};
 			for (auto it = args.begin(); it != args.end(); ++it) {
 				std::cout << Try(format(interpreter, *it));
 				if (std::next(it) != args.end())
