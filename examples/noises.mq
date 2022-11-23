@@ -7,15 +7,8 @@ hand1_pool := (
 
 hand2_pool := (d8, d#8, g8, g#8, d9, d#9),
 
-for (up 10) (
-	hand1_length := pick (hn, dhn),
-	say hand1_length,
-	hand1 := (set_len hand1_length (pick hand1_pool)),
+concurrent
+	(while true (play ((pick hand1_pool) (pick hn dhn))))
+	(while true (play ((pick hand2_pool) (1/64))))
 
-	hand2 := (),
-	while (duration hand2 != hand1_length) (
-		hand2 = flat hand2 (set_len (1/64) (pick hand2_pool)),
-	),
 
-	sim hand1 hand2,
-),
