@@ -1,6 +1,9 @@
 #ifndef MUSIQUE_VALUE_HH
 #define MUSIQUE_VALUE_HH
 
+// Needs to be always first, before all the implicit template instantiations
+#include <musique/value/hash.hh>
+
 #include <musique/accessors.hh>
 #include <musique/common.hh>
 #include <musique/lexer/token.hh>
@@ -10,6 +13,7 @@
 #include <musique/value/chord.hh>
 #include <musique/value/intrinsic.hh>
 #include <musique/value/note.hh>
+#include <musique/value/set.hh>
 
 struct Nil
 {
@@ -40,6 +44,7 @@ struct Value
 	Value(char const* s);              ///< Create value of type symbol holding provided symbol
 	Value(std::string s);              ///< Create value of type symbol holding provided symbol
 	Value(std::string_view s);         ///< Create value of type symbol holding provided symbol
+	Value(Set &&set);                  ///< Create value of type set holding provided set
 	explicit Value(std::vector<Value> &&array); ///< Create value of type array holding provided array
 
 	// TODO Most strings should not be allocated by Value, but reference to string allocated previously
@@ -54,6 +59,7 @@ struct Value
 		Intrinsic,
 		Block,
 		Array,
+		Set,
 		Chord,
 		Macro
 	> data = Nil{};
@@ -107,9 +113,6 @@ inline T* get_if(Value& v) { return get_if<T>(v.data); }
 
 /// Returns type name of Value type
 std::string_view type_name(Value const& v);
-
-std::ostream& operator<<(std::ostream& os, Value const& v);
-template<> struct std::hash<Value>  { std::size_t operator()(Value  const&) const; };
 
 template<typename T>
 Result<Value> wrap_value(Result<T> &&value)
@@ -169,5 +172,7 @@ constexpr auto match(Values& ...values) -> std::optional<std::tuple<T&...>>
 		}
 	} (std::make_index_sequence<sizeof...(T)>{});
 }
+
+std::ostream& operator<<(std::ostream& os, Value const& v);
 
 #endif

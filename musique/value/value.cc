@@ -107,6 +107,11 @@ Value::Value(Chord chord)
 {
 }
 
+Value::Value(Set &&set)
+	: data(std::move(set))
+{
+}
+
 Result<Value> Value::operator()(Interpreter &i, std::vector<Value> args) const
 {
 	if (auto func = get_if<Function>(data)) {
@@ -188,7 +193,10 @@ std::ostream& operator<<(std::ostream& os, Value const& v)
 		[&](Nil)    { os << "nil"; },
 		[&](Intrinsic) { os << "<intrinisic>"; },
 		[&](Block const&) { os << "<block>"; },
-		[&](auto const& s) { os << s; }
+		[&](auto const& s) {
+			static_assert(requires { os << s; });
+			os << s;
+		}
 	}, v.data);
 	return os;
 }
@@ -205,6 +213,7 @@ std::string_view type_name(Value const& v)
 		[&](Nil const&)       { return "nil"; },
 		[&](Number const&)    { return "number"; },
 		[&](Symbol const&)    { return "symbol"; },
+		[&](Set const&)       { return "set"; },
 	}, v.data);
 }
 
@@ -228,28 +237,3 @@ Result<std::vector<Value>> flatten(Interpreter &i, std::vector<Value> args)
 	return flatten(i, std::span(args));
 }
 
-std::size_t std::hash<Value>::operator()(Value const& value) const
-{
-	auto const value_hash = std::visit(Overloaded {
-		[](Nil) { return std::size_t(0); },
-		[](Intrinsic i) { return size_t(i.function_pointer); },
-		[](Block const& b) { return hash_combine(std::hash<Ast>{}(b.body), b.parameters.size()); },
-		[this](Array const& array) {
-			return std::accumulate(
-				array.elements.begin(), array.elements.end(), size_t(0),
-				[this](size_t h, Value const& v) { return hash_combine(h, operator()(v)); }
-			);
-		},
-		[](Chord const& chord) {
-			return std::accumulate(chord.notes.begin(), chord.notes.end(), size_t(0), [](size_t h, Note const& n) {
-				h = hash_combine(h, std::hash<std::optional<int>>{}(n.base));
-				h = hash_combine(h, std::hash<std::optional<Number>>{}(n.length));
-				h = hash_combine(h, std::hash<std::optional<i8>>{}(n.octave));
-				return h;
-			});
-		},
-		[]<typename T>(T const& t) { return std::hash<T>{}(t); },
-	}, value.data);
-
-	return hash_combine(value_hash, size_t(value.data.index()));
-}

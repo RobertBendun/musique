@@ -838,6 +838,14 @@ static Result<Value> builtin_flat(Interpreter &i, std::vector<Value> args)
 	return Try(into_flat_array(i, std::move(args)));
 }
 
+/// Constructs set from given arguments
+static Result<Value> builtin_set(Interpreter&, std::vector<Value> args)
+{
+	Set set;
+	std::move(args.begin(), args.end(), std::inserter(set.elements, set.elements.end()));
+	return set;
+}
+
 /// Pick random value from arugments
 static Result<Value> builtin_pick(Interpreter &i, std::vector<Value> args)
 {
@@ -1154,6 +1162,7 @@ void Interpreter::register_builtin_functions()
 	global.force_define("rotate",         builtin_rotate);
 	global.force_define("round",          apply_numeric_transform<&Number::round>);
 	global.force_define("scan",           builtin_scan);
+	global.force_define("set",            builtin_set);
 	global.force_define("set_len",        builtin_set_len);
 	global.force_define("set_oct",        builtin_set_oct);
 	global.force_define("shuffle",        builtin_shuffle);

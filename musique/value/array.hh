@@ -8,6 +8,8 @@
 struct Interpreter;
 struct Value;
 
+// TODO Array should have an ability to be invoked with duration parameter like singular note
+
 /// Eager Array
 struct Array : Collection
 {

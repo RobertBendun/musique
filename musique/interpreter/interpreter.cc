@@ -448,7 +448,8 @@ static void snapshot(std::ostream& out, Value const& value) {
 			out << ")";
 		},
 		[](Intrinsic const&) { unreachable(); },
-		[](Macro const&) { unreachable(); }
+		[](Macro const&) { unreachable(); },
+		[](Set const&) { unimplemented("Snapshoting is not supported yet"); }
 	}, value.data);
 }
 

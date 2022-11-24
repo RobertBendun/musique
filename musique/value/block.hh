@@ -11,6 +11,8 @@ struct Env;
 struct Interpreter;
 struct Value;
 
+// TODO Block should have an ability to be invoked with duration parameter like singular note
+
 /// Lazy Array / Continuation / Closure type thingy
 struct Block : Collection, Function
 {
