@@ -35,15 +35,16 @@ private:
 	Interpreter(Clone);
 public:
 
+	/// Explicit clone method
 	Interpreter clone() const;
 
 	/// Try to evaluate given program tree
 	Result<Value> eval(Ast &&ast);
 
-	// Enter scope by changing current environment
+	/// Enter scope by changing current environment
 	void enter_scope();
 
-	// Leave scope by changing current environment
+	/// Leave scope by changing current environment
 	void leave_scope();
 
 	/// Play note resolving any missing parameters with context via `midi_connection` member.

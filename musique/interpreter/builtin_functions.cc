@@ -1,7 +1,8 @@
 #include <musique/algo.hh>
-#include <musique/interpreter/env.hh>
 #include <musique/guard.hh>
+#include <musique/interpreter/env.hh>
 #include <musique/interpreter/interpreter.hh>
+#include <musique/scope_exit.hh>
 #include <musique/try.hh>
 
 #include <chrono>
@@ -12,6 +13,7 @@
 #include <random>
 #include <thread>
 #include <unordered_set>
+#include <future>
 
 /// Check if type has index method
 template<typename T>
@@ -254,6 +256,19 @@ static inline std::optional<Error> sequential_play(Interpreter &interpreter, Val
 	}
 	else if (auto chord = get_if<Chord>(v)) {
 		return interpreter.play(*chord);
+	} else if (auto set = get_if<Set>(v)) {
+		std::vector<std::future<std::optional<Error>>> futures;
+		for (auto&& value : set->elements) {
+			futures.push_back(std::async(std::launch::async,
+				[interpreter = interpreter.clone(), value = std::move(value)]() mutable {
+					return sequential_play(interpreter, std::move(value));
+				}
+			));
+		}
+
+		for (auto &fut : futures) {
+			Try(fut.get());
+		}
 	}
 
 	return {};
@@ -267,27 +282,25 @@ static std::optional<Error> action_play(Interpreter &interpreter, Value v)
 }
 
 /// Play notes
-template<With_Index_Operator Container = std::vector<Value>>
-static inline Result<Value> builtin_play(Interpreter &interpreter, Container args)
+static inline Result<Value> builtin_play(Interpreter &interpreter, std::span<Ast> args)
 {
 	Try(ensure_midi_connection_available(interpreter, "play"));
 	auto const previous_action  = std::exchange(interpreter.default_action, action_play);
 	auto const previous_context = std::exchange(interpreter.current_context,
 		std::make_shared<Context>(*interpreter.current_context));
 
-	auto const finally = [&] {
+	Scope_Exit {
 		interpreter.default_action = std::move(previous_action);
 		interpreter.current_context = previous_context;
 	};
 
-	for (auto &el : args) {
-		if (std::optional<Error> error = sequential_play(interpreter, std::move(el))) {
-			finally();
+	for (auto &node : args) {
+		auto value = Try(interpreter.eval((Ast)node));
+		if (std::optional<Error> error = sequential_play(interpreter, std::move(value))) {
 			return *std::move(error);
 		}
 	}
 
-	finally();
 	return {};
 }
 
@@ -316,14 +329,15 @@ static Result<Value> builtin_par(Interpreter &interpreter, std::vector<Value> ar
 		}
 	}
 
-	auto result = builtin_play(interpreter, std::span(args).subspan(1));
+	unimplemented();
+	// auto result = builtin_play(interpreter, std::span(args).subspan(1));
 
-	for (auto const& note : chord->notes) {
-		if (note.base) {
-			interpreter.midi_connection->send_note_off(0, *note.into_midi_note(), 127);
-		}
-	}
-	return result;
+	// for (auto const& note : chord->notes) {
+	// 	if (note.base) {
+	// 		interpreter.midi_connection->send_note_off(0, *note.into_midi_note(), 127);
+	// 	}
+	// }
+	// return result;
 }
 
 /// Plays each argument simultaneously

@@ -4,6 +4,11 @@
 #include <musique/value/block.hh>
 #include <musique/value/value.hh>
 
+inline bool is_ast_collection(Ast::Type type)
+{
+	return type == Ast::Type::Sequence || type == Ast::Type::Concurrent;
+}
+
 /// Helper that produces error when trying to access container with too few elements for given index
 static inline std::optional<Error> guard_index(unsigned index, unsigned size)
 {
@@ -17,18 +22,18 @@ static inline std::optional<Error> guard_index(unsigned index, unsigned size)
 Result<Value> Block::index(Interpreter &i, unsigned position) const
 {
 	ensure(parameters.empty(), "cannot index into block with parameters (for now)");
-	if (body.type != Ast::Type::Sequence) {
-		Try(guard_index(position, 1));
-		return i.eval((Ast)body);
+	if (is_ast_collection(body.type)) {
+		Try(guard_index(position, body.arguments.size()));
+		return i.eval((Ast)body.arguments[position]);
 	}
 
-	Try(guard_index(position, body.arguments.size()));
-	return i.eval((Ast)body.arguments[position]);
+	Try(guard_index(position, 1));
+	return i.eval((Ast)body);
 }
 
 usize Block::size() const
 {
-	return body.type == Ast::Type::Sequence ? body.arguments.size() : 1;
+	return is_ast_collection(body.type) ? body.arguments.size() : 1;
 }
 
 Result<Value> Block::operator()(Interpreter &i, std::vector<Value> arguments) const

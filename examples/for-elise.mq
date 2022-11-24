@@ -5,61 +5,63 @@ WIP implemntation
 oct 5, bpm 72, len (1/16),
 
 subsection1 := (
-  sim (a4 en) (a2 e3 a3),
-  play (oct 4, c e a),
+  { a4 en, a2 e3 a3 },
+  oct 4, c e a,
 
-  sim (b4 en) (e2 e3 g#3),
-  play (oct 4, e g# b),
+  { b4 en, e2 e3 g#3 },
+  oct 4, e g# b,
 
-  sim (c5 en) (a2 e3 a3),
-  play (e4 e5 d#5),
+	{ c5 en, a2 e3 a3 },
+  e4 e5 d#5,
 
-  play e d# e b4 d c,
+  oct 5, e d# e b4 d c,
 
-  sim (a4 en) (a2 e3 a3),
-  play c4 e4 a4,
+  { a4 en, a2 e3 a3 },
+  c4 e4 a4,
 
-  sim (b4 en) (e2 e3 g#3),
-  play d4 c5 b4,
+  { b4 en, e2 e3 g#3 },
+  d4 c5 b4,
 ),
 
 section1 := ( n |
-  play e d#,
-  play e d# e b4 d c,
+  e d#,
+  e d# e b4 d c,
 
   call subsection1,
 
   if (n == 1)
-    ( sim (a4 qn) (a2 e3 a3) )
-    ( sim (a4 en) (a2 e3 a3)
-    , play b4 c5 d5
+    { a4 qn, a2 e3 a3 }
+    ( { a4 en, a2 e3 a3 }
+    , b4 c5 d5
     )
 ),
 
 section2 := ( n |
-  sim (e5 den) (c3 g3 c4),
-  play g4 f e,
+  { e5 den, c3 g3 c4 },
+  g4 f e,
 
-  sim (d 5 den) (g2 g3 b4),
-  play f4 e d,
+  { d5 den, g2 g3 b4 },
+  f4 e d,
 
-  sim (c5 den) (a2 e3 a3),
-  play e4 d c,
+  { c5 den, a2 e3 a3 },
+  e4 d c,
 
-  sim (b4 en) (e2 e3 e4),
-  play (e4 e5 e4 e4 e5 e6 d#5 e5 d#5 e5 en),
+  { b4 en, e2 e3 e4 },
+  e4 e5 e4 e4 e5 e6 d#5 e5 d#5 e5 en,
 
-  play d# e d# e d#,
-  play e d# e b4 d c,
+  d# e d# e d#,
+  e d# e b4 d c,
 
   call subsection1,
 
   if (n == 1)
-    ( sim (a4 en) (a2 e3 a3)
+    ( { a4 en, a2 e3 a3 }
     , play (b4 c5 d5)
     )
 ),
 
-section1 1,
-section1 2,
-section2 1,
+play (
+	section1 1,
+	section1 2,
+	section2 1,
+)

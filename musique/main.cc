@@ -37,6 +37,8 @@ static bool ast_only_mode = false;
 static bool enable_repl = false;
 static unsigned repl_line_number = 1;
 
+std::mutex stdio_mutex;
+
 #define Ignore(Call) do { auto const ignore_ ## __LINE__ = (Call); (void) ignore_ ## __LINE__; } while(0)
 
 /// Pop string from front of an array
@@ -190,7 +192,6 @@ struct Runner
 		}
 
 		Env::global->force_define("print", +[](Interpreter &interpreter, std::vector<Value> args) -> Result<Value> {
-			static std::mutex stdio_mutex;
 			for (auto it = args.begin(); it != args.end(); ++it) {
 				{
 					auto result = Try(format(interpreter, *it));

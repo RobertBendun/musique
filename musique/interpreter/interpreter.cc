@@ -1,5 +1,6 @@
 #include <musique/interpreter/env.hh>
 #include <musique/interpreter/interpreter.hh>
+#include <musique/options.hh>
 #include <musique/try.hh>
 
 #include <chrono>
@@ -97,14 +98,14 @@ static Result<Value> eval_concurrent(Interpreter &interpreter, Ast &&ast)
 		}));
 	}
 
-	std::vector<Value> results;
+	Set set;
 	for (auto& future : futures) {
 		if (error) {
 			return *error;
 		}
-		results.push_back(future.get());
+		set.elements.insert(future.get());
 	}
-	return results;
+	return set;
 }
 
 Result<Value> Interpreter::eval(Ast &&ast)
@@ -288,6 +289,11 @@ void Interpreter::leave_scope()
 
 std::optional<Error> Interpreter::play(Chord chord)
 {
+	if (global_options::dump_play_actions) {
+		std::lock_guard guard{stdio_mutex};
+		std::cerr << "[DEBUG] Interpreter::play " << chord << std::endl;
+	}
+
 	Try(ensure_midi_connection_available(*this, "play"));
 	auto &ctx = *current_context;
 

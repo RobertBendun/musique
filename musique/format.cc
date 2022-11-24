@@ -49,20 +49,25 @@ std::optional<Error> Value_Formatter::format(std::ostream& os, Interpreter &inte
 			return {};
 		},
 		[&](Block const& block) -> std::optional<Error> {
-			if (block.body.arguments.front().type == Ast::Type::Concurrent)
-				unimplemented("Nice printing of concurrent blocks is not implemented yet");
-
 			if (block.is_collection()) {
-				os << '(';
+				auto const [open, close] = block.body.type == Ast::Type::Concurrent
+					? std::pair { '{', '}' }
+					: std::pair { '(', ')' };
+
+				os << open;
 				for (auto i = 0u; i < block.size(); ++i) {
 					if (i > 0) {
 						os << ", ";
 					}
 					Try(nest(Inside_Block).format(os, interpreter, Try(block.index(interpreter, i))));
 				}
-				os << ')';
+				os << close;
 			} else {
-				os << "<block>";
+				if (block.body.type == Ast::Type::Concurrent) {
+					os << "<concurrent block>";
+				} else {
+					os << "<sequential block>";
+				}
 			}
 			return {};
 		},

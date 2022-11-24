@@ -2,6 +2,7 @@
 #define MUSIQUE_COMMON_HH
 
 #include <cstdint>
+#include <mutex>
 #include <string>
 #include <string_view>
 
@@ -61,5 +62,7 @@ template<typename T>
 concept Three_Way_Comparable = requires (T const& lhs, T const& rhs) {
 	{ lhs <=> rhs };
 };
+
+extern std::mutex stdio_mutex;
 
 #endif

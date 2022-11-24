@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `{}` notation for concurrently executing blocks
+- `{}` notation for concurrently executing blocks and describing set of values
+- `set` data type which contains an unordered collection of unique elements
 
 ### Fixed
 
