@@ -65,10 +65,11 @@ Result<Ast> Parser::parse(std::string_view source, std::string_view filename, un
 		}
 	}
 
-	auto const result = parser.parse_sequence();
+	auto const result = parser.parse_sequence(true);
 
 	if (result.has_value() && parser.token_id < parser.tokens.size()) {
-		if (parser.expect(Token::Type::Close_Block)) {
+		// FIXME There should be also check for closing index ] and closing concurrent block }
+		if (parser.expect(Token::Type::Close_Sequential)) {
 			auto const tok = parser.consume();
 			return Error {
 				.details = errors::Closing_Token_Without_Opening {
@@ -84,10 +85,10 @@ Result<Ast> Parser::parse(std::string_view source, std::string_view filename, un
 	return result;
 }
 
-Result<Ast> Parser::parse_sequence()
+Result<Ast> Parser::parse_sequence(bool is_sequential)
 {
 	auto seq = Try(parse_many(*this, &Parser::parse_expression, Token::Type::Expression_Separator, At_Least::Zero));
-	return Ast::sequence(std::move(seq));
+	return is_sequential ? Ast::sequential(std::move(seq)) : Ast::concurrent(std::move(seq));
 }
 
 Result<Ast> Parser::parse_expression()
@@ -185,10 +186,11 @@ Result<Ast> parse_sequence_inside(
 	Location start_location,
 	bool is_lambda,
 	std::vector<Ast> &&parameters,
-	auto &&dont_arrived_at_closing_token
+	auto &&dont_arrived_at_closing_token,
+	bool is_sequential
 )
 {
-	auto ast = Try(parser.parse_sequence());
+	auto ast = Try(parser.parse_sequence(is_sequential));
 	if (not parser.expect(closing_token)) {
 		Try(dont_arrived_at_closing_token());
 		return Error {
@@ -206,7 +208,7 @@ Result<Ast> parse_sequence_inside(
 		return Ast::lambda(start_location, std::move(ast), std::move(parameters));
 	}
 
-	ensure(ast.type == Ast::Type::Sequence, "I dunno if this is a valid assumption tbh");
+	ensure(ast.type == Ast::Type::Sequence || ast.type == Ast::Type::Concurrent, "I dunno if this is a valid assumption tbh");
 	if (ast.arguments.size() == 1) {
 		return std::move(ast.arguments.front());
 	}
@@ -231,7 +233,8 @@ Result<Ast> Parser::parse_index_expression()
 				{},
 				[]() -> std::optional<Error> {
 					return std::nullopt;
-				}
+				},
+				true
 			))
 		);
 	}
@@ -258,12 +261,16 @@ Result<Ast> Parser::parse_atomic_expression()
 	case Token::Type::Symbol:
 		return Ast::literal(consume());
 
-	case Token::Type::Open_Block:
+	case Token::Type::Open_Sequential:
+	case Token::Type::Open_Concurrent:
 		{
-			auto opening = consume();
-			if (expect(Token::Type::Close_Block)) {
+			auto const opening = consume();
+			bool const is_sequential = opening.type == Token::Type::Open_Sequential;
+			auto const closing_token_type = is_sequential ? Token::Type::Close_Sequential : Token::Type::Close_Concurrent;
+
+			if (expect(closing_token_type)) {
 				consume();
-				return Ast::block(std::move(opening).location);
+				return Ast::block(std::move(opening).location, is_sequential ? Ast::sequential({}) : Ast::concurrent({}));
 			}
 
 			auto start = token_id;
@@ -286,7 +293,7 @@ Result<Ast> Parser::parse_atomic_expression()
 
 			return parse_sequence_inside(
 				*this,
-				Token::Type::Close_Block,
+				closing_token_type,
 				opening.location,
 				is_lambda,
 				std::move(parameters),
@@ -321,7 +328,8 @@ Result<Ast> Parser::parse_atomic_expression()
 						};
 					}
 					return std::nullopt;
-				}
+				},
+				is_sequential
 			);
 		}
 
@@ -490,10 +498,21 @@ Ast Ast::call(std::vector<Ast> call)
 	return ast;
 }
 
-Ast Ast::sequence(std::vector<Ast> expressions)
+Ast Ast::sequential(std::vector<Ast> expressions)
 {
 	Ast ast;
 	ast.type = Type::Sequence;
+	if (!expressions.empty()) {
+		ast.location = expressions.front().location;
+		ast.arguments = std::move(expressions);
+	}
+	return ast;
+}
+
+Ast Ast::concurrent(std::vector<Ast> expressions)
+{
+	Ast ast;
+	ast.type = Type::Concurrent;
 	if (!expressions.empty()) {
 		ast.location = expressions.front().location;
 		ast.arguments = std::move(expressions);
@@ -586,6 +605,10 @@ bool operator==(Ast const& lhs, Ast const& rhs)
 	case Ast::Type::Lambda:
 	case Ast::Type::Sequence:
 	case Ast::Type::Variable_Declaration:
+	// TODO Maybe concurrent blocks should resolve duplicates at AST level, and not execution level?
+	//      Statements { play c, play c } should be parse time known to be { play c } I think.
+	//      Anyway thing to reconsider later
+	case Ast::Type::Concurrent:
 		return lhs.arguments.size() == rhs.arguments.size()
 			&& std::equal(lhs.arguments.begin(), lhs.arguments.end(), rhs.arguments.begin());
 	}
@@ -603,6 +626,7 @@ std::ostream& operator<<(std::ostream& os, Ast::Type type)
 	case Ast::Type::Literal:              return os << "LITERAL";
 	case Ast::Type::Sequence:             return os << "SEQUENCE";
 	case Ast::Type::Variable_Declaration: return os << "VAR";
+	case Ast::Type::Concurrent:           return os << "CONCURRENT";
 	}
 	unreachable();
 }

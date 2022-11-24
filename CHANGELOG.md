@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `{}` notation for concurrently executing blocks
+
 ### Fixed
 
 - release build script was producing executable with wrong path

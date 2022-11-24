@@ -12,19 +12,22 @@ struct Ast
 	static Ast binary(Token, Ast lhs, Ast rhs);
 
 	/// Constructs block
-	static Ast block(Location location, Ast seq = sequence({}));
+	static Ast block(Location location, Ast seq);
 
 	/// Constructs call expression
 	static Ast call(std::vector<Ast> call);
 
 	/// Constructs block with parameters
-	static Ast lambda(Location location, Ast seq = sequence({}), std::vector<Ast> parameters = {});
+	static Ast lambda(Location location, Ast body = sequential({}), std::vector<Ast> parameters = {});
 
 	/// Constructs constants, literals and variable identifiers
 	static Ast literal(Token);
 
 	/// Constructs sequence of operations
-	static Ast sequence(std::vector<Ast> call);
+	static Ast sequential(std::vector<Ast> call);
+
+	/// Constructs concurrent collection of operations
+	static Ast concurrent(std::vector<Ast> ops);
 
 	/// Constructs variable declaration
 	static Ast variable_declaration(Location loc, std::vector<Ast> lvalues, std::optional<Ast> rvalue);
@@ -38,6 +41,7 @@ struct Ast
 		Call,                 ///< Function call application like `print 42`
 		Literal,              ///< Compile time known constant like `c` or `1`
 		Sequence,             ///< Several expressions sequences like `42`, `42; 32`
+		Concurrent,           ///< Conccurrent collection of expressions like inside {} block
 		Variable_Declaration, ///< Declaration of a variable with optional value assigment like `var x = 10` or `var y`
 	};
 

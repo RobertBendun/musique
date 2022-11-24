@@ -20,7 +20,7 @@ struct Parser
 	static Result<Ast> parse(std::string_view source, std::string_view filename, unsigned line_number = 0);
 
 	/// Parse sequence, collection of expressions
-	Result<Ast> parse_sequence();
+	Result<Ast> parse_sequence(bool is_sequential);
 
 	/// Parse either infix expression or variable declaration
 	Result<Ast> parse_expression();

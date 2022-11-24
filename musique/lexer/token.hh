@@ -17,10 +17,12 @@ struct Token
 		Numeric,              ///< numeric literal (floating point or integer)
 		Parameter_Separator,  ///< "|" separaters arguments from block body
 		Expression_Separator, ///< "," separates expressions. Used mainly to separate calls, like `foo 1 2; bar 3 4`
-		Open_Block,           ///< "(" starts anonymous block of code (potentially a function)
-		Close_Block,          ///< ")" ends anonymous block of code (potentially a function)
 		Open_Index,           ///< "[" starts index section of index expression
-		Close_Index						///< "]" ends index section of index expression
+		Close_Index,					///< "]" ends index section of index expression
+		Open_Sequential,      ///< "(" starts anonymous sequential block of code (potentially a function)
+		Close_Sequential,     ///< ")" ends anonymous sequential block of code (potentially a function)
+		Open_Concurrent,      ///< "{" starts anonymous concurrent block
+		Close_Concurrent,     ///< "}" ends anonymous concurrent block
 	};
 
 	/// Type of token

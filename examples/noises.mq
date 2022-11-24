@@ -7,8 +7,8 @@ hand1_pool := (
 
 hand2_pool := (d8, d#8, g8, g#8, d9, d#9),
 
-concurrent
-	(while true (play ((pick hand1_pool) (pick hn dhn))))
-	(while true (play ((pick hand2_pool) (1/64))))
-
+play {
+	while true ((pick hand1_pool) (pick hn dhn)),
+	while true ((pick hand2_pool) (1/64))
+}
 

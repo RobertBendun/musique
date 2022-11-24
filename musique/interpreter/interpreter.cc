@@ -6,6 +6,8 @@
 #include <iostream>
 #include <random>
 #include <thread>
+#include <future>
+#include <mutex>
 
 midi::Connection *Interpreter::midi_connection = nullptr;
 std::unordered_map<std::string, Intrinsic> Interpreter::operators {};
@@ -59,6 +61,50 @@ Interpreter::Interpreter()
 
 Interpreter::Interpreter(Interpreter::Clone)
 {
+}
+
+static Result<Value> eval_concurrent(Interpreter &interpreter, Ast &&ast)
+{
+	ensure(ast.type == Ast::Type::Concurrent, "Only conccurent AST nodes can be evaluated in eval_concurrent");
+
+	std::span<Ast> jobs = ast.arguments;
+	std::vector<std::future<Value>> futures;
+	std::optional<Error> error;
+	std::mutex mutex;
+
+	for (unsigned i = 0; i < jobs.size(); ++i) {
+		futures.push_back(std::async(std::launch::async, [interpreter = interpreter.clone(), i, jobs, &mutex, &error]() mutable -> Value {
+			auto result = interpreter.eval(std::move(jobs[i]));
+			if (result) {
+				if (interpreter.default_action) {
+					// TODO Code duplication between this section and last section in this lambda function
+					if (auto produced_error = interpreter.default_action(interpreter, *std::move(result))) {
+						std::lock_guard guard{mutex};
+						if (!error) {
+							error = produced_error;
+						}
+						return Value{};
+					}
+				}
+				return *std::move(result);
+			}
+
+			std::lock_guard guard{mutex};
+			if (!error) {
+				error = result.error();
+			}
+			return Value{};
+		}));
+	}
+
+	std::vector<Value> results;
+	for (auto& future : futures) {
+		if (error) {
+			return *error;
+		}
+		results.push_back(future.get());
+	}
+	return results;
 }
 
 Result<Value> Interpreter::eval(Ast &&ast)
@@ -163,6 +209,9 @@ Result<Value> Interpreter::eval(Ast &&ast)
 		}
 		break;
 
+	case Ast::Type::Concurrent:
+		return eval_concurrent(*this, std::move(ast));
+
 	case Ast::Type::Sequence:
 		{
 			Value v;
@@ -243,7 +292,6 @@ std::optional<Error> Interpreter::play(Chord chord)
 	auto &ctx = *current_context;
 
 	if (chord.notes.size() == 0) {
-		std::this_thread::sleep_for(ctx.length_to_duration(ctx.length));
 		return {};
 	}
 
@@ -300,7 +348,9 @@ static void snapshot(std::ostream& out, Note const& note) {
 
 static void snapshot(std::ostream &out, Ast const& ast) {
 	switch (ast.type) {
-	break; case Ast::Type::Sequence:
+	break;
+	case Ast::Type::Sequence:
+	case Ast::Type::Concurrent:
 	{
 		for (auto const& a : ast.arguments) {
 			snapshot(out, a);
@@ -308,7 +358,10 @@ static void snapshot(std::ostream &out, Ast const& ast) {
 		}
 	}
 	break; case Ast::Type::Block:
+		// TODO
 		ensure(ast.arguments.size() == 1, "Block can contain only one node which contains its body");
+		if (ast.arguments.front().type == Ast::Type::Concurrent)
+			unimplemented("Concurrent code snapshoting is not supported yet");
 		out << "(";
 		snapshot(out, ast.arguments.front());
 		out << ")";

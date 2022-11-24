@@ -88,8 +88,10 @@ auto Lexer::next_token() -> Result<std::variant<Token, End_Of_File>>
 	}
 
 	switch (peek()) {
-	case '(': consume(); return Token { Token::Type::Open_Block,           finish(), token_location };
-	case ')': consume(); return Token { Token::Type::Close_Block,          finish(), token_location };
+	case '(': consume(); return Token { Token::Type::Open_Sequential,      finish(), token_location };
+	case ')': consume(); return Token { Token::Type::Close_Sequential,     finish(), token_location };
+	case '{': consume(); return Token { Token::Type::Open_Concurrent,      finish(), token_location };
+	case '}': consume(); return Token { Token::Type::Close_Concurrent,     finish(), token_location };
 	case '[': consume(); return Token { Token::Type::Open_Index,           finish(), token_location };
 	case ']': consume(); return Token { Token::Type::Close_Index,          finish(), token_location };
 	case ',': consume(); return Token { Token::Type::Expression_Separator, finish(), token_location };
@@ -257,16 +259,18 @@ std::ostream& operator<<(std::ostream& os, Token::Type type)
 {
 	switch (type) {
 	case Token::Type::Chord:                 return os << "CHORD";
-	case Token::Type::Close_Block:           return os << "CLOSE BLOCK";
+	case Token::Type::Close_Concurrent:      return os << "CLOSE CONCURRENT";
+	case Token::Type::Close_Index:           return os << "CLOSE INDEX";
+	case Token::Type::Close_Sequential:      return os << "CLOSE SEQUENTIAL";
 	case Token::Type::Expression_Separator:  return os << "EXPRESSION SEPARATOR";
 	case Token::Type::Keyword:               return os << "KEYWORD";
 	case Token::Type::Numeric:               return os << "NUMERIC";
-	case Token::Type::Open_Block:            return os << "OPEN BLOCK";
+	case Token::Type::Open_Concurrent:       return os << "OPEN CONCURRENT";
+	case Token::Type::Open_Index:            return os << "OPEN INDEX";
+	case Token::Type::Open_Sequential:       return os << "OPEN SEQUENTIAL";
 	case Token::Type::Operator:              return os << "OPERATOR";
 	case Token::Type::Parameter_Separator:   return os << "PARAMETER SEPARATOR";
 	case Token::Type::Symbol:                return os << "SYMBOL";
-	case Token::Type::Open_Index:            return os << "OPEN INDEX";
-	case Token::Type::Close_Index:           return os << "CLOSE INDEX";
 	}
 	unreachable();
 }
@@ -275,13 +279,15 @@ std::string_view type_name(Token::Type type)
 {
 	switch (type) {
 	case Token::Type::Chord:                 return "chord";
-	case Token::Type::Close_Block:           return ")";
+	case Token::Type::Close_Concurrent:      return "}";
 	case Token::Type::Close_Index:           return "]";
+	case Token::Type::Close_Sequential:      return ")";
 	case Token::Type::Expression_Separator:  return "|";
 	case Token::Type::Keyword:               return "keyword";
 	case Token::Type::Numeric:               return "numeric";
-	case Token::Type::Open_Block:            return "(";
+	case Token::Type::Open_Concurrent:       return "{";
 	case Token::Type::Open_Index:            return "[";
+	case Token::Type::Open_Sequential:       return "(";
 	case Token::Type::Operator:              return "operator";
 	case Token::Type::Parameter_Separator:   return "parameter separator";
 	case Token::Type::Symbol:                return "symbol";

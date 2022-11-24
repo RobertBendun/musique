@@ -14,8 +14,6 @@ struct Value;
 /// Lazy Array / Continuation / Closure type thingy
 struct Block : Collection, Function
 {
-	~Block() override = default;
-
 	/// Location of definition / creation
 	Location location;
 
@@ -27,6 +25,8 @@ struct Block : Collection, Function
 
 	/// Context from which block was created. Used for closures
 	std::shared_ptr<Env> context;
+
+	~Block() override = default;
 
 	/// Calling block
 	Result<Value> operator()(Interpreter &i, std::vector<Value> params) const override;

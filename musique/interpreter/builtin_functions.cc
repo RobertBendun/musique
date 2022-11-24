@@ -242,27 +242,27 @@ static auto builtin_program_change(Interpreter &i, std::vector<Value> args) -> R
 /// Plays sequentialy notes walking into arrays and evaluation blocks
 ///
 /// @invariant default_action is play one
-static inline std::optional<Error> sequential_play(Interpreter &i, Value v)
+static inline std::optional<Error> sequential_play(Interpreter &interpreter, Value v)
 {
 	if (auto array = get_if<Array>(v)) {
 		for (auto &el : array->elements) {
-			Try(sequential_play(i, std::move(el)));
+			Try(sequential_play(interpreter, std::move(el)));
 		}
 	}
 	else if (auto block = get_if<Block>(v)) {
-		Try(sequential_play(i, Try(i.eval(std::move(block->body)))));
+		Try(sequential_play(interpreter, Try(interpreter.eval(std::move(block->body)))));
 	}
 	else if (auto chord = get_if<Chord>(v)) {
-		return i.play(*chord);
+		return interpreter.play(*chord);
 	}
 
 	return {};
 }
 
 /// Play what's given
-static std::optional<Error> action_play(Interpreter &i, Value v)
+static std::optional<Error> action_play(Interpreter &interpreter, Value v)
 {
-	Try(sequential_play(i, std::move(v)));
+	Try(sequential_play(interpreter, std::move(v)));
 	return {};
 }
 
@@ -602,38 +602,6 @@ static Result<Value> builtin_scan(Interpreter &interpreter, std::vector<Value> a
 	};
 }
 
-static Result<Value> builtin_concurrent(Interpreter &interpreter, std::span<Ast> args)
-{
-	auto const jobs_count = args.size();
-	std::vector<std::future<Value>> futures;
-	std::optional<Error> error;
-	std::mutex mutex;
-
-	for (unsigned i = 0; i < jobs_count; ++i) {
-		futures.push_back(std::async(std::launch::async, [interpreter = interpreter.clone(), i, args, &mutex, &error]() mutable -> Value {
-			auto result = interpreter.eval((Ast)args[i]);
-			if (result) {
-				return *std::move(result);
-			}
-
-			std::lock_guard guard{mutex};
-			if (!error) {
-				error = result.error();
-			}
-			return Value{};
-		}));
-	}
-
-	std::vector<Value> results;
-	for (auto& future : futures) {
-		if (error) {
-			return *error;
-		}
-		results.push_back(future.get());
-	}
-	return results;
-}
-
 /// Execute blocks depending on condition
 static Result<Value> builtin_if(Interpreter &i, std::span<Ast> args)  {
 	static constexpr auto guard = Guard<2> {
@@ -666,7 +634,7 @@ static Result<Value> builtin_if(Interpreter &i, std::span<Ast> args)  {
 }
 
 /// Loop block depending on condition
-static Result<Value> builtin_while(Interpreter &i, std::span<Ast> args)  {
+static Result<Value> builtin_while(Interpreter &interpreter, std::span<Ast> args)  {
 	static constexpr auto guard = Guard<2> {
 		.name = "while",
 		.possibilities = {
@@ -678,11 +646,16 @@ static Result<Value> builtin_while(Interpreter &i, std::span<Ast> args)  {
 		return guard.yield_error();
 	}
 
-	while (Try(i.eval((Ast)args.front())).truthy()) {
+	while (Try(interpreter.eval((Ast)args.front())).truthy()) {
+		Value result;
 		if (args[1].type == Ast::Type::Block) {
-			Try(i.eval((Ast)args[1].arguments.front()));
+			result = Try(interpreter.eval((Ast)args[1].arguments.front()));
 		} else {
-			Try(i.eval((Ast)args[1]));
+			result = Try(interpreter.eval((Ast)args[1]));
+		}
+
+		if (interpreter.default_action) {
+			Try(interpreter.default_action(interpreter, std::move(result)));
 		}
 	}
 	return Value{};
@@ -1151,7 +1124,6 @@ void Interpreter::register_builtin_functions()
 	global.force_define("call",           builtin_call);
 	global.force_define("ceil",           apply_numeric_transform<&Number::ceil>);
 	global.force_define("chord",          builtin_chord);
-	global.force_define("concurrent",     builtin_concurrent);
 	global.force_define("down",           builtin_range<Range_Direction::Down>);
 	global.force_define("duration",       builtin_duration);
 	global.force_define("flat",           builtin_flat);
