@@ -40,7 +40,7 @@ section2 := ( n |
   sim (e5 den) (c3 g3 c4),
   play g4 f e,
 
-  sim (d 5 den) (g2 g3 b4),
+  sim (d5 den) (g2 g3 b4),
   play f4 e d,
 
   sim (c5 den) (a2 e3 a3),
