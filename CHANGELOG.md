@@ -7,11 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1]
+
 ### Fixed
 
 - release build script was producing executable with wrong path
 - `examples/for-elise.mq` had bug in it
 - in error reporting printing garbage instead of function name was fixed
+- sending proper program change message
 
 ## [0.3.0]
 

@@ -107,7 +107,7 @@ void midi::Rt_Midi::send_note_off(uint8_t channel, uint8_t note_number, uint8_t 
 
 void midi::Rt_Midi::send_program_change(uint8_t channel, uint8_t program)
 {
-	send_message(*output, std::array { std::uint8_t(channel), program });
+	send_message(*output, std::array { std::uint8_t(Program_Change + channel), program });
 }
 
 void midi::Rt_Midi::send_controller_change(uint8_t channel, uint8_t controller_number, uint8_t value)
