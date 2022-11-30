@@ -11,6 +11,14 @@
 #include <chrono>
 #include <thread>
 
+/// This macro implements functions that are only implemented as forwarding
+/// all arguments to another function
+#define Forward_Implementation(New_Function_Name, Implementation)                                  \
+	static inline Result<Value> New_Function_Name(Interpreter &interpreter, std::vector<Value> args) \
+	{                                                                                                \
+		return Implementation(interpreter, std::move(args));                                           \
+	}
+
 /// Check if type has index method
 template<typename T>
 concept With_Index_Method = requires (T &t, Interpreter interpreter, usize position) {
@@ -103,6 +111,39 @@ static Result<Value> ctx_read_write_property(Interpreter &interpreter, std::vect
 	return Value{};
 }
 
+//: Funkcja `bpm` pozwala na zapisywanie i odczytywanie wartości BPM z aktualnego kontekstu.
+//:
+//: Domyślną wartością jest 120.
+//: # Odczytywanie wartości z kontekstu
+//: ```
+//: > call bpm
+//: 120
+//: ```
+//: # Zapisywanie wartości BPM do aktualnego kontekstu
+//: ```
+//: > bpm 144
+//: 144
+//: ```
+Forward_Implementation(builtin_bpm, ctx_read_write_property<&Context::bpm>)
+
+//: Funkcja `oct` pozwala na zapisywanie i odczytywanie wartości oktawy z aktualnego kontekstu.
+//:
+//: Wartość ta jest używana w momencie odtwarzania dźwięków nie posiadających ustalonego numeru oktawy:
+//: `c` zostanie uzupełnione oktawą domyślną z kontekstu, `c5` zachowa swój nr oktawy.
+//:
+//: Domyślną wartością jest 120.
+//: # Odczytywanie wartości z kontekstu
+//: ```
+//: > call bpm
+//: 120
+//: ```
+//: # Zapisywanie wartości BPM do aktualnego kontekstu
+//: ```
+//: > bpm 144
+//: 144
+//: ```
+Forward_Implementation(builtin_oct, ctx_read_write_property<&Context::octave>)
+
 /// Iterate over array and it's subarrays to create one flat array
 static Result<Array> into_flat_array(Interpreter &interpreter, std::span<Value> args)
 {
@@ -172,12 +213,16 @@ invalid_argument_type:
 	};
 }
 
+Forward_Implementation(builtin_ceil, apply_numeric_transform<&Number::ceil>)
+Forward_Implementation(builtin_floor, apply_numeric_transform<&Number::floor>)
+Forward_Implementation(builtin_round, apply_numeric_transform<&Number::round>)
+
 /// Direction used in range definition (up -> 1, 2, 3; down -> 3, 2, 1)
 enum class Range_Direction { Up, Down };
 
 /// Create range according to direction and specification, similar to python
 template<Range_Direction dir>
-static Result<Value> builtin_range(Interpreter&, std::vector<Value> args)
+static Result<Value> range(Interpreter&, std::vector<Value> args)
 {
 	auto start = Number(0), stop = Number(0), step = Number(1);
 
@@ -210,7 +255,20 @@ static Result<Value> builtin_range(Interpreter&, std::vector<Value> args)
 	return array;
 }
 
-/// Send MIDI Program Change message
+Forward_Implementation(builtin_range, range<Range_Direction::Up>)
+Forward_Implementation(builtin_up, range<Range_Direction::Up>)
+Forward_Implementation(builtin_down, range<Range_Direction::Down>)
+
+//: Funkcja `instrument` pozwala na wybór instrumentu na danym kanale MIDI.
+//: # Ustawienie instrumentu 4
+//: ```
+//: instrument 4
+//: ```
+//: # Ustawienie instrumentu 4 na kanale 6
+//: ```
+//: instrument 6 4
+//: ```
+//: Przyporządkowanie numerów instrumentów do standardowych nazw znajdziesz [tutaj](http://midi.teragonaudio.com/tutr/gm.htm#Patch)
 static auto builtin_program_change(Interpreter &i, std::vector<Value> args) -> Result<Value> {
 	if (auto a = match<Number>(args)) {
 		auto [program] = *a;
@@ -1113,14 +1171,14 @@ void Interpreter::register_builtin_functions()
 {
 	auto &global = *Env::global;
 
-	global.force_define("bpm",            ctx_read_write_property<&Context::bpm>);
+	global.force_define("bpm",            builtin_bpm);
 	global.force_define("call",           builtin_call);
-	global.force_define("ceil",           apply_numeric_transform<&Number::ceil>);
+	global.force_define("ceil",           builtin_ceil);
 	global.force_define("chord",          builtin_chord);
-	global.force_define("down",           builtin_range<Range_Direction::Down>);
+	global.force_define("down",           builtin_down);
 	global.force_define("duration",       builtin_duration);
 	global.force_define("flat",           builtin_flat);
-	global.force_define("floor",          apply_numeric_transform<&Number::floor>);
+	global.force_define("floor",          builtin_floor);
 	global.force_define("fold",           builtin_fold);
 	global.force_define("for",            builtin_for);
 	global.force_define("hash",           builtin_hash);
@@ -1134,7 +1192,7 @@ void Interpreter::register_builtin_functions()
 	global.force_define("note_off",       builtin_note_off);
 	global.force_define("note_on",        builtin_note_on);
 	global.force_define("nprimes",        builtin_primes);
-	global.force_define("oct",            ctx_read_write_property<&Context::octave>);
+	global.force_define("oct",            builtin_oct);
 	global.force_define("par",            builtin_par);
 	global.force_define("partition",      builtin_partition);
 	global.force_define("permute",        builtin_permute);
@@ -1142,10 +1200,10 @@ void Interpreter::register_builtin_functions()
 	global.force_define("pick",           builtin_pick);
 	global.force_define("play",           builtin_play);
 	global.force_define("program_change", builtin_program_change);
-	global.force_define("range",          builtin_range<Range_Direction::Up>);
+	global.force_define("range",          builtin_range);
 	global.force_define("reverse",        builtin_reverse);
 	global.force_define("rotate",         builtin_rotate);
-	global.force_define("round",          apply_numeric_transform<&Number::round>);
+	global.force_define("round",          builtin_round);
 	global.force_define("scan",           builtin_scan);
 	global.force_define("set_len",        builtin_set_len);
 	global.force_define("set_oct",        builtin_set_oct);
@@ -1156,7 +1214,7 @@ void Interpreter::register_builtin_functions()
 	global.force_define("typeof",         builtin_typeof);
 	global.force_define("uniq",           builtin_uniq);
 	global.force_define("unique",         builtin_unique);
-	global.force_define("up",             builtin_range<Range_Direction::Up>);
+	global.force_define("up",             builtin_up);
 	global.force_define("update",         builtin_update);
 	global.force_define("while",          builtin_while);
 }

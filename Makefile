@@ -44,6 +44,9 @@ doc/musique-vs-languages-cheatsheet.html: doc/musique-vs-languages-cheatsheet.te
 doc/wprowadzenie.html: doc/wprowadzenie.md
 	pandoc -o $@ $< -s --toc
 
+doc/functions.html: musique/interpreter/builtin_functions.cc scripts/document-builtin.py
+	scripts/document-builtin.py -o $@ $<
+
 .PHONY: clean doc doc-open all test unit-tests release install
 
 $(shell mkdir -p $(subst musique/,bin/$(os)/,$(shell find musique/* -type d)))

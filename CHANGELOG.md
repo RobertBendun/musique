@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Printing version number on non-quiet launch, or when provided `--version` or `:version`
+- Builtin function documentation generation from C++ Musique implementation source code
+
+### Removed
+
+- Release builder, since it's separate part of the project
+
 ## [0.3.1]
 
 ### Fixed
