@@ -23,6 +23,15 @@ bin/$(os)/rtmidi.o: lib/rtmidi/RtMidi.cpp lib/rtmidi/RtMidi.h
 	@echo "CXX $@"
 	@$(CXX) $< -c -O2 -o $@ $(CPPFLAGS) -std=c++20
 
+bin/linux/serial/serial.o: lib/serial/src/serial.cc
+	$(CXX) $^ -c -O2 -o $@ $(CPPFLAGS) -std=c++20
+
+bin/linux/serial/unix.o: lib/serial/src/impl/unix.cc
+	$(CXX) $^ -c -O2 -o $@ $(CPPFLAGS) -std=c++20
+
+bin/linux/serial/list_ports.o: lib/serial/src/impl/list_ports/list_ports_linux.cc
+	$(CXX) $^ -c -O2 -o $@ $(CPPFLAGS) -std=c++20
+
 doc: Doxyfile musique/*.cc musique/*.hh
 	doxygen
 
@@ -48,3 +57,4 @@ doc/wprowadzenie.html: doc/wprowadzenie.md
 
 $(shell mkdir -p $(subst musique/,bin/$(os)/,$(shell find musique/* -type d)))
 $(shell mkdir -p $(subst musique/,bin/$(os)/debug/,$(shell find musique/* -type d)))
+$(shell mkdir -p bin/$(os)/serial)

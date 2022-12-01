@@ -18,6 +18,8 @@
 #include <musique/unicode.hh>
 #include <musique/value/block.hh>
 
+#include <serial/serial.h>
+
 #ifdef _WIN32
 extern "C" {
 #include <io.h>
@@ -541,6 +543,17 @@ static std::optional<Error> Main(std::span<char const*> args)
 
 int main(int argc, char const** argv)
 {
+	auto const ports = serial::list_ports();
+
+	for (serial::PortInfo const& port : ports) {
+		std::cout << "Port: " << port.port << '\n';
+		std::cout << "Description: " << port.description << '\n';
+		std::cout << "Hardware ID: " << port.hardware_id << '\n';
+	}
+
+	return 0;
+
+
 	auto const args = std::span(argv, argc).subspan(1);
 	auto const result = Main(args);
 	if (result.has_value()) {
