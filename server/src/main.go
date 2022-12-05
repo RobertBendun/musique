@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"time"
 )
 
 func scanError(scanResult []string, conn net.Conn) {
@@ -58,24 +59,36 @@ func main() {
 					scanError(scanResult, conn)
 					for _, host := range scanResult {
 						conn.Write([]byte(host + "\n"))
-
+						fmt.Println("CONNECTED")
 					}
 					conn.Write([]byte("> "))
 					continue
 				}
+				if resp == "showtime" {
+					cTime := showTime()
+					conn.Write([]byte(cTime.String() + "\n"))
+				}
+
 				if resp == "timesync" {
+					time.Sleep(1 * time.Second)
+					conn.Write([]byte("Server time: " + time.Now().String() + "\n"))
 					scanError(scanResult, conn)
 					for _, host := range scanResult {
 						if host == "" {
 							fmt.Print("No host")
 						}
 						fmt.Println(host)
-						//conn.Write([]byte(host + "\n"))
-						_, err := net.Dial("tcp", host)
+						conn.Write([]byte("Waiting for time from " + host + "\n"))
+						outconn, err := net.Dial("tcp", host)
 						if err != nil {
 							fmt.Println(err)
 							os.Exit(1)
 						}
+						defer outconn.Close()
+						recvBuf := make([]byte, 1024)
+						outconn.Write([]byte("showtime"))
+						outconn.Read(recvBuf)
+						conn.Write(recvBuf)
 					}
 				}
 				if resp == "quit" {
