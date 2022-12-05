@@ -18,6 +18,8 @@
 #include <musique/unicode.hh>
 #include <musique/value/block.hh>
 
+#include <server.h>
+
 #ifdef _WIN32
 extern "C" {
 #include <io.h>
@@ -170,6 +172,8 @@ struct Runner
 	{
 		ensure(the == nullptr, "Only one instance of runner is supported");
 		the = this;
+
+		ServerInit();
 
 		interpreter.midi_connection = &midi;
 		if (output_port) {

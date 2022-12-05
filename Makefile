@@ -48,3 +48,4 @@ doc/wprowadzenie.html: doc/wprowadzenie.md
 
 $(shell mkdir -p $(subst musique/,bin/$(os)/,$(shell find musique/* -type d)))
 $(shell mkdir -p $(subst musique/,bin/$(os)/debug/,$(shell find musique/* -type d)))
+$(shell mkdir -p bin/$(os)/server/)
