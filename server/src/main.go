@@ -86,9 +86,21 @@ func main() {
 						}
 						defer outconn.Close()
 						recvBuf := make([]byte, 1024)
-						outconn.Write([]byte("showtime"))
-						outconn.Read(recvBuf)
-						conn.Write(recvBuf)
+						_, err2 := outconn.Write([]byte("showtime"))
+						if err2 != nil {
+							fmt.Println(err)
+							os.Exit(1)
+						}
+						_, err3 := outconn.Read(recvBuf)
+						if err3 != nil {
+							fmt.Println(err)
+							os.Exit(1)
+						}
+						_, err4 := conn.Write(recvBuf)
+						if err4 != nil {
+							fmt.Println(err)
+							os.Exit(1)
+						}
 					}
 				}
 				if resp == "quit" {
