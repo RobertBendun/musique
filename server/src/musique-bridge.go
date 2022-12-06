@@ -13,7 +13,7 @@ func ServerInit() {
 
 //export ServerBeginProtocol
 func ServerBeginProtocol() {
-	protocol := []string {
+	protocol := []string{
 		"Make the plan",
 		"Execute the plan",
 		"Expect the plan to go off the rails",

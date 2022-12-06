@@ -86,21 +86,35 @@ func main() {
 						}
 						defer outconn.Close()
 						recvBuf := make([]byte, 1024)
-						_, err2 := outconn.Write([]byte("showtime"))
+						msg := []byte("showtime\n")
+						n, err2 := outconn.Write(msg)
+						if n != len(msg) {
+							fmt.Println("didn't send all the bytes")
+							os.Exit(1)
+						}
 						if err2 != nil {
 							fmt.Println(err)
 							os.Exit(1)
 						}
-						_, err3 := outconn.Read(recvBuf)
-						if err3 != nil {
-							fmt.Println(err)
-							os.Exit(1)
+						// Temporary fix, fixme pls
+						var read int
+						for {
+							var err3 error
+							read, err3 = outconn.Read(recvBuf)
+							if read > 2 {
+								break
+							}
+							if err3 != nil {
+								fmt.Println(err)
+								os.Exit(1)
+							}
 						}
 						_, err4 := conn.Write(recvBuf)
 						if err4 != nil {
 							fmt.Println(err)
 							os.Exit(1)
 						}
+						outconn.Close()
 					}
 				}
 				if resp == "quit" {

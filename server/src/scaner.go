@@ -3,37 +3,52 @@ package main
 import (
 	"fmt"
 	"net"
+	"sync"
 	"time"
 )
 
 func scan() []string {
 	var information []string
+
+	var wg sync.WaitGroup
+	ips := make(chan string, 256)
+
 	ifaces, _ := net.Interfaces()
-	for _, i := range ifaces {
-		addrs, _ := i.Addrs()
-		for _, j := range addrs {
-			ipv4, _, _ := net.ParseCIDR(j.String())
+	for _, iface := range ifaces {
+		addrs, _ := iface.Addrs()
+		for _, addr := range addrs {
+			ipv4, _, _ := net.ParseCIDR(addr.String())
+
 			if ipv4.IsGlobalUnicast() && ipv4.To4() != nil {
 				ipv4 = ipv4.To4()
 				ipv4 = ipv4.Mask(ipv4.DefaultMask())
-				ipv4[3]++
-				for i := 1; i < 2; i++ {
-					_, dialErr := net.DialTimeout("tcp", ipv4.String()+":8081", time.Duration(1)*time.Second)
-					// _, dialErr := net.DialTimeout("tcp", "192.168.0.100:8081", time.Duration(1)*time.Second)
-					if dialErr != nil {
-						fmt.Println("Cannot connect to " + ipv4.String())
-						// fmt.Println("Cannot connect to " + "192.168.0.100:8081")
-					} else {
-						fmt.Println("Response from " + ipv4.String())
-						// fmt.Println("Response from " + "192.168.0.100:8081")
-						information = append(information, ipv4.String())
-						// information = append(information, "192.168.0.100:8081")
-					}
+
+				for i := 1; i < 255; i++ {
+					localIP := make([]byte, 4)
+					copy(localIP, ipv4)
+					wg.Add(1)
+					go func(ip net.IP) {
+						_, dialErr := net.DialTimeout("tcp", ip.String()+":8081", time.Duration(1)*time.Second)
+						if dialErr == nil {
+							ips <- ip.String() + ":8081"
+						}
+						wg.Done()
+					}(localIP)
 					ipv4[3]++
 				}
 			}
 		}
 	}
-	return information
 
+	go func() {
+		wg.Wait()
+		close(ips)
+	}()
+
+	for ip := range ips {
+		fmt.Println("Response from " + ip)
+		information = append(information, ip)
+	}
+
+	return information
 }
