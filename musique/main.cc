@@ -17,6 +17,7 @@
 #include <musique/try.hh>
 #include <musique/unicode.hh>
 #include <musique/value/block.hh>
+#include <musique/serialport/serialport.hh>
 
 #include <serial/serial.h>
 
@@ -164,6 +165,8 @@ struct Runner
 
 	midi::Rt_Midi midi;
 	Interpreter interpreter;
+	std::shared_ptr<serialport::Device> serial_state;
+	std::optional<std::jthread> serial_event_loop;
 
 	/// Setup interpreter and midi connection with given port
 	explicit Runner(std::optional<unsigned> output_port)
@@ -172,6 +175,14 @@ struct Runner
 	{
 		ensure(the == nullptr, "Only one instance of runner is supported");
 		the = this;
+
+		/// Setup communication over serial
+		serial_state = std::make_shared<serialport::Device>();
+		serialport::initialize();
+
+		serial_event_loop = std::jthread([this](std::stop_token token) mutable{
+			serialport::event_loop();
+		});
 
 		interpreter.midi_connection = &midi;
 		if (output_port) {
@@ -543,17 +554,6 @@ static std::optional<Error> Main(std::span<char const*> args)
 
 int main(int argc, char const** argv)
 {
-	auto const ports = serial::list_ports();
-
-	for (serial::PortInfo const& port : ports) {
-		std::cout << "Port: " << port.port << '\n';
-		std::cout << "Description: " << port.description << '\n';
-		std::cout << "Hardware ID: " << port.hardware_id << '\n';
-	}
-
-	return 0;
-
-
 	auto const args = std::span(argv, argc).subspan(1);
 	auto const result = Main(args);
 	if (result.has_value()) {

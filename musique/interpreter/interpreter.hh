@@ -5,6 +5,7 @@
 #include <musique/interpreter/context.hh>
 #include <musique/value/value.hh>
 #include <unordered_map>
+#include <musique/serialport/serialport.hh>
 
 /// Given program tree evaluates it into Value
 struct Interpreter
@@ -24,6 +25,8 @@ struct Interpreter
 	std::shared_ptr<Context> current_context;
 
 	std::function<std::optional<Error>(Interpreter&, Value)> default_action;
+
+	std::shared_ptr<serialport::Device> serialport;
 
 	Interpreter();
 	~Interpreter();
