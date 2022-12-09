@@ -83,7 +83,6 @@ func timesync(hosts []string) []client {
 	wg.Wait()
 	close(responses)
 
-	fmt.Println("joł")
 	clients := make([]client, 0, len(hosts))
 	for client := range responses {
 		clients = append(clients, client)
@@ -166,7 +165,7 @@ func main() {
 				if strings.HasPrefix(resp, "start") {
 					startTimeString := strings.TrimSpace(resp[len("start"):])
 					startTime := int64(0)
-					fmt.Scanf(startTimeString, "%d", &startTime)
+					fmt.Sscanf(startTimeString, "%d", &startTime)
 					time.Sleep(time.Duration(startTime) * time.Millisecond)
 					log.Println("Started #start")
 					continue
