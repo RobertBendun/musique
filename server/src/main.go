@@ -6,9 +6,9 @@ import (
 	"log"
 	"net"
 	"os"
+	"strings"
 	"sync"
 	"time"
-	"strings"
 )
 
 func scanError(scanResult []string, conn net.Conn) {
@@ -41,7 +41,7 @@ func remotef(host, command, format string, args ...interface{}) (int, error) {
 		if err != nil {
 			return 0, fmt.Errorf("remotef: parsing: %v", err)
 		}
-	return parsedCount, nil
+		return parsedCount, nil
 	}
 
 	return 0, nil
@@ -73,7 +73,7 @@ func timesync(hosts []string) []client {
 		id, host := id, host
 		go func() {
 			defer wg.Done()
-			exchange := timeExchange{};
+			exchange := timeExchange{}
 			if exchange.estimateFor(host) {
 				responses <- client{exchange, id, host}
 			}
@@ -95,15 +95,16 @@ func timesync(hosts []string) []client {
 
 const maxReactionTime = 300
 
-func notifyAll(clients []client) {
+func notifyAll(clients []client) <-chan time.Time {
 	wg := sync.WaitGroup{}
 	wg.Add(len(clients))
 	startDeadline := time.After(maxReactionTime * time.Millisecond)
 
+
 	for _, client := range clients {
 		client := client
 		go func() {
-			startTime := maxReactionTime - (client.after - client.before) / 2
+			startTime := maxReactionTime - (client.after-client.before)/2
 			_, err := remotef(client.addr, fmt.Sprintf("start %d", startTime), "")
 			if err != nil {
 				log.Printf("failed to notify %s: %v\n", client.addr, err)
@@ -112,8 +113,7 @@ func notifyAll(clients []client) {
 		}()
 	}
 
-	<-startDeadline
-	return
+	return startDeadline
 }
 
 func main() {
@@ -129,7 +129,10 @@ func main() {
 		}
 		go func(c net.Conn) {
 			s := bufio.NewScanner(c)
-			var scanResult []string
+			scanResult := []string{
+				"10.100.5.112:8081",
+				"10.100.5.44:8081",
+			}
 			var clients []client
 			for s.Scan() {
 				resp := s.Text()
@@ -171,7 +174,7 @@ func main() {
 					continue
 				}
 				if resp == "notify" {
-					notifyAll(clients)
+					<-notifyAll(clients)
 					log.Println("Started #notify")
 					continue
 				}
