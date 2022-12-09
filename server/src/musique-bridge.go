@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 	"strings"
+	"sync"
 )
 
 var clients []client
@@ -15,13 +16,10 @@ var pinger chan struct{}
 //export ServerInit
 func ServerInit() {
 	// scanResult = scan()
-	scanResult := []string{
-		"10.100.5.112:8081",
-		"10.100.5.44:8081",
-	}
-	clients = timesync(scanResult)
-
 	pinger = make(chan struct{}, 100)
+
+	waitForConnection := sync.WaitGroup{}
+	waitForConnection.Add(1)
 
 	go func() {
 		l, err := net.Listen("tcp", ":8081")
@@ -29,6 +27,7 @@ func ServerInit() {
 			return
 		}
 		defer l.Close()
+		waitForConnection.Done()
 		for {
 			conn, err := l.Accept()
 			if err != nil {
@@ -56,6 +55,12 @@ func ServerInit() {
 			}(conn)
 		}
 	}()
+	waitForConnection.Wait()
+	scanResult := []string{
+		"10.100.5.112:8081",
+		"10.100.5.44:8081",
+	}
+	clients = timesync(scanResult)
 }
 
 //export ServerBeginProtocol
