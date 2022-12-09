@@ -5,3 +5,5 @@ LDLIBS:=-framework CoreMIDI -framework CoreAudio -framework CoreFoundation $(LDL
 Release_Obj=$(addprefix bin/,$(Obj))
 Bestline=bin/$(os)/bestline.o
 Target=musique
+GOOS=darwin
+GOARCH=amd64
