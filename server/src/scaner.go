@@ -8,8 +8,6 @@ import (
 )
 
 func scan() []string {
-	var information []string
-
 	var wg sync.WaitGroup
 	ips := make(chan string, 256)
 
@@ -28,9 +26,10 @@ func scan() []string {
 					copy(localIP, ipv4)
 					wg.Add(1)
 					go func(ip net.IP) {
-						_, dialErr := net.DialTimeout("tcp", ip.String()+":8081", time.Duration(1)*time.Second)
+						conn, dialErr := net.DialTimeout("tcp", ip.String()+":8081", time.Duration(1)*time.Second)
 						if dialErr == nil {
 							ips <- ip.String() + ":8081"
+							conn.Close()
 						}
 						wg.Done()
 					}(localIP)
@@ -45,10 +44,10 @@ func scan() []string {
 		close(ips)
 	}()
 
+	information := []string{}
 	for ip := range ips {
 		fmt.Println("Response from " + ip)
 		information = append(information, ip)
 	}
-
 	return information
 }

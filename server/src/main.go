@@ -6,7 +6,9 @@ import (
 	"log"
 	"net"
 	"os"
+	"sync"
 	"time"
+	"strings"
 )
 
 func scanError(scanResult []string, conn net.Conn) {
@@ -15,17 +17,104 @@ func scanError(scanResult []string, conn net.Conn) {
 	}
 }
 
+type timeExchange struct {
+	before, after, remote int64
+}
+
+type client struct {
+	timeExchange
+	id   int
+	addr string
+}
+
+func remotef(host, command, format string, args ...interface{}) (int, error) {
+	connection, err := net.Dial("tcp", host)
+	if err != nil {
+		return 0, fmt.Errorf("remotef: establishing connection: %v", err)
+	}
+	defer connection.Close()
+	connection.SetDeadline(time.Now().Add(1 * time.Second))
+
+	fmt.Fprintln(connection, command)
+	if len(format) > 0 {
+		parsedCount, err := fmt.Fscanf(connection, format, args...)
+		if err != nil {
+			return 0, fmt.Errorf("remotef: parsing: %v", err)
+		}
+	return parsedCount, nil
+	}
+
+	return 0, nil
+}
+
+func (e *timeExchange) estimateFor(host string) bool {
+	e.before = time.Now().UnixMilli()
+	parsedCount, err := remotef(host, "time", "%d\n", &e.remote)
+	e.after = time.Now().UnixMilli()
+
+	if err != nil {
+		log.Println("estimateFor: %v", err)
+		return false
+	}
+	if parsedCount != 1 {
+		log.Printf("berkeley: expected to parse number, instead parsed %d items\n", parsedCount)
+		return false
+	}
+	return true
+}
+
+func timesync(hosts []string) []client {
+	wg := sync.WaitGroup{}
+	wg.Add(len(hosts))
+
+	// Gather time from each host
+	responses := make(chan client, len(hosts))
+	for id, host := range hosts {
+		id, host := id, host
+		go func() {
+			defer wg.Done()
+			exchange := timeExchange{};
+			if exchange.estimateFor(host) {
+				responses <- client{exchange, id, host}
+			}
+		}()
+	}
+
+	wg.Wait()
+	close(responses)
+
+	clients := make([]client, 0, len(hosts))
+	for client := range responses {
+		clients = append(clients, client)
+	}
+	return clients
+}
+
+const maxReactionTime = 300
+
+func notifyAll(clients []client) {
+	wg := sync.WaitGroup{}
+	wg.Add(len(clients))
+	startDeadline := time.After(maxReactionTime * time.Millisecond)
+
+	for _, client := range clients {
+		client := client
+		go func() {
+			myTime := time.Now().UnixMilli()
+			startTime := myTime + maxReactionTime - (client.remote - client.before) + (client.after - client.before) / 2
+			_, err := remotef(client.addr, fmt.Sprintf("start %d", startTime), "")
+			if err != nil {
+				log.Printf("failed to notify %s: %v\n", client.addr, err)
+			}
+			wg.Done()
+		}()
+	}
+
+	<-startDeadline
+	return
+}
+
 func main() {
-
-	// HTTP part
-	// fileServer := http.FileServer(http.Dir("./static"))
-	// http.Handle("/", fileServer)
-	// http.HandleFunc("/cmd", cmdHandler)
-	// http.HandleFunc("/scan", scanHandler)
-
-	// http.HandleFunc("/hello", helloHandler)
-
-	// TCP part
 	l, err := net.Listen("tcp", ":8081")
 	if err != nil {
 		log.Fatal(err)
@@ -38,21 +127,19 @@ func main() {
 		}
 		go func(c net.Conn) {
 			s := bufio.NewScanner(c)
-			conn.Write([]byte("> "))
 			var scanResult []string
+			var clients []client
 			for s.Scan() {
 				resp := s.Text()
 				if resp == "scan" {
 					conn.Write([]byte("Scanning...\n"))
 					scanResult = scan()
 					conn.Write([]byte("Scanning done!\n"))
-					conn.Write([]byte("> "))
 					fmt.Println(len(scanResult))
 					continue
 				}
 				if resp == "time" {
-					conn.Write([]byte(showTime().String() + "\n"))
-					conn.Write([]byte("> "))
+					fmt.Fprintln(conn, time.Now().UnixMilli())
 					continue
 				}
 				if resp == "hosts" {
@@ -61,67 +148,39 @@ func main() {
 						conn.Write([]byte(host + "\n"))
 						fmt.Println("CONNECTED")
 					}
-					conn.Write([]byte("> "))
 					continue
 				}
 				if resp == "showtime" {
 					cTime := showTime()
 					conn.Write([]byte(cTime.String() + "\n"))
+					continue
 				}
-
 				if resp == "timesync" {
-					time.Sleep(1 * time.Second)
-					conn.Write([]byte("Server time: " + time.Now().String() + "\n"))
-					scanError(scanResult, conn)
-					for _, host := range scanResult {
-						if host == "" {
-							fmt.Print("No host")
-						}
-						fmt.Println(host)
-						conn.Write([]byte("Waiting for time from " + host + "\n"))
-						outconn, err := net.Dial("tcp", host)
-						if err != nil {
-							fmt.Println(err)
-							os.Exit(1)
-						}
-						defer outconn.Close()
-						recvBuf := make([]byte, 1024)
-						msg := []byte("showtime\n")
-						n, err2 := outconn.Write(msg)
-						if n != len(msg) {
-							fmt.Println("didn't send all the bytes")
-							os.Exit(1)
-						}
-						if err2 != nil {
-							fmt.Println(err)
-							os.Exit(1)
-						}
-						// Temporary fix, fixme pls
-						var read int
-						for {
-							var err3 error
-							read, err3 = outconn.Read(recvBuf)
-							if read > 2 {
-								break
-							}
-							if err3 != nil {
-								fmt.Println(err)
-								os.Exit(1)
-							}
-						}
-						_, err4 := conn.Write(recvBuf)
-						if err4 != nil {
-							fmt.Println(err)
-							os.Exit(1)
-						}
-						outconn.Close()
+					clients = timesync(scanResult)
+					continue
+				}
+				if strings.HasPrefix(resp, "start") {
+					startTimeString := strings.TrimSpace(resp[len("start"):])
+					startTime := int64(0)
+					fmt.Scanf(startTimeString, "%d", &startTime)
+					currentTime := time.Now().UnixMilli()
+					if currentTime > startTime {
+						log.Println("cannot start after given time")
+						continue
 					}
+					time.Sleep(time.Duration(startTime - currentTime) * time.Millisecond)
+					log.Println("Started #start")
+					continue
+				}
+				if resp == "notify" {
+					notifyAll(clients)
+					log.Println("Started #notify")
+					continue
 				}
 				if resp == "quit" {
 					c.Close()
 					os.Exit(0)
 				}
-				conn.Write([]byte("> "))
 			}
 			c.Close()
 		}(conn)
