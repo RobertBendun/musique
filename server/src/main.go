@@ -83,10 +83,14 @@ func timesync(hosts []string) []client {
 	wg.Wait()
 	close(responses)
 
+	fmt.Println("joł")
 	clients := make([]client, 0, len(hosts))
 	for client := range responses {
 		clients = append(clients, client)
 	}
+
+	fmt.Printf("Successfully gathered %d clients\n", len(clients))
+
 	return clients
 }
 
@@ -100,8 +104,7 @@ func notifyAll(clients []client) {
 	for _, client := range clients {
 		client := client
 		go func() {
-			myTime := time.Now().UnixMilli()
-			startTime := myTime + maxReactionTime - (client.remote - client.before) + (client.after - client.before) / 2
+			startTime := maxReactionTime - (client.after - client.before) / 2
 			_, err := remotef(client.addr, fmt.Sprintf("start %d", startTime), "")
 			if err != nil {
 				log.Printf("failed to notify %s: %v\n", client.addr, err)
@@ -131,6 +134,7 @@ func main() {
 			var clients []client
 			for s.Scan() {
 				resp := s.Text()
+				log.Println(resp)
 				if resp == "scan" {
 					conn.Write([]byte("Scanning...\n"))
 					scanResult = scan()
@@ -163,12 +167,7 @@ func main() {
 					startTimeString := strings.TrimSpace(resp[len("start"):])
 					startTime := int64(0)
 					fmt.Scanf(startTimeString, "%d", &startTime)
-					currentTime := time.Now().UnixMilli()
-					if currentTime > startTime {
-						log.Println("cannot start after given time")
-						continue
-					}
-					time.Sleep(time.Duration(startTime - currentTime) * time.Millisecond)
+					time.Sleep(time.Duration(startTime) * time.Millisecond)
 					log.Println("Started #start")
 					continue
 				}
