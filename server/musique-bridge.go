@@ -2,12 +2,12 @@ package main
 
 import (
 	"C"
-	"net"
 	"bufio"
 	"fmt"
-	"time"
+	"net"
 	"strings"
 	"sync"
+	"time"
 )
 
 var clients []client
@@ -56,7 +56,7 @@ func ServerInit() {
 		}
 	}()
 	waitForConnection.Wait()
-	scanResult := scan()
+	scanResult := []string{} // scan()
 	clients = timesync(scanResult)
 }
 
@@ -64,7 +64,7 @@ func ServerInit() {
 func ServerBeginProtocol() {
 	self := notifyAll(clients)
 	select {
-	case <- self:
-	case <- pinger:
+	case <-self:
+	case <-pinger:
 	}
 }
