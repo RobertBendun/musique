@@ -17,6 +17,7 @@
 #include <musique/try.hh>
 #include <musique/unicode.hh>
 #include <musique/value/block.hh>
+#include <musique/config.hh>
 
 #include <server.h>
 
@@ -37,6 +38,8 @@ static bool quiet_mode = false;
 static bool ast_only_mode = false;
 static bool enable_repl = false;
 static unsigned repl_line_number = 1;
+static std::string nick;
+static int port;
 
 #define Ignore(Call) do { auto const ignore_ ## __LINE__ = (Call); (void) ignore_ ## __LINE__; } while(0)
 
@@ -107,7 +110,7 @@ void print_repl_help()
 }
 
 /// Trim spaces from left an right
-static void trim(std::string_view &s)
+void trim(std::string_view &s)
 {
 	// left trim
 	if (auto const i = std::find_if_not(s.begin(), s.end(), unicode::is_space); i != s.begin()) {
@@ -173,7 +176,10 @@ struct Runner
 		ensure(the == nullptr, "Only one instance of runner is supported");
 		the = this;
 
-		ServerInit();
+
+		GoInt goport = port;
+		GoString gonick { .p = nick.data(), .n = ptrdiff_t(nick.size()) };
+		ServerInit(gonick, goport);
 
 		interpreter.midi_connection = &midi;
 		if (output_port) {
@@ -450,6 +456,24 @@ static std::optional<Error> Main(std::span<char const*> args)
 
 		std::cerr << "musique: error: unrecognized command line option: " << arg << std::endl;
 		std::exit(1);
+	}
+
+	// TODO Write configuration
+	// TODO Nicer configuration interface (maybe paths?)
+	auto config = config::from_file(config::location());
+	if (config.contains("net") && config["net"].contains("nick")) {
+		nick = config["net"]["nick"];
+	} else {
+		std::cout << "Please enter your nick: ";
+		std::getline(std::cin, nick);
+	}
+
+	if (config.contains("net") && config["net"].contains("port")) {
+		auto const& port_str = config["net"]["port"];
+		// FIXME Handle port number parsing errors
+		std::from_chars(port_str.data(), port_str.data() + port_str.size(), port);
+	} else {
+		port = 8081;
 	}
 
 	Runner runner{output_port};

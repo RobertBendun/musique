@@ -10,7 +10,10 @@ import (
 )
 
 //export ServerInit
-func ServerInit() {
+func ServerInit(inputNick string, inputPort int) {
+	nick = inputNick
+	port = inputPort
+
 	r := router.Router{}
 	registerRoutes(&r)
 	_, err := r.Run(baseIP, uint16(port))
