@@ -106,6 +106,8 @@ void print_repl_help()
 		":!<command> - allows for execution of any shell command\n"
 		":clear - clears screen\n"
 		":load <file> - loads file into Musique session\n"
+		":discover - tries to discover new remotes\n"
+		":remotes - list all known remotes\n"
 		;
 }
 
@@ -206,6 +208,16 @@ struct Runner
 			}
 			std::cout << std::endl;
 			return {};
+		});
+
+		Env::global->force_define("timeout", +[](Interpreter&, std::vector<Value> args) -> Result<Value> {
+			if (auto a = match<Number>(args); a) {
+				auto [timeout] = *a;
+				auto gotimeout = GoInt64((timeout * Number(1000)).floor().as_int());
+				SetTimeout(gotimeout);
+				return Value{};
+			}
+			unimplemented();
 		});
 	}
 
@@ -346,7 +358,15 @@ static Result<bool> handle_repl_session_commands(std::string_view input, Runner 
 				ListKnownRemotes();
 				return std::nullopt;
 			}
-		}
+		},
+		Command {
+			"discover",
+			+[](Runner&, std::optional<std::string_view>) -> std::optional<Error> {
+				Discover();
+				ListKnownRemotes();
+				return std::nullopt;
+			}
+		},
 	};
 
 	if (input.starts_with('!')) {
@@ -458,6 +478,8 @@ static std::optional<Error> Main(std::span<char const*> args)
 		std::exit(1);
 	}
 
+	bool save_new_config = false;
+
 	// TODO Write configuration
 	// TODO Nicer configuration interface (maybe paths?)
 	auto config = config::from_file(config::location());
@@ -466,6 +488,11 @@ static std::optional<Error> Main(std::span<char const*> args)
 	} else {
 		std::cout << "Please enter your nick: ";
 		std::getline(std::cin, nick);
+		auto nick_view = std::string_view(nick);
+		trim(nick_view); // FIXME Trim in place
+		nick = nick_view;
+		config["net"]["nick"] = nick;
+		save_new_config = true;
 	}
 
 	if (config.contains("net") && config["net"].contains("port")) {
@@ -474,6 +501,12 @@ static std::optional<Error> Main(std::span<char const*> args)
 		std::from_chars(port_str.data(), port_str.data() + port_str.size(), port);
 	} else {
 		port = 8081;
+		config["net"]["port"] = std::to_string(port);
+		save_new_config = true;
+	}
+
+	if (save_new_config) {
+		config::to_file(config::location(), config);
 	}
 
 	Runner runner{output_port};

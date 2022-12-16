@@ -11,12 +11,18 @@ import (
 
 //export ServerInit
 func ServerInit(inputNick string, inputPort int) {
+	logFile, err := os.OpenFile("musique.log", os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0o640)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	log.SetOutput(logFile)
+
 	nick = inputNick
 	port = inputPort
 
 	r := router.Router{}
 	registerRoutes(&r)
-	_, err := r.Run(baseIP, uint16(port))
+	_, err = r.Run(baseIP, uint16(port))
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -24,10 +30,32 @@ func ServerInit(inputNick string, inputPort int) {
 	if err := registerRemotes(); err != nil {
 		log.Fatalln(err)
 	}
+
+	timesync()
+}
+
+//export SetTimeout
+func SetTimeout(timeout int64) {
+	maxReactionTime = timeout
 }
 
 //export ServerBeginProtocol
 func ServerBeginProtocol() {
+	self := notifyAll()
+	select {
+	case <-self:
+	case <-pinger:
+	}
+}
+
+//export Discover
+func Discover() {
+	if len(remotes) == 0 {
+		if err := registerRemotes(); err != nil {
+			log.Println("discover:", err)
+		}
+	}
+	synchronizeHostsWithRemotes()
 }
 
 //export ListKnownRemotes
@@ -38,10 +66,10 @@ func ListKnownRemotes() {
 
 	list := []nickAddr{}
 	for _, remote := range remotes {
-		list = append(list, nickAddr { remote.Nick, remote.Address})
+		list = append(list, nickAddr{remote.Nick, remote.Address})
 	}
 
-	sort.Slice(list, func (i, j int) bool {
+	sort.Slice(list, func(i, j int) bool {
 		if list[i].nick == list[j].nick {
 			return list[i].addr < list[j].addr
 		}

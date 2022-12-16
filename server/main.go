@@ -1,14 +1,13 @@
 package main
 
 import (
-	"bufio"
 	"errors"
 	"flag"
 	"fmt"
 	"log"
 	"musique/server/proto"
-	"musique/server/scan"
 	"musique/server/router"
+	"musique/server/scan"
 	"net"
 	"os"
 	"strings"
@@ -22,65 +21,39 @@ func scanError(scanResult []string, conn net.Conn) {
 	}
 }
 
-type timeExchange struct {
+type TimeExchange struct {
 	before, after, remote int64
 }
 
-type client struct {
-	timeExchange
-	id   int
-	addr string
-}
-
-func remotef(host, command, format string, args ...interface{}) (int, error) {
-	connection, err := net.Dial("tcp", host)
-	if err != nil {
-		return 0, fmt.Errorf("remotef: establishing connection: %v", err)
-	}
-	defer connection.Close()
-	connection.SetDeadline(time.Now().Add(1 * time.Second))
-
-	fmt.Fprintln(connection, command)
-	if len(format) > 0 {
-		parsedCount, err := fmt.Fscanf(connection, format, args...)
-		if err != nil {
-			return 0, fmt.Errorf("remotef: parsing: %v", err)
-		}
-		return parsedCount, nil
-	}
-
-	return 0, nil
-}
-
-func (e *timeExchange) estimateFor(host string) bool {
+func (e *TimeExchange) estimateFor(host string) bool {
 	e.before = time.Now().UnixMilli()
-	parsedCount, err := remotef(host, "time", "%d\n", &e.remote)
+	var response proto.TimeResponse
+	if err := proto.Command(host, proto.Time(), &response); err != nil {
+		log.Printf("failed to send time command: %v\n", err)
+		return false
+	}
 	e.after = time.Now().UnixMilli()
-
-	if err != nil {
-		log.Printf("estimateFor: %v\n", err)
-		return false
-	}
-	if parsedCount != 1 {
-		log.Printf("berkeley: expected to parse number, instead parsed %d items\n", parsedCount)
-		return false
-	}
 	return true
 }
 
-func timesync(hosts []string) []client {
+func timesync() {
 	wg := sync.WaitGroup{}
-	wg.Add(len(hosts))
+	wg.Add(len(remotes))
+
+	type response struct {
+		TimeExchange
+		key string
+	}
 
 	// Gather time from each host
-	responses := make(chan client, len(hosts))
-	for id, host := range hosts {
-		id, host := id, host
+	responses := make(chan response, len(remotes))
+	for key, remote := range remotes {
+		key, remote := key, remote
 		go func() {
 			defer wg.Done()
-			exchange := timeExchange{}
-			if exchange.estimateFor(host) {
-				responses <- client{exchange, id, host}
+			exchange := TimeExchange{}
+			if exchange.estimateFor(remote.Address) {
+				responses <- response{exchange, key}
 			}
 		}()
 	}
@@ -88,17 +61,13 @@ func timesync(hosts []string) []client {
 	wg.Wait()
 	close(responses)
 
-	clients := make([]client, 0, len(hosts))
-	for client := range responses {
-		clients = append(clients, client)
+	for response := range responses {
+		remote := remotes[response.key]
+		remote.TimeExchange = response.TimeExchange
 	}
-
-	fmt.Printf("Successfully gathered %d clients\n", len(clients))
-
-	return clients
 }
 
-const maxReactionTime = 300
+var maxReactionTime = int64(1_000)
 
 func isThisMyAddress(address string) bool {
 	addrs, err := net.InterfaceAddrs()
@@ -116,18 +85,24 @@ func isThisMyAddress(address string) bool {
 	return false
 }
 
-func notifyAll(clients []client) <-chan time.Time {
+func notifyAll() <-chan time.Time {
 	wg := sync.WaitGroup{}
-	wg.Add(len(clients))
-	startDeadline := time.After(maxReactionTime * time.Millisecond)
+	wg.Add(len(remotes))
+	startDeadline := time.After(time.Duration(maxReactionTime) * time.Millisecond)
 
-	for _, client := range clients {
-		client := client
+	for _, remote := range remotes {
+		remote := remote
 		go func() {
-			startTime := maxReactionTime - (client.after-client.before)/2
-			_, err := remotef(client.addr, fmt.Sprintf("start %d", startTime), "")
+			startTime := maxReactionTime - (remote.after-remote.before)/2
+			var response proto.StartResponse
+			err := proto.CommandTimeout(
+				remote.Address,
+				proto.Start(startTime),
+				&response,
+				time.Duration(startTime)*time.Millisecond,
+			)
 			if err != nil {
-				log.Printf("failed to notify %s: %v\n", client.addr, err)
+				log.Printf("failed to notify %s: %v\n", remote.Address, err)
 			}
 			wg.Done()
 		}()
@@ -135,6 +110,10 @@ func notifyAll(clients []client) <-chan time.Time {
 
 	return startDeadline
 }
+
+var (
+	pinger chan struct{}
+)
 
 func registerRoutes(r *router.Router) {
 	r.Add("handshake", func(incoming net.Conn, request proto.Request) interface{} {
@@ -160,14 +139,31 @@ func registerRoutes(r *router.Router) {
 		return synchronizeHosts(request.HostsResponse)
 	})
 
-
 	r.Add("synchronize-hosts-with-remotes", func(incoming net.Conn, request proto.Request) interface{} {
 		synchronizeHostsWithRemotes()
 		return nil
 	})
+
+	r.Add("time", func(incoming net.Conn, request proto.Request) interface{} {
+		return proto.TimeResponse{
+			Time: time.Now().UnixMilli(),
+		}
+	})
+
+	pinger = make(chan struct{}, 12)
+	r.Add("start", func(incoming net.Conn, request proto.Request) interface{} {
+		go func() {
+			time.Sleep(time.Duration(request.StartTime) * time.Millisecond)
+			pinger <- struct{}{}
+		}()
+		return proto.StartResponse{
+			Succeded: true,
+		}
+	})
 }
 
 type Remote struct {
+	TimeExchange
 	Address string
 	Nick    string
 	Version string
@@ -177,7 +173,7 @@ var (
 	baseIP  string = ""
 	nick    string
 	port    int = 8888
-	remotes map[string]Remote
+	remotes map[string]*Remote
 )
 
 func synchronizeHosts(incoming proto.HostsResponse) (response proto.HostsResponse) {
@@ -187,7 +183,7 @@ func synchronizeHosts(incoming proto.HostsResponse) (response proto.HostsRespons
 	// Additionaly build set of all hosts that remote knows
 	for _, incomingHost := range incoming.Hosts {
 		if _, ok := remotes[incomingHost.Address]; !ok && !isThisMyAddress(incomingHost.Address) {
-			remotes[incomingHost.Address] = Remote{
+			remotes[incomingHost.Address] = &Remote{
 				Address: incomingHost.Address,
 				Nick:    incomingHost.Nick,
 				Version: incomingHost.Version,
@@ -285,10 +281,10 @@ func registerRemotes() error {
 
 	hosts := scan.TCPHosts(networks, []uint16{8081, 8082, 8083, 8084})
 
-	remotes = make(map[string]Remote)
+	remotes = make(map[string]*Remote)
 	for host := range hosts {
 		if !isThisMyAddress(host.Address) {
-			remotes[host.Address] = Remote{
+			remotes[host.Address] = &Remote{
 				Address: host.Address,
 				Nick:    host.Nick,
 				Version: host.Version,
@@ -336,77 +332,5 @@ func main() {
 	}
 
 	for range exit {
-	}
-}
-
-func main2() {
-	l, err := net.Listen("tcp", ":8081")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer l.Close()
-	for {
-		conn, err := l.Accept()
-		if err != nil {
-			log.Fatal(err)
-		}
-		go func(c net.Conn) {
-			s := bufio.NewScanner(c)
-			scanResult := []string{
-				"10.100.5.112:8081",
-				"10.100.5.44:8081",
-			}
-			var clients []client
-			for s.Scan() {
-				resp := s.Text()
-				log.Println(resp)
-				if resp == "scan" {
-					conn.Write([]byte("Scanning...\n"))
-					scanResult = nil // scan()
-					conn.Write([]byte("Scanning done!\n"))
-					fmt.Println(len(scanResult))
-					continue
-				}
-				if resp == "time" {
-					fmt.Fprintln(conn, time.Now().UnixMilli())
-					continue
-				}
-				if resp == "hosts" {
-					scanError(scanResult, conn)
-					for _, host := range scanResult {
-						conn.Write([]byte(host + "\n"))
-						fmt.Println("CONNECTED")
-					}
-					continue
-				}
-				if resp == "showtime" {
-					cTime := showTime()
-					conn.Write([]byte(cTime.String() + "\n"))
-					continue
-				}
-				if resp == "timesync" {
-					clients = timesync(scanResult)
-					continue
-				}
-				if strings.HasPrefix(resp, "start") {
-					startTimeString := strings.TrimSpace(resp[len("start"):])
-					startTime := int64(0)
-					fmt.Sscanf(startTimeString, "%d", &startTime)
-					time.Sleep(time.Duration(startTime) * time.Millisecond)
-					log.Println("Started #start")
-					continue
-				}
-				if resp == "notify" {
-					<-notifyAll(clients)
-					log.Println("Started #notify")
-					continue
-				}
-				if resp == "quit" {
-					c.Close()
-					os.Exit(0)
-				}
-			}
-			c.Close()
-		}(conn)
 	}
 }

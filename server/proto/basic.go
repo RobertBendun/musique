@@ -6,4 +6,5 @@ type Request struct {
 	Version string
 	Type    string
 	HostsResponse
+	StartTime int64
 }

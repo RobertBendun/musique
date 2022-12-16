@@ -12,6 +12,7 @@ namespace config
 	using Sections  = std::unordered_map<std::string, Key_Value>;
 
 	Sections from_file(std::string const& path);
+	void to_file(std::string const& path, Sections const& sections);
 
 	std::string location();
 }

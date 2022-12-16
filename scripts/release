@@ -19,7 +19,9 @@ mkdir -p "$Target"
 if [[ "$(docker images -q "$Image")" == "" ]]; then
 	docker build -t "$Image" .
 fi
+
 sudo rm -rf bin/
+# make os=linux CC=gcc CXX=g++ >/dev/null
 docker run -it --rm -v "$(pwd):/musique" -w /musique "$Image" make os=linux CC=gcc-11 CXX=g++-11 >/dev/null
 
 cp bin/musique "$Target"/musique-x86_64-linux

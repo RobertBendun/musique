@@ -2,6 +2,7 @@ package scan
 
 import (
 	"fmt"
+	"log"
 	"musique/server/proto"
 	"net"
 	"sync"
@@ -58,10 +59,11 @@ type Response struct {
 
 // TCPHosts returns all TCP hosts that are in given networks on one of given ports
 func TCPHosts(networks []Network, ports []uint16) <-chan Response {
-	ips := make(chan Response, 32)
+	ips := make(chan Response, 256)
+
+	log.Printf("tcphosts: %+v\n", networks)
 
 	wg := sync.WaitGroup{}
-
 	for _, network := range networks {
 		ip := net.ParseIP(network.FirstAddress)
 		for i := 0; i < network.MaxHostsCount; i++ {
