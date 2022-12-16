@@ -2,7 +2,7 @@ Release_Obj=$(addprefix bin/$(os)/,$(Obj))
 
 Server=bin/$(os)/server/server.h bin/$(os)/server/server.o
 
-$(Server) &: server/*.go
+$(Server) &: server/*.go server/**/*.go
 	cd server/; GOOS="$(GOOS)" GOARCH="$(GOARCH)" CGO_ENABLED=1 CC="$(CC)" \
 		go build -o ../bin/$(os)/server/server.o -buildmode=c-archive
 

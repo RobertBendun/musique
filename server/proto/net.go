@@ -2,6 +2,7 @@ package proto
 
 import (
 	"encoding/json"
+	"errors"
 	"net"
 	"time"
 )
@@ -21,15 +22,31 @@ func Command(target string, request interface{}, response interface{}) error {
 }
 
 func CommandTimeout(target string, request interface{}, response interface{}, timeout time.Duration) error {
-	conn, err := net.DialTimeout("tcp", target, timeout)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
+	responseChan := make(chan interface{})
+	errorChan := make(chan error)
 
-	if err = json.NewEncoder(conn).Encode(request); err != nil {
-		return err
-	}
+	go func() {
+		conn, err := net.DialTimeout("tcp", target, timeout)
+		if err != nil {
+			errorChan <- err
+			return
+		}
+		defer conn.Close()
 
-	return json.NewDecoder(conn).Decode(response)
+		if err = json.NewEncoder(conn).Encode(request); err != nil {
+			errorChan <- err
+			return
+		}
+
+		responseChan <- json.NewDecoder(conn).Decode(response)
+	}()
+
+	select {
+	case response = <-responseChan:
+		return nil
+	case err := <-errorChan:
+		return err
+	case <-time.After(timeout):
+		return errors.New("timout")
+	}
 }

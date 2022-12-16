@@ -334,6 +334,13 @@ static Result<bool> handle_repl_session_commands(std::string_view input, Runner 
 				return std::nullopt;
 			}
 		},
+		Command {
+			"remotes",
+			+[](Runner&, std::optional<std::string_view>) -> std::optional<Error> {
+				ListKnownRemotes();
+				return std::nullopt;
+			}
+		}
 	};
 
 	if (input.starts_with('!')) {

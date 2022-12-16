@@ -2,13 +2,13 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"log"
 	"musique/server/proto"
 	"musique/server/scan"
+	"musique/server/router"
 	"net"
 	"os"
 	"strings"
@@ -136,22 +136,15 @@ func notifyAll(clients []client) <-chan time.Time {
 	return startDeadline
 }
 
-func handleIncoming(incoming net.Conn) {
-	defer incoming.Close()
-
-	request := proto.Request{}
-	json.NewDecoder(incoming).Decode(&request)
-	log.Printf("%s: %+v\n", incoming.RemoteAddr(), request)
-
-	if request.Type == "handshake" {
+func registerRoutes(r *router.Router) {
+	r.Add("handshake", func(incoming net.Conn, request proto.Request) interface{} {
 		var response proto.HandshakeResponse
 		response.Version = proto.Version
 		response.Nick = nick
-		json.NewEncoder(incoming).Encode(response)
-		return
-	}
+		return response
+	})
 
-	if request.Type == "hosts" {
+	r.Add("hosts", func(incoming net.Conn, request proto.Request) interface{} {
 		var response proto.HostsResponse
 		for _, remote := range remotes {
 			response.Hosts = append(response.Hosts, proto.HostsResponseEntry{
@@ -160,43 +153,18 @@ func handleIncoming(incoming net.Conn) {
 				Address: remote.Address,
 			})
 		}
-		json.NewEncoder(incoming).Encode(response)
-		return
-	}
+		return response
+	})
 
-	if request.Type == "synchronize-hosts" {
-		response := synchronizeHosts(request.HostsResponse)
-		json.NewEncoder(incoming).Encode(response)
-		return
-	}
+	r.Add("synchronize-hosts", func(incoming net.Conn, request proto.Request) interface{} {
+		return synchronizeHosts(request.HostsResponse)
+	})
 
-	if request.Type == "synchronize-hosts-with-remotes" {
+
+	r.Add("synchronize-hosts-with-remotes", func(incoming net.Conn, request proto.Request) interface{} {
 		synchronizeHostsWithRemotes()
-		return
-	}
-}
-
-func runCommandServer(port uint16) <-chan struct{} {
-	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", baseIP, port))
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	exit := make(chan struct{})
-
-	go func() {
-		defer listener.Close()
-		defer close(exit)
-		for {
-			incoming, err := listener.Accept()
-			if err != nil {
-				log.Fatal(err)
-			}
-			go handleIncoming(incoming)
-		}
-	}()
-
-	return exit
+		return nil
+	})
 }
 
 type Remote struct {
@@ -206,9 +174,9 @@ type Remote struct {
 }
 
 var (
-	baseIP  string
+	baseIP  string = ""
 	nick    string
-	port    int
+	port    int = 8888
 	remotes map[string]Remote
 )
 
@@ -309,6 +277,28 @@ func synchronizeHostsWithRemotes() {
 	}
 }
 
+func registerRemotes() error {
+	networks, err := scan.AvailableNetworks()
+	if err != nil {
+		return err
+	}
+
+	hosts := scan.TCPHosts(networks, []uint16{8081, 8082, 8083, 8084})
+
+	remotes = make(map[string]Remote)
+	for host := range hosts {
+		if !isThisMyAddress(host.Address) {
+			remotes[host.Address] = Remote{
+				Address: host.Address,
+				Nick:    host.Nick,
+				Version: host.Version,
+			}
+		}
+	}
+
+	return nil
+}
+
 func main() {
 	var (
 		logsPath string
@@ -334,24 +324,15 @@ func main() {
 		log.Fatalln("Please provide nick via --nick flag")
 	}
 
-	exit := runCommandServer(uint16(port))
-
-	networks, err := scan.AvailableNetworks()
+	r := router.Router{}
+	registerRoutes(&r)
+	exit, err := r.Run(baseIP, uint16(port))
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-	hosts := scan.TCPHosts(networks, []uint16{8081, 8082, 8083, 8084})
-
-	remotes = make(map[string]Remote)
-	for host := range hosts {
-		if !isThisMyAddress(host.Address) {
-			remotes[host.Address] = Remote{
-				Address: host.Address,
-				Nick:    host.Nick,
-				Version: host.Version,
-			}
-		}
+	if err := registerRemotes(); err != nil {
+		log.Fatalln(err)
 	}
 
 	for range exit {

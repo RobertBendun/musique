@@ -2,69 +2,51 @@ package main
 
 import (
 	"C"
-	"bufio"
 	"fmt"
-	"net"
-	"strings"
-	"sync"
-	"time"
+	"log"
+	"musique/server/router"
+	"os"
+	"sort"
 )
-
-var clients []client
-var pinger chan struct{}
 
 //export ServerInit
 func ServerInit() {
-	// scanResult = scan()
-	pinger = make(chan struct{}, 100)
+	r := router.Router{}
+	registerRoutes(&r)
+	_, err := r.Run(baseIP, uint16(port))
+	if err != nil {
+		log.Fatalln(err)
+	}
 
-	waitForConnection := sync.WaitGroup{}
-	waitForConnection.Add(1)
-
-	go func() {
-		l, err := net.Listen("tcp", ":8081")
-		if err != nil {
-			return
-		}
-		defer l.Close()
-		waitForConnection.Done()
-		for {
-			conn, err := l.Accept()
-			if err != nil {
-				continue
-			}
-			go func(c net.Conn) {
-				defer c.Close()
-				s := bufio.NewScanner(c)
-				for s.Scan() {
-					response := s.Text()
-					if response == "time" {
-						fmt.Fprintln(conn, time.Now().UnixMilli())
-						continue
-					}
-
-					if strings.HasPrefix(response, "start") {
-						startTimeString := strings.TrimSpace(response[len("start"):])
-						startTime := int64(0)
-						fmt.Sscanf(startTimeString, "%d", &startTime)
-						time.Sleep(time.Duration(startTime) * time.Millisecond)
-						pinger <- struct{}{}
-						continue
-					}
-				}
-			}(conn)
-		}
-	}()
-	waitForConnection.Wait()
-	scanResult := []string{} // scan()
-	clients = timesync(scanResult)
+	if err := registerRemotes(); err != nil {
+		log.Fatalln(err)
+	}
 }
 
 //export ServerBeginProtocol
 func ServerBeginProtocol() {
-	self := notifyAll(clients)
-	select {
-	case <-self:
-	case <-pinger:
+}
+
+//export ListKnownRemotes
+func ListKnownRemotes() {
+	type nickAddr struct {
+		nick, addr string
 	}
+
+	list := []nickAddr{}
+	for _, remote := range remotes {
+		list = append(list, nickAddr { remote.Nick, remote.Address})
+	}
+
+	sort.Slice(list, func (i, j int) bool {
+		if list[i].nick == list[j].nick {
+			return list[i].addr < list[j].addr
+		}
+		return list[i].nick < list[j].nick
+	})
+
+	for _, nickAddr := range list {
+		fmt.Printf("%s@%s\n", nickAddr.nick, nickAddr.addr)
+	}
+	os.Stdout.Sync()
 }
