@@ -1125,7 +1125,9 @@ static Result<Value> builtin_start(Interpreter &interpreter, std::span<Ast> args
 
 	auto end = std::chrono::steady_clock::now();
 
-	std::cout << "Start took " << std::chrono::duration_cast<std::chrono::duration<float>>(end - begin) << "s" << std::endl;
+	std::cout << "Start took "
+		<< std::chrono::duration_cast<std::chrono::duration<float>>(end - begin).count()
+		<< "s" << std::endl;
 
 	return ret;
 }
