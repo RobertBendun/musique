@@ -1147,6 +1147,62 @@ static Result<Value> builtin_mix(Interpreter &i, std::vector<Value> args)
 	return result;
 }
 
+inline void append_digits(std::vector<uint8_t> &digits, usize base, Number number)
+{
+	auto start = digits.size();
+
+	number.simplify_inplace();
+
+	auto integer_part = number.num / number.den;
+	number.num -= integer_part * number.den;
+
+	do {
+		digits.push_back(integer_part % base);
+		integer_part /= base;
+	} while (integer_part != 0);
+	std::reverse(digits.begin() + start, digits.end());
+
+	if (number.den != 1) {
+		std::unordered_set<Number> repeats;
+
+		do {
+			repeats.insert(number);
+			number.num *= base;
+
+			auto const digit = number.floor().as_int();
+			digits.push_back(digit);
+
+			number.num = number.num - digit * number.den;
+			number.simplify_inplace();
+		} while (number.num != 0 && !repeats.contains(number));
+	}
+}
+
+/// Converts number to array of its digits
+static Result<Value> builtin_digits(Interpreter &interpreter, std::vector<Value> args)
+{
+	// For now it's a constant. It waits on some kind of keyword parameters
+	// so base can be provided nicely
+	auto const base = 10;
+
+	std::vector<uint8_t> digits;
+
+	auto args_flattened = Try(deep_flat(interpreter, args));
+	for (auto const& arg : args_flattened) {
+		if (auto num = get_if<Number>(arg)) {
+			append_digits(digits, base, *num);
+		} else {
+			// TODO This may be an error. Currently we fail silently
+			continue;
+		}
+	}
+
+	std::vector<Value> result;
+	result.reserve(digits.size());
+	std::transform(digits.begin(), digits.end(), std::back_inserter(result), [](auto digit) { return Number(digit); });
+	return result;
+}
+
 /// Call operator. Calls first argument with remaining arguments
 static Result<Value> builtin_call(Interpreter &i, std::vector<Value> args)
 {
@@ -1175,6 +1231,7 @@ void Interpreter::register_builtin_functions()
 	global.force_define("call",           builtin_call);
 	global.force_define("ceil",           builtin_ceil);
 	global.force_define("chord",          builtin_chord);
+	global.force_define("digits",         builtin_digits);
 	global.force_define("down",           builtin_down);
 	global.force_define("duration",       builtin_duration);
 	global.force_define("flat",           builtin_flat);

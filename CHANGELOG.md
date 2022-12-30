@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Printing version number on non-quiet launch, or when provided `--version` or `:version`
 - Builtin function documentation generation from C++ Musique implementation source code
+- New builtins: digits
 
 ### Removed
 
