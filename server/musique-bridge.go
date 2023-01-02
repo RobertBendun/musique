@@ -32,6 +32,12 @@ func ServerInit(inputNick string, inputPort int) {
 		log.Fatalln(err)
 	}
 
+	_, err = registerDNS()
+	if err != nil {
+		log.Fatalln("Failed to register DNS:", err)
+	}
+	// defer server.Shutdown()
+
 	if err := registerRemotes(initialWaitingTime); err != nil {
 		log.Fatalln(err)
 	}
@@ -55,12 +61,10 @@ func ServerBeginProtocol() {
 
 //export Discover
 func Discover() {
-	if len(remotes) == 0 {
-		if err := registerRemotes(userRequestedWatingingTime); err != nil {
-			log.Println("discover:", err)
-		}
+	if err := registerRemotes(userRequestedWatingingTime); err != nil {
+		log.Println("discover:", err)
 	}
-	synchronizeHostsWithRemotes()
+	// synchronizeHostsWithRemotes()
 }
 
 //export ListKnownRemotes

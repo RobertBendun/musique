@@ -224,7 +224,7 @@ func myAddressInTheSameNetwork(remote string) (string, error) {
 	for _, addr := range addrs {
 		ip, ipNet, err := net.ParseCIDR(addr.String())
 		if err == nil && ipNet.Contains(remoteIP) {
-			return ip.String(), nil
+			return fmt.Sprintf("%s:%d", ip, port), nil
 		}
 	}
 
