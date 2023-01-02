@@ -4,7 +4,7 @@
 # Release is defined as a zip archive containing source code,
 # build binaries for supported platforms and build documentation
 
-set -e -o pipefail
+set -xe -o pipefail
 
 Suffix="$(date +"%Y-%m-%d")"
 Target="release_$Suffix"

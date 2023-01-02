@@ -76,17 +76,10 @@ std::string config::location()
 #endif
 
 #ifdef MUSIQUE_WINDOWS
-		wchar_t *resultPath = nullptr;
-		SHGetKnownFolderPath(FOLDERID_RoamingAppData, 0, nullptr, &resultPath);
-		auto const len = std::strlen((char*)resultPath);
-		if (!resultPath && len < 3) {
-			auto drive = getenv("HOMEDRIVE");
-			auto path = getenv("HOMEPATH");
-			ensure(drive && path, "Windows failed to provide HOMEDRIVE & HOMEPATH variables");
-			return std::string(drive) + std::string(path) + "\\Documents\\musique.conf";
-		}
-
-		return std::string((char*)resultPath, len) + "\\musique.conf";
+		auto drive = getenv("HOMEDRIVE");
+		auto path = getenv("HOMEPATH");
+		ensure(drive && path, "Windows failed to provide HOMEDRIVE & HOMEPATH variables");
+		return std::string(drive) + std::string(path) + "\\Documents\\musique.conf";
 #endif
 
 #ifdef MUSIQUE_DARWIN
