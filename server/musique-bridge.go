@@ -9,6 +9,11 @@ import (
 	"sort"
 )
 
+const (
+	initialWaitingTime         = 3
+	userRequestedWatingingTime = 5
+)
+
 //export ServerInit
 func ServerInit(inputNick string, inputPort int) {
 	logFile, err := os.OpenFile("musique.log", os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0o640)
@@ -27,7 +32,7 @@ func ServerInit(inputNick string, inputPort int) {
 		log.Fatalln(err)
 	}
 
-	if err := registerRemotes(); err != nil {
+	if err := registerRemotes(initialWaitingTime); err != nil {
 		log.Fatalln(err)
 	}
 
@@ -51,7 +56,7 @@ func ServerBeginProtocol() {
 //export Discover
 func Discover() {
 	if len(remotes) == 0 {
-		if err := registerRemotes(); err != nil {
+		if err := registerRemotes(userRequestedWatingingTime); err != nil {
 			log.Println("discover:", err)
 		}
 	}

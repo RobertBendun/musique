@@ -7,7 +7,6 @@ import (
 	"log"
 	"musique/server/proto"
 	"musique/server/router"
-	"musique/server/scan"
 	"net"
 	"os"
 	"strings"
@@ -273,28 +272,6 @@ func synchronizeHostsWithRemotes() {
 	}
 }
 
-func registerRemotes() error {
-	networks, err := scan.AvailableNetworks()
-	if err != nil {
-		return err
-	}
-
-	hosts := scan.TCPHosts(networks, []uint16{8081, 8082, 8083, 8084})
-
-	remotes = make(map[string]*Remote)
-	for host := range hosts {
-		if !isThisMyAddress(host.Address) {
-			remotes[host.Address] = &Remote{
-				Address: host.Address,
-				Nick:    host.Nick,
-				Version: host.Version,
-			}
-		}
-	}
-
-	return nil
-}
-
 func main() {
 	var (
 		logsPath string
@@ -320,6 +297,12 @@ func main() {
 		log.Fatalln("Please provide nick via --nick flag")
 	}
 
+	server, err := registerDNS()
+	if err != nil {
+		log.Fatalln("Failed to register DNS:", err)
+	}
+	defer server.Shutdown()
+
 	r := router.Router{}
 	registerRoutes(&r)
 	exit, err := r.Run(baseIP, uint16(port))
@@ -327,7 +310,7 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	if err := registerRemotes(); err != nil {
+	if err := registerRemotes(5); err != nil {
 		log.Fatalln(err)
 	}
 
