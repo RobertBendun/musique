@@ -25,10 +25,12 @@ func ServerInit(inputNick string, inputPort int) {
 	nick = inputNick
 	port = inputPort
 
+
 	r := router.Router{}
 	registerRoutes(&r)
-	_, err = r.Run(baseIP, uint16(port))
+	_, err = r.Run(baseIP, &port)
 	if err != nil {
+		fmt.Println("Address already in use. You have probably another instance of Musique running")
 		log.Fatalln(err)
 	}
 

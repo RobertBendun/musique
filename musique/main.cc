@@ -500,7 +500,7 @@ static std::optional<Error> Main(std::span<char const*> args)
 		// FIXME Handle port number parsing errors
 		std::from_chars(port_str.data(), port_str.data() + port_str.size(), port);
 	} else {
-		port = 8081;
+		port = 0;
 		config["net"]["port"] = std::to_string(port);
 		save_new_config = true;
 	}

@@ -12,7 +12,7 @@ type Route func(incoming net.Conn, request proto.Request) interface{}
 
 type Router struct {
 	routes map[string]Route
-	port uint16
+	port int
 	baseIP string
 }
 
@@ -23,14 +23,19 @@ func (router *Router) Add(name string, route Route) {
 	router.routes[name] = route
 }
 
-func (router *Router) Run(ip string, port uint16) (<-chan struct{}, error) {
-	router.port = port
+func (router *Router) Run(ip string, port *int) (<-chan struct{}, error) {
+	router.port = *port
 	router.baseIP = ip
 
 	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", router.baseIP, router.port))
 	if err != nil {
 		return nil, err
 	}
+	_, actualPort, err := net.SplitHostPort(listener.Addr().String())
+	if err != nil {
+		return nil, err
+	}
+	fmt.Sscan(actualPort, port)
 
 	exit := make(chan struct{})
 

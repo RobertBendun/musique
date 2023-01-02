@@ -305,7 +305,7 @@ func main() {
 
 	r := router.Router{}
 	registerRoutes(&r)
-	exit, err := r.Run(baseIP, uint16(port))
+	exit, err := r.Run(baseIP, &port)
 	if err != nil {
 		log.Fatalln(err)
 	}
