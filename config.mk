@@ -12,7 +12,8 @@ endif
 VERSION := $(MAJOR).$(MINOR).$(PATCH)-dev+$(COMMIT)
 
 CXXFLAGS:=$(CXXFLAGS) -std=c++20 -Wall -Wextra -Werror=switch -Werror=return-type -Werror=unused-result
-CPPFLAGS:=$(CPPFLAGS) -Ilib/expected/ -I. -Ilib/bestline/ -Ilib/rtmidi/ -DMusique_Version='"$(VERSION)"'
+CPPFLAGS:=$(CPPFLAGS) -DMusique_Version='"$(VERSION)"' \
+	-Ilib/expected/ -I. -Ilib/bestline/ -Ilib/rtmidi/ -Ilib/link/include -Ilib/asio/include/
 LDFLAGS=-flto
 LDLIBS= -lpthread
 
