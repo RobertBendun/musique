@@ -8,6 +8,7 @@ import (
 	"net"
 	"sync"
 	"time"
+	"strings"
 
 	"github.com/RobertBendun/zeroconf/v2"
 )
@@ -25,7 +26,7 @@ func doHandshake(wg *sync.WaitGroup, service *zeroconf.ServiceEntry, remotes cha
 			var hs proto.HandshakeResponse
 			err := proto.CommandTimeout(target, proto.Handshake(), &hs, timeout)
 			if err == nil {
-				log.Println("Received handshake response", target, hs)
+				// log.Println("Received handshake response", target, hs)
 				remotes <- Remote{
 					Address: target,
 					Nick:    hs.Nick,
@@ -75,6 +76,17 @@ func registerRemotes(waitTime int) error {
 		remote := remote
 		remotes[remote.Address] = &remote
 	}
+
+	msg := &strings.Builder{}
+	comma := false
+	for _, remote := range remotes {
+		if comma {
+			fmt.Fprint(msg, ", ")
+		}
+		fmt.Fprintf(msg, "%s@%s", remote.Nick, remote.Address)
+		comma = true
+	}
+	log.Println("Hosts found:", msg.String())
 
 	return <-done
 }

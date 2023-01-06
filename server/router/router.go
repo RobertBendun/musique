@@ -59,7 +59,7 @@ func (router *Router) handleIncoming(incoming net.Conn) {
 
 	request := proto.Request{}
 	json.NewDecoder(incoming).Decode(&request)
-	log.Printf("%s: %+v\n", incoming.RemoteAddr(), request)
+	// log.Printf("%s: %+v\n", incoming.RemoteAddr(), request)
 
 	if handler, ok := router.routes[request.Type]; ok {
 		if response := handler(incoming, request); response != nil {
