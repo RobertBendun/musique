@@ -1583,6 +1583,18 @@ static Result<Value> builtin_call(Interpreter &i, std::vector<Value> args)
 	return callable(i, std::move(args));
 }
 
+static Result<Value> builtin_start(Interpreter &interpreter, std::span<Ast> args)
+{
+	interpreter.starter.start();
+	auto result = algo::fold(args, Value{}, [&interpreter](auto const&, Ast const& ast)
+		-> Result<Value>
+	{
+		return Try(interpreter.eval((Ast)ast));
+	});
+	interpreter.starter.stop();
+	return result;
+}
+
 void Interpreter::register_builtin_functions()
 {
 	auto &global = *Env::global;
@@ -1627,6 +1639,7 @@ void Interpreter::register_builtin_functions()
 	global.force_define("shuffle",        builtin_shuffle);
 	global.force_define("sim",            builtin_sim);
 	global.force_define("sort",           builtin_sort);
+	global.force_define("start",          builtin_start);
 	global.force_define("try",            builtin_try);
 	global.force_define("typeof",         builtin_typeof);
 	global.force_define("uniq",           builtin_uniq);

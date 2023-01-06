@@ -1,8 +1,9 @@
 #ifndef MUSIQUE_INTERPRETER_HH
 #define MUSIQUE_INTERPRETER_HH
 
-#include <musique/midi/midi.hh>
 #include <musique/interpreter/context.hh>
+#include <musique/interpreter/starter.hh>
+#include <musique/midi/midi.hh>
 #include <musique/value/value.hh>
 #include <unordered_map>
 
@@ -24,6 +25,8 @@ struct Interpreter
 	std::shared_ptr<Context> current_context;
 
 	std::function<std::optional<Error>(Interpreter&, Value)> default_action;
+
+	Starter starter;
 
 	Interpreter();
 	~Interpreter();
