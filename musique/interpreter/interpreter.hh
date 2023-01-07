@@ -26,7 +26,7 @@ struct Interpreter
 
 	std::function<std::optional<Error>(Interpreter&, Value)> default_action;
 
-	std::shared_ptr<serialport::Device> serialport;
+	std::shared_ptr<serialport::State> serialport;
 
 	Interpreter();
 	~Interpreter();

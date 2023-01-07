@@ -4,15 +4,24 @@
 #include <serial/serial.h>
 
 namespace serialport{
-    int Device::test(){
+    int State::test(){
         return 5;
+    }
+
+    Number State::get(unsigned position) const
+    {
+        return Number(state[position], MAX_VALUE);
+    }
+    void State::set(unsigned position, std::uint32_t value)
+    {
+        state[position] = value;
+        return;
     }
 
     void initialize()
     {
-        std::cout << "initialize serial\n";
-        std::jthread testowy = std::jthread();
-        std::cout << "initialize serial\n";
+        // std::jthread testowy = std::jthread();
+        return;
     }
 
     std::uint8_t get_byte()
@@ -20,37 +29,70 @@ namespace serialport{
         return 8;
     }
 
-    void event_loop()
+    void event_loop(std::stop_token token, State &state)
     {
-        while(1){
+        while(!token.stop_requested()){
             try {
                 /// Search for the right device
                 auto const ports = serial::list_ports();
-
-                for (serial::PortInfo const& port : ports) {
+                /*for (serial::PortInfo const& port : ports) {
                     std::cout << "Port: " << port.port << '\n';
                     std::cout << "Description: " << port.description << '\n';
                     std::cout << "Hardware ID: " << port.hardware_id << '\n';
+                }*/
+
+                int found_port = 0;
+                std::string connection_port = "";
+                while(found_port == 0){
+                    for (serial::PortInfo const& port : ports) {
+                        if(port.description.find("STM32")){
+                            connection_port = port.port;
+                            found_port = 1;
+                            break;
+                        }
+                    }
                 }
+                
 
                 /// Start connection
-                serial::Serial serial_conn("/dev/ttyACM0", 115200, serial::Timeout::simpleTimeout(1000));
+                serial::Serial serial_conn(connection_port, 115200, serial::Timeout::simpleTimeout(1000));
 
-                if(serial_conn.isOpen())
+                
+
+                /*if(serial_conn.isOpen())
                     std::cout << "[SERIAL] Serial open\n";
                 else
                     std::cout << "[SERIAL] Serial not open\n";
                 
                 std::cout << "[SERIAL] commence serial communication\n";
-                
+                */
+
+                /// Set up received data buffer
+
                 while(1){
-                    std::string result = serial_conn.read(1);
-                    std::cout << int(result[0]);
+                    /// After serial connection established
+
+                    //serial_conn.flushInput();
+
+                    std::string result = serial_conn.readline(65536, "\n");
+                    int control = result.at(0);
+                    uint32_t value = std::stoi(result.substr(1, 4), nullptr, 10);
+
+                    state.set(control - 65, value);
+
+                    switch(control){
+                        case 68: // D
+                        
+                        break;
+                        case 66: // B
+                        
+                        break;
+                    } 
                 }
             } catch (std::exception &e) {
-                std::cerr << "Unhandled Exception: " << e.what() << '\n';
-                std::cerr << "Terminating serial connection\n";
-                return;
+                /// No connection to the device
+
+                // std::cerr << "Unhandled Exception: " << e.what() << '\n';
             }
         }
         return;

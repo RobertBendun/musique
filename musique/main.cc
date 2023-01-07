@@ -165,7 +165,7 @@ struct Runner
 
 	midi::Rt_Midi midi;
 	Interpreter interpreter;
-	std::shared_ptr<serialport::Device> serial_state;
+	std::shared_ptr<serialport::State> serial_state;
 	std::optional<std::jthread> serial_event_loop;
 
 	/// Setup interpreter and midi connection with given port
@@ -177,18 +177,27 @@ struct Runner
 		the = this;
 
 		/// Setup communication over serial
-		serial_state = std::make_shared<serialport::Device>();
+		serial_state = std::make_shared<serialport::State>();
+		interpreter.serialport = serial_state;
 		serialport::initialize();
 
 		serial_event_loop = std::jthread([this](std::stop_token token) mutable{
-			serialport::event_loop();
+			serialport::event_loop(token, *serial_state);
 		});
 
 		interpreter.midi_connection = &midi;
 		if (output_port) {
-			midi.connect_output(*output_port);
-			if (!quiet_mode) {
-				std::cout << "Connected MIDI output to port " << *output_port << ". Ready to play!" << std::endl;
+			if(output_port == 42){
+				/// TODO CHANGE THE MAGIC NUMBER TO SEPARATE ARGUMENT
+				midi.connect_output();
+				if (!quiet_mode) {
+					std::cout << "Created new MIDI output port 'Musique'. Ready to play!" << std::endl;
+				}
+			}else{
+				midi.connect_output(*output_port);
+				if (!quiet_mode) {
+					std::cout << "Connected MIDI output to port " << *output_port << ". Ready to play!" << std::endl;
+				}
 			}
 		} else {
 			bool connected_to_existing_port = midi.connect_or_create_output();
@@ -209,6 +218,10 @@ struct Runner
 			}
 			std::cout << std::endl;
 			return {};
+		});
+
+		Env::global->force_define("ctrl", +[](Interpreter &interpreter, std::vector<Value> args) -> Result<Value> {
+			return interpreter.serialport->get(std::get<Number>(args[0].data).as_int());
 		});
 	}
 
