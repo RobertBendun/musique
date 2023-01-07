@@ -212,9 +212,33 @@ invalid_argument_type:
 		},
 	};
 }
-
+//: Funkcja `ceil` zwraca liczbę zaokrągloną do pierwszej mniejszej liczby całkowitej.
+//:
+//: # Przykład
+//: ```
+//: > ceil (4.3)
+//: 4
+//: ```
 Forward_Implementation(builtin_ceil, apply_numeric_transform<&Number::ceil>)
+
+//: Funkcja `floor` zwraca liczbę zaokrągloną do pierwszej większej liczby całkowitej.
+//:
+//: # Przykład
+//: ```
+//: > floor (4.3)
+//: 5
+//: ```
 Forward_Implementation(builtin_floor, apply_numeric_transform<&Number::floor>)
+
+//: Funkcja `round` zwraca liczbę zaokrągloną do najbliższej liczby parzystej.
+//:
+//: # Przykład
+//: ```
+//: > round (4.5)
+//: 4
+//: > round (3.5)
+//: 4
+//: ```
 Forward_Implementation(builtin_round, apply_numeric_transform<&Number::round>)
 
 /// Direction used in range definition (up -> 1, 2, 3; down -> 3, 2, 1)
@@ -254,9 +278,33 @@ static Result<Value> range(Interpreter&, std::vector<Value> args)
 	}
 	return array;
 }
-
+//: Funkcja `range` zwraca listę wartości liczbowych w podanych w zakresach `start, stop, step`.
+//:
+//: # Przykład
+//: ```
+//: > range 1 10 2
+//: (1, 3, 5, 7, 9)
+//: > range 13 17
+//: (13, 14, 15, 16)
+//: ```
 Forward_Implementation(builtin_range, range<Range_Direction::Up>)
+
+//: Funkcja `up` zwraca listę wartości liczbowych od 0 do zadanej wartości pomniejszonej o 1.
+//:
+//: # Przykład
+//: ```
+//: > up 10
+//: (0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
+//: ```
 Forward_Implementation(builtin_up, range<Range_Direction::Up>)
+
+//: Funkcja `down` zwraca listę wartości liczbowych od zadanej wartości pomniejszonej o 1 do 0.
+//:
+//: # Przykład
+//: ```
+//: > down 10
+//: (9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
+//: ```
 Forward_Implementation(builtin_down, range<Range_Direction::Down>)
 
 //: Funkcja `instrument` pozwala na wybór instrumentu na danym kanale MIDI.
@@ -868,6 +916,12 @@ static Result<Value> builtin_set_oct(Interpreter &interpreter, std::vector<Value
 	};
 }
 
+//: Funkcja `duration` zwraca długość trwania danej sekwencji, wyrażoną liczbowo.
+//:
+//: # Przykład
+//: ```
+//: TODO
+//: ```
 static Result<Value> builtin_duration(Interpreter &interpreter, std::vector<Value> args)
 {
 	auto total = Number{};
@@ -883,12 +937,28 @@ static Result<Value> builtin_duration(Interpreter &interpreter, std::vector<Valu
 	return total;
 }
 
+//: Funkcja `flat` łączy zadane element w listę bez zagnieżdżeń (tzn. "odpakowuje" zawartość zagnieżdżonych list i zawiera je w pojedyńczej listy).
+//:
+//: # Przykład
+//: ```
+//: > flat B a b c 1
+//: (chord (a, b, c), a, b, c, 1)
+//: ```
 /// Join arguments into flat array
 static Result<Value> builtin_flat(Interpreter &i, std::vector<Value> args)
 {
 	return Try(into_flat_array(i, std::move(args)));
 }
 
+//: Funkcja `pick` zwraca pseudo-losowo element z listy argumentów.
+//:
+//: # Przykład
+//: ```
+//: > pick a b c
+//: c
+//: > pick a b c
+//: b
+//: ```
 /// Pick random value from arugments
 static Result<Value> builtin_pick(Interpreter &i, std::vector<Value> args)
 {
@@ -901,6 +971,13 @@ static Result<Value> builtin_pick(Interpreter &i, std::vector<Value> args)
 	return array[dist(rnd)];
 }
 
+//: Funkcja `shuffle` pseudo-losowo tasuje elementy z listy argumentów.
+//:
+//: # Przykład
+//: ```
+//: > shuffle a b c
+//: (b, a, c)
+//: ```
 /// Shuffle arguments
 static Result<Value> builtin_shuffle(Interpreter &i, std::vector<Value> args)
 {
@@ -910,6 +987,17 @@ static Result<Value> builtin_shuffle(Interpreter &i, std::vector<Value> args)
 	return array;
 }
 
+//: Funkcja `permute` permutuje elementy z listy argumentów.
+//:
+//: # Przykład
+//: ```
+//: > A := permute a b c
+//: > A
+//: (b, c, a)
+//: > B := permute A
+//: > B
+//: (b, a, c)
+//: ```
 /// Permute arguments
 static Result<Value> builtin_permute(Interpreter &i, std::vector<Value> args)
 {
@@ -918,6 +1006,18 @@ static Result<Value> builtin_permute(Interpreter &i, std::vector<Value> args)
 	return array;
 }
 
+//: Funkcja `sortuje` elementy od najmniejszego do największego (w tym nuty). 
+//:
+//: # Sortowanie liczb
+//: ```
+//: > sort 64 7 112 99
+//: (7, 64, 99, 112)
+//: ```
+//: # Sortowanie nut
+//: ```
+//: > sort c# b a g
+//: (c#, g, a, b)
+//: ```
 /// Sort arguments
 static Result<Value> builtin_sort(Interpreter &i, std::vector<Value> args)
 {
@@ -926,6 +1026,13 @@ static Result<Value> builtin_sort(Interpreter &i, std::vector<Value> args)
 	return array;
 }
 
+//: Funkcja `reverse` odwraca kolejność zadanych elementów.
+//:
+//: # Przykład
+//: ```
+//: > reverse c e g b
+//: (b, g, e, c)
+//: ```
 /// Reverse arguments
 static Result<Value> builtin_reverse(Interpreter &i, std::vector<Value> args)
 {
@@ -934,6 +1041,13 @@ static Result<Value> builtin_reverse(Interpreter &i, std::vector<Value> args)
 	return array;
 }
 
+//: Funkcja `min` zwraca najmniejszy element z podanych argumentów.
+//:
+//: # Przykład
+//: ```
+//: > min 42 37 8 99
+//: 8
+//: ```
 /// Get minimum of arguments
 static Result<Value> builtin_min(Interpreter &i, std::vector<Value> args)
 {
@@ -943,6 +1057,13 @@ static Result<Value> builtin_min(Interpreter &i, std::vector<Value> args)
 	return Value{};
 }
 
+//: Funkcja `max` zwraca największy element z podanych argumentów.
+//:
+//: # Przykład
+//: ```
+//: > max 42 37 8 99
+//: 99
+//: ```
 /// Get maximum of arguments
 static Result<Value> builtin_max(Interpreter &i, std::vector<Value> args)
 {
@@ -952,6 +1073,12 @@ static Result<Value> builtin_max(Interpreter &i, std::vector<Value> args)
 	return Value{};
 }
 
+//: Funkcja `partition` dzieli zadany zbiór na dwa rozłączne względem zadanej funkcji.
+//:
+//: # Przykład
+//: ```
+//: TODO
+//: ```
 /// Parition arguments into 2 arrays based on predicate
 static Result<Value> builtin_partition(Interpreter &i, std::vector<Value> args)
 {
@@ -978,6 +1105,13 @@ static Result<Value> builtin_partition(Interpreter &i, std::vector<Value> args)
 	}};
 }
 
+//: Funkcja `rotate` przenosi na koniec listy zadaną ilość elementów
+//:
+//: # Przykład
+//: ```
+//: > rotate 2 (1, 2, 3, 4)
+//: (3, 4, 1, 2)
+//: ```
 /// Rotate arguments by n steps
 static Result<Value> builtin_rotate(Interpreter &i, std::vector<Value> args)
 {
@@ -1048,13 +1182,26 @@ static Result<Value> builtin_hash(Interpreter&, std::vector<Value> args)
 }
 
 /// Build chord from arguments
+
+//: Funkcja `chord` zwraca akord złożony z nut podanych jako argumenty.
+//:
+//: # Przykład
+//: ```
+//: > chord c# e a#
+//: chord (c#, e, a#)
+//: ```
 static Result<Value> builtin_chord(Interpreter &i, std::vector<Value> args)
 {
 	Chord chord;
 	Try(create_chord(chord.notes, i, std::move(args)));
 	return chord;
 }
-
+//: Funkcja `note_on` włącza nutę (nuty) na danym kanale.
+//:
+//: # Przykład
+//: ```
+//: TODO
+//: ```
 /// Send MIDI message Note On
 static Result<Value> builtin_note_on(Interpreter &interpreter, std::vector<Value> args)
 {
@@ -1085,6 +1232,12 @@ static Result<Value> builtin_note_on(Interpreter &interpreter, std::vector<Value
 	};
 }
 
+//: Funkcja `note_off` wyłącza nutę (nuty) na danym kanale.
+//:
+//: # Przykład
+//: ```
+//: TODO
+//: ```
 /// Send MIDI message Note Off
 static Result<Value> builtin_note_off(Interpreter &interpreter, std::vector<Value> args)
 {
@@ -1116,6 +1269,13 @@ static Result<Value> builtin_note_off(Interpreter &interpreter, std::vector<Valu
 	};
 }
 
+//: Funkcja `mix` pozwala na łączenie pojedynczych elementów, jak i struktur, w nową strukturę, dobierając kolejne elementy do listy z zadanych argumentów (w szczególności iterowalnych).
+//:
+//: # Przykład
+//: ```
+//: > mix (a, b, c) (1, 2, 3)
+//: (a, 1, b, 2, c, 3)
+//: ```
 /// Interleaves arguments
 static Result<Value> builtin_mix(Interpreter &i, std::vector<Value> args)
 {
@@ -1178,6 +1338,13 @@ inline void append_digits(std::vector<uint8_t> &digits, usize base, Number numbe
 	}
 }
 
+//: Funkcja `digits` zamienia liczbę na listę jej cyfr.
+//:
+//: # Przykład
+//: ```
+//: > digits 335
+//: (3, 3, 5)
+//: ```
 /// Converts number to array of its digits
 static Result<Value> builtin_digits(Interpreter &interpreter, std::vector<Value> args)
 {
@@ -1203,6 +1370,13 @@ static Result<Value> builtin_digits(Interpreter &interpreter, std::vector<Value>
 	return result;
 }
 
+//: Funkcja `call` wywołuje funkcje z pierwszego argumentu, aplikując pozostałe jej argumenty jako argumenty wywoływanej funkcji.
+//:
+//: # Przykład
+//: ```
+//: > call digits 88976
+//: (8, 8, 9, 7, 6)
+//: ```
 /// Call operator. Calls first argument with remaining arguments
 static Result<Value> builtin_call(Interpreter &i, std::vector<Value> args)
 {
