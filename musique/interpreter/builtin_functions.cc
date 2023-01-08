@@ -1231,8 +1231,14 @@ static Result<Value> builtin_start(Interpreter &interpreter, std::span<Ast> args
 	{
 		return Try(interpreter.eval((Ast)ast));
 	});
+	// FIXME this should be in "finally" block
 	interpreter.starter.stop();
 	return result;
+}
+
+static Result<Value> builtin_peers(Interpreter &interpreter, std::vector<Value>)
+{
+	return Number(interpreter.starter.peers());
 }
 
 void Interpreter::register_builtin_functions()
@@ -1264,6 +1270,7 @@ void Interpreter::register_builtin_functions()
 	global.force_define("oct",            builtin_oct);
 	global.force_define("par",            builtin_par);
 	global.force_define("partition",      builtin_partition);
+	global.force_define("peers",          builtin_peers);
 	global.force_define("permute",        builtin_permute);
 	global.force_define("pgmchange",      builtin_program_change);
 	global.force_define("pick",           builtin_pick);
