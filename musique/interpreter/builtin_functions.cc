@@ -1053,9 +1053,7 @@ static Result<Value> builtin_duration(Interpreter &interpreter, std::vector<Valu
 	for (auto &arg : args) {
 		Try(traverse(interpreter, std::move(arg), [&](Chord &c) {
 			for (Note &note : c.notes) {
-				if (note.length) {
-					total += *note.length;
-				}
+				total += note.length ? *note.length : interpreter.current_context->length;
 			}
 		}));
 	}
@@ -1362,6 +1360,7 @@ static Result<Value> builtin_note_on(Interpreter &interpreter, std::vector<Value
 			note = interpreter.current_context->fill(note);
 			interpreter.midi_connection->send_note_on(chan.as_int(), *note.into_midi_note(), vel.as_int());
 		}
+		return Value{};
 	}
 
 	return Error {
@@ -1399,6 +1398,7 @@ static Result<Value> builtin_note_off(Interpreter &interpreter, std::vector<Valu
 			note = interpreter.current_context->fill(note);
 			interpreter.midi_connection->send_note_off(chan.as_int(), *note.into_midi_note(), 127);
 		}
+		return Value{};
 	}
 
 	return Error {
