@@ -928,9 +928,7 @@ static Result<Value> builtin_duration(Interpreter &interpreter, std::vector<Valu
 	for (auto &arg : args) {
 		Try(traverse(interpreter, std::move(arg), [&](Chord &c) {
 			for (Note &note : c.notes) {
-				if (note.length) {
-					total += *note.length;
-				}
+				total += note.length ? *note.length : interpreter.current_context->length;
 			}
 		}));
 	}
