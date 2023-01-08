@@ -370,6 +370,12 @@ static std::optional<Error> action_play(Interpreter &i, Value v)
 	return {};
 }
 
+//: Funkcja `play` odgrywa zadaną nutę lub sekwencję.
+//:
+//: # Przykład
+//: ```
+//: > play chord c e g
+//: ```
 /// Play notes
 template<With_Index_Operator Container = std::vector<Value>>
 static inline Result<Value> builtin_play(Interpreter &interpreter, Container args)
@@ -395,6 +401,12 @@ static inline Result<Value> builtin_play(Interpreter &interpreter, Container arg
 	return {};
 }
 
+//: Funkcja `par` odgrywa pierwszy element przez sumę długości pozostałych elementów. Odegranie pierwszego elementu wraz z pozostałymi następuje współbieżnie.
+//:
+//: # Przykład
+//: ```
+//: > par c (1/2) b b e
+//: ```
 /// Play first argument while playing all others
 static Result<Value> builtin_par(Interpreter &interpreter, std::vector<Value> args) {
 	Try(ensure_midi_connection_available(interpreter, "par"));
@@ -430,6 +442,14 @@ static Result<Value> builtin_par(Interpreter &interpreter, std::vector<Value> ar
 	return result;
 }
 
+//: Funkcja `sim` odgrywa zadane sekwencje symultanicznie.
+//:
+//: # Przykład
+//: ```
+//: > A := c e g d
+//: > B := f f a a
+//: > sim A B
+//: ```
 /// Plays each argument simultaneously
 static Result<Value> builtin_sim(Interpreter &interpreter, std::vector<Value> args)
 {
@@ -558,6 +578,13 @@ static inline size_t upper_sieve_bound_to_yield_n_primes(size_t n_primes)
 	return std::ceil(x);
 }
 
+//: Funkcja `nprimes` zwraca zadaną liczbę kolejnych liczb pierwszych.
+//:
+//: # Przykład
+//: ```
+//: > nprimes 4
+//: (2, 3, 5, 7)
+//: ```
 /// Generate n primes
 static Result<Value> builtin_primes(Interpreter&, std::vector<Value> args)
 {
@@ -607,6 +634,16 @@ static Result<Value> builtin_primes(Interpreter&, std::vector<Value> args)
 	};
 }
 
+//: Funkcja `nprimes` zwraca zadaną liczbę kolejnych liczb pierwszych.
+//:
+//: # Przykład
+//: ```
+//: > for (nprimes 4) (say)
+//: 2
+//: 3
+//: 5
+//: 7
+//: ```
 /// Iterate over container
 static Result<Value> builtin_for(Interpreter &i, std::vector<Value> args)
 {
@@ -627,6 +664,12 @@ static Result<Value> builtin_for(Interpreter &i, std::vector<Value> args)
 	}
 }
 
+//: Funkcja `fold` TODO.
+//:
+//: # Przykład
+//: ```
+//: TODO
+//: ```
 /// Fold container
 static Result<Value> builtin_fold(Interpreter &interpreter, std::vector<Value> args) {
 	constexpr auto guard = Guard<2> {
@@ -652,6 +695,14 @@ static Result<Value> builtin_fold(Interpreter &interpreter, std::vector<Value> a
 
 	return guard.yield_error();
 }
+
+//: Funkcja `map` aplikuje zadaną funkcję do każdego argumentu.
+//:
+//: # Przykład
+//: ```
+//: > map up (nprimes 3)
+//: ((0, 1), (0, 1, 2), (0, 1, 2, 3, 4))
+//: ```
 
 static Result<Value> builtin_map(Interpreter &interpreter, std::vector<Value> args)
 {
@@ -684,6 +735,12 @@ static Result<Value> builtin_map(Interpreter &interpreter, std::vector<Value> ar
 	return result;
 }
 
+//: Funkcja `scan` oblicza sumę prefiksową (dodaje do siebie wszystkie liczby od 1 do danej liczby).
+//:
+//: # Przykład
+//: ```
+//: 
+//: ```
 /// Scan computes inclusive prefix sum
 static Result<Value> builtin_scan(Interpreter &interpreter, std::vector<Value> args)
 {
@@ -706,6 +763,19 @@ static Result<Value> builtin_scan(Interpreter &interpreter, std::vector<Value> a
 	};
 }
 
+//: Funkcja `if` wykonuje określony blok po spełnieniu warunku, alternatywnie wykonuje inny blok kodu w przeciwnym wypadku.
+//:
+//: # Przykład
+//: ```
+//: > if true (say 42)
+//: 42
+//: > if false (say 42)
+//: >
+//: > if true (say 42) (say 0)
+//: 42
+//: > if false (say 42) (say 0)
+//: 0
+//: ```
 /// Execute blocks depending on condition
 static Result<Value> builtin_if(Interpreter &i, std::span<Ast> args)  {
 	static constexpr auto guard = Guard<2> {
@@ -737,6 +807,18 @@ static Result<Value> builtin_if(Interpreter &i, std::span<Ast> args)  {
 	return Value{};
 }
 
+//: Funkcja `while` wykonuje określony blok dopóki warunek jest spełniony.
+//:
+//: # Przykład
+//: ```
+//: > i := 0
+//: > while (i < 10) (say i, i += 2)
+//: 0
+//: 2
+//: 4
+//: 6
+//: 8
+//: ```
 /// Loop block depending on condition
 static Result<Value> builtin_while(Interpreter &i, std::span<Ast> args)  {
 	static constexpr auto guard = Guard<2> {
@@ -760,6 +842,12 @@ static Result<Value> builtin_while(Interpreter &i, std::span<Ast> args)  {
 	return Value{};
 }
 
+//: Funkcja `try` przystępuje do wykonania bloków kodu, a jeżeli którykolwiek z nich zakończy się niepowodzeniem, wykonuje ostatni. Jeżeli ostatni też zakończy się niepowodzeniem, to trudno.
+//:
+//: # Przykład
+//: ```
+//: TODO
+//: ```
 /// Try executing all but last block and if it fails execute last one
 static Result<Value> builtin_try(Interpreter &interpreter, std::vector<Value> args)
 {
@@ -790,6 +878,16 @@ static Result<Value> builtin_try(Interpreter &interpreter, std::vector<Value> ar
 	return success;
 }
 
+//: Funkcja `update` aktualizuje dany element listy na nową wartość.
+//:
+//: # Przykład
+//: ```
+//: > A := down 5
+//: > A
+//: (4, 3, 2, 1, 0)
+//: > update A 3 7
+//: (4, 3, 2, 7, 0)
+//: ```
 /// Update value inside of array
 static Result<Value> builtin_update(Interpreter &i, std::vector<Value> args)
 {
@@ -820,6 +918,15 @@ static Result<Value> builtin_update(Interpreter &i, std::vector<Value> args)
 	return guard.yield_error();
 }
 
+//: Funkcja `typeof` zwraca typ zmiennej.
+//: # Przykład
+//: ```
+//: > A := down 5
+//: > A
+//: (4, 3, 2, 1, 0)
+//: > typeof A
+//: array
+//: ```
 /// Return typeof variable
 static Result<Value> builtin_typeof(Interpreter&, std::vector<Value> args)
 {
@@ -858,6 +965,15 @@ Result<Value> traverse(Interpreter &interpreter, Value &&value, auto &&lambda)
 	return value;
 }
 
+//: Funkcja `set_len` przydziela wszystkim elementom listy zadaną długość.
+//: # Przykład
+//: ```
+//: > A := c d e f
+//: > A
+//: (c, d, e, f)
+//: > set_len (1/8) A
+//: (c 1/8, d 1/8, e 1/8, f 1/8)
+//: ```
 /// Set length (first argument) to all other arguments preserving their shape
 static Result<Value> builtin_set_len(Interpreter &interpreter, std::vector<Value> args)
 {
@@ -887,6 +1003,15 @@ static Result<Value> builtin_set_len(Interpreter &interpreter, std::vector<Value
 	};
 }
 
+//: Funkcja `set_oct` przydziela wszystkim elementom listy zadaną wysokość.
+//: # Przykład
+//: ```
+//: > A := c d e f
+//: > A
+//: (c, d, e, f)
+//: > set_oct 5 A
+//: (c5, d5, e5, f5)
+//: ```
 /// Set octave (first argument) to all other arguments preserving their shape
 static Result<Value> builtin_set_oct(Interpreter &interpreter, std::vector<Value> args)
 {
@@ -928,7 +1053,9 @@ static Result<Value> builtin_duration(Interpreter &interpreter, std::vector<Valu
 	for (auto &arg : args) {
 		Try(traverse(interpreter, std::move(arg), [&](Chord &c) {
 			for (Note &note : c.notes) {
-				total += note.length ? *note.length : interpreter.current_context->length;
+				if (note.length) {
+					total += *note.length;
+				}
 			}
 		}));
 	}
@@ -1103,7 +1230,7 @@ static Result<Value> builtin_partition(Interpreter &i, std::vector<Value> args)
 	}};
 }
 
-//: Funkcja `rotate` przenosi na koniec listy zadaną ilość elementów
+//: Funkcja `rotate` przenosi na koniec listy zadaną ilość elementów.
 //:
 //: # Przykład
 //: ```
@@ -1137,6 +1264,13 @@ static Result<Value> builtin_rotate(Interpreter &i, std::vector<Value> args)
 	return guard.yield_error();
 }
 
+//: Funkcja `unique` zwraca listę argumentów z wyłączeniem powtórzeń.
+//:
+//: # Przykład
+//: ```
+//: > unique 1 2 3 2 2 3 4
+//: (1, 2, 3, 4)
+//: ```
 /// Returns unique collection of arguments
 static Result<Value> builtin_unique(Interpreter &i, std::vector<Value> args)
 {
@@ -1153,6 +1287,13 @@ static Result<Value> builtin_unique(Interpreter &i, std::vector<Value> args)
 	return result;
 }
 
+//: Funkcja `uniq` usuwa z listy argumentów następujące po sobie powtórzenia elementów.
+//:
+//: # Przykład
+//: ```
+//: > uniq 1 2 3 2 2 2 2 2 2 3 4
+//: (1, 2, 3, 2, 3, 4)
+//: ```
 /// Returns arguments with all successive copies eliminated
 static Result<Value> builtin_uniq(Interpreter &i, std::vector<Value> args)
 {
@@ -1170,6 +1311,13 @@ static Result<Value> builtin_uniq(Interpreter &i, std::vector<Value> args)
 	return result;
 }
 
+//: Funkcja `hash` zwraca wynik działania funkcji skrótu.
+//:
+//: # Przykład
+//: ```
+//: > hash 4
+//: 177902120014
+//: ```
 static Result<Value> builtin_hash(Interpreter&, std::vector<Value> args)
 {
 	return Number(
@@ -1179,8 +1327,6 @@ static Result<Value> builtin_hash(Interpreter&, std::vector<Value> args)
 	);
 }
 
-/// Build chord from arguments
-
 //: Funkcja `chord` zwraca akord złożony z nut podanych jako argumenty.
 //:
 //: # Przykład
@@ -1188,6 +1334,7 @@ static Result<Value> builtin_hash(Interpreter&, std::vector<Value> args)
 //: > chord c# e a#
 //: chord (c#, e, a#)
 //: ```
+/// Build chord from arguments
 static Result<Value> builtin_chord(Interpreter &i, std::vector<Value> args)
 {
 	Chord chord;
@@ -1215,7 +1362,6 @@ static Result<Value> builtin_note_on(Interpreter &interpreter, std::vector<Value
 			note = interpreter.current_context->fill(note);
 			interpreter.midi_connection->send_note_on(chan.as_int(), *note.into_midi_note(), vel.as_int());
 		}
-		return Value{};
 	}
 
 	return Error {
@@ -1253,7 +1399,6 @@ static Result<Value> builtin_note_off(Interpreter &interpreter, std::vector<Valu
 			note = interpreter.current_context->fill(note);
 			interpreter.midi_connection->send_note_off(chan.as_int(), *note.into_midi_note(), 127);
 		}
-		return Value{};
 	}
 
 	return Error {
