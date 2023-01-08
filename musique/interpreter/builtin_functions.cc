@@ -1215,6 +1215,7 @@ static Result<Value> builtin_note_on(Interpreter &interpreter, std::vector<Value
 			note = interpreter.current_context->fill(note);
 			interpreter.midi_connection->send_note_on(chan.as_int(), *note.into_midi_note(), vel.as_int());
 		}
+		return Value{};
 	}
 
 	return Error {
@@ -1252,6 +1253,7 @@ static Result<Value> builtin_note_off(Interpreter &interpreter, std::vector<Valu
 			note = interpreter.current_context->fill(note);
 			interpreter.midi_connection->send_note_off(chan.as_int(), *note.into_midi_note(), 127);
 		}
+		return Value{};
 	}
 
 	return Error {
