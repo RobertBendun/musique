@@ -9,6 +9,8 @@ struct Starter
 	void start();
 	void stop();
 
+	size_t peers() const;
+
 	struct Implementation;
 	std::shared_ptr<Implementation> impl;
 };

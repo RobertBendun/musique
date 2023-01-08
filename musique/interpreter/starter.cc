@@ -23,6 +23,7 @@ struct State
 	ableton::Link *link;
 	std::mutex mutex;
 	std::condition_variable condition;
+	std::stop_source source;
 };
 
 void Starter::start()
@@ -46,24 +47,28 @@ void Starter::start()
 	{
 		if (is_playing) {
 			state->condition.notify_all();
+			state->source.request_stop();
 		}
 	});
 
-	std::jthread starter([quantum = quantum, state = state](std::stop_token token)
+	std::thread starter([quantum = quantum, state = state, token = state->source.get_token()]()
 	{
 		auto counter = 0;
 		while (!token.stop_requested()) {
 			auto const time = state->link->clock().micros();
 			auto sessionState = state->link->captureAppSessionState();
-			if (counter == 2) {
+			if (counter == 10) {
 				sessionState.setIsPlaying(true, time);
 				state->link->commitAppSessionState(sessionState);
+				state->condition.notify_all();
+				state->source.request_stop();
 				return;
 			}
 			auto const phase = sessionState.phaseAtTime(time, quantum);
 			counter += phase == 0;
 		}
 	});
+	starter.detach();
 
 	std::unique_lock lock(state->mutex);
 	state->condition.wait(lock);
@@ -78,4 +83,12 @@ void Starter::stop()
 	auto sessionState = link.captureAppSessionState();
 	sessionState.setIsPlaying(false, time);
 	link.commitAppSessionState(sessionState);
+}
+
+size_t Starter::peers() const
+{
+	ensure(impl != nullptr, "Starter wasn't initialized properly");
+	auto &link = impl->link;
+
+	return link.numPeers();
 }
