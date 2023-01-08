@@ -254,22 +254,30 @@ namespace impl
 
 	static Number round(Number result, Rounding_Mode rm)
 	{
-		if (result.den <= -1 || result.den >= 1) {
-			if (auto const r = result.num % result.den; r != 0) {
-				auto const sign = (result.num < 0) xor (result.den < 0) ? -1 : 1;
-
-				if (rm == Rounding_Mode::Round)
-					rm = r * 2 >= result.den ? Rounding_Mode::Ceil : Rounding_Mode::Floor;
-
-				if (rm == Rounding_Mode::Floor) result.num -= sign * r;
-				if (rm == Rounding_Mode::Ceil)  result.num += sign * r;
-
-				result.num /= result.den;
-				result.den = 1;
-			} else {
-				result.simplify_inplace();
-			}
+		if (result.den == -1 || result.den == 1) {
+			return result.simplify();
 		}
+		auto const negative = (result.num < 0) xor (result.den < 0);
+		if (result.num < 0) result.num *= -1;
+		if (result.den < 0) result.den *= -1;
+
+		if (auto const r = result.num % result.den; r != 0) {
+			bool ceil = rm == Rounding_Mode::Ceil;
+			ceil |= rm == Rounding_Mode::Round && (negative
+				? r*2 <= result.den
+				: r*2 >= result.den);
+
+			if (ceil ^ negative) {
+				result.num += result.den;
+			}
+
+			// C++ integer division handles floor case
+			result.num /= result.den;
+			result.den = 1;
+		} else {
+			result.simplify_inplace();
+		}
+		result.num *= negative ? -1 : 1;
 		return result;
 	}
 }

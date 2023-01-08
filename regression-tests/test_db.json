@@ -216,6 +216,60 @@
           "(1, 2, 3, 4, 5, 6, 7, 8)"
         ],
         "stderr_lines": []
+      },
+      {
+        "name": "ceil.mq",
+        "exit_code": 0,
+        "stdin_lines": [],
+        "stdout_lines": [
+          "-4",
+          "-4",
+          "-4",
+          "-4",
+          "-5",
+          "4",
+          "5",
+          "5",
+          "5",
+          "5"
+        ],
+        "stderr_lines": []
+      },
+      {
+        "name": "floor.mq",
+        "exit_code": 0,
+        "stdin_lines": [],
+        "stdout_lines": [
+          "-4",
+          "-5",
+          "-5",
+          "-5",
+          "-5",
+          "4",
+          "4",
+          "4",
+          "4",
+          "5"
+        ],
+        "stderr_lines": []
+      },
+      {
+        "name": "round.mq",
+        "exit_code": 0,
+        "stdin_lines": [],
+        "stdout_lines": [
+          "-4",
+          "-4",
+          "-4",
+          "-5",
+          "-5",
+          "4",
+          "4",
+          "5",
+          "5",
+          "5"
+        ],
+        "stderr_lines": []
       }
     ]
   }
