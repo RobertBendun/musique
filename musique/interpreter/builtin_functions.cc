@@ -1547,6 +1547,20 @@ static Result<Value> builtin_digits(Interpreter &interpreter, std::vector<Value>
 //: > call digits 88976
 //: (8, 8, 9, 7, 6)
 //: ```
+//:
+//: Funkcja `call` umożliwia wywoływanie funkcji, które nie przyjmują żadnych argumentów.
+//: Szczególnie przydatne jest to w przypadku funkcji `len`, `oct`, `bpm`, które zwracają
+//: aktualną wartośc domyślną w przypadku braku argumentów
+//:
+//: # Przykład
+//: ```
+//: > call bpm
+//: 120
+//: > x := (say 42, say 43)
+//: > call x
+//: 42
+//: 43
+//: ```
 /// Call operator. Calls first argument with remaining arguments
 static Result<Value> builtin_call(Interpreter &i, std::vector<Value> args)
 {
