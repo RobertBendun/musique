@@ -741,7 +741,7 @@ static Result<Value> builtin_map(Interpreter &interpreter, std::vector<Value> ar
 //:
 //: # Przykład
 //: ```
-//: 
+//:
 //: ```
 /// Scan computes inclusive prefix sum
 static Result<Value> builtin_scan(Interpreter &interpreter, std::vector<Value> args)
@@ -1149,7 +1149,7 @@ static Result<Value> builtin_permute(Interpreter &i, std::vector<Value> args)
 	return array;
 }
 
-//: Funkcja `sortuje` elementy od najmniejszego do największego (w tym nuty). 
+//: Funkcja `sortuje` elementy od najmniejszego do największego (w tym nuty).
 //:
 //: # Sortowanie liczb
 //: ```
@@ -1628,6 +1628,24 @@ static Result<Value> builtin_port(Interpreter &interpreter, std::vector<Value> a
 	unimplemented();
 }
 
+static Result<Value> builtin_start(Interpreter &interpreter, std::span<Ast> args)
+{
+	interpreter.starter.start();
+	auto result = algo::fold(args, Value{}, [&interpreter](auto const&, Ast const& ast)
+		-> Result<Value>
+	{
+		return Try(interpreter.eval((Ast)ast));
+	});
+	// FIXME this should be in "finally" block
+	interpreter.starter.stop();
+	return result;
+}
+
+static Result<Value> builtin_peers(Interpreter &interpreter, std::vector<Value>)
+{
+	return Number(interpreter.starter.peers());
+}
+
 void Interpreter::register_builtin_functions()
 {
 	auto &global = *Env::global;
@@ -1657,6 +1675,7 @@ void Interpreter::register_builtin_functions()
 	global.force_define("oct",            builtin_oct);
 	global.force_define("par",            builtin_par);
 	global.force_define("partition",      builtin_partition);
+	global.force_define("peers",          builtin_peers);
 	global.force_define("permute",        builtin_permute);
 	global.force_define("pgmchange",      builtin_program_change);
 	global.force_define("pick",           builtin_pick);
@@ -1673,6 +1692,7 @@ void Interpreter::register_builtin_functions()
 	global.force_define("shuffle",        builtin_shuffle);
 	global.force_define("sim",            builtin_sim);
 	global.force_define("sort",           builtin_sort);
+	global.force_define("start",          builtin_start);
 	global.force_define("try",            builtin_try);
 	global.force_define("typeof",         builtin_typeof);
 	global.force_define("uniq",           builtin_uniq);

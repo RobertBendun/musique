@@ -1,8 +1,9 @@
 #ifndef MUSIQUE_INTERPRETER_HH
 #define MUSIQUE_INTERPRETER_HH
 
-#include <musique/midi/midi.hh>
 #include <musique/interpreter/context.hh>
+#include <musique/interpreter/starter.hh>
+#include <musique/midi/midi.hh>
 #include <musique/value/value.hh>
 #include <unordered_map>
 #include <musique/serialport/serialport.hh>
@@ -23,6 +24,8 @@ struct Interpreter
 	std::function<std::optional<Error>(Interpreter&, Value)> default_action;
 
 	std::shared_ptr<serialport::State> serialport;
+
+	Starter starter;
 
 	Interpreter();
 	~Interpreter();

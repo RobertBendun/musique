@@ -1,7 +1,7 @@
 MAKEFLAGS="-j $(grep -c ^processor /proc/cpuinfo)"
 
 CXXFLAGS:=$(CXXFLAGS) -std=c++20 -Wall -Wextra -Werror=switch -Werror=return-type -Werror=unused-result
-CPPFLAGS:=$(CPPFLAGS) -Ilib/expected/ -I. -Ilib/bestline/ -Ilib/rtmidi/ -Ilib/serial/include/
+CPPFLAGS:=$(CPPFLAGS) -Ilib/expected/ -I. -Ilib/bestline/ -Ilib/rtmidi/ -Ilib/serial/include/ -Ilib/link/include -Ilib/asio/include/
 LDFLAGS=-flto
 LDLIBS= -lpthread
 
