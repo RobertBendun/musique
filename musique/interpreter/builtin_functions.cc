@@ -846,7 +846,15 @@ static Result<Value> builtin_while(Interpreter &i, std::span<Ast> args)  {
 //:
 //: # Przykład
 //: ```
-//: TODO
+//: > try (nprimes -1) (say 0)
+//: 0
+//: > try (nprimes 2) (say 0)
+//: (2, 3)
+//: ```
+//: # W przypadku przekazania jednego bloku jako argumentu `try` zwróci pustą wartość w przypadku napotkania błędu podczas wykonania tego bloku.
+//: ```
+//: > try (nprimes -1)
+//: >
 //: ```
 /// Try executing all but last block and if it fails execute last one
 static Result<Value> builtin_try(Interpreter &interpreter, std::span<Ast> args)
