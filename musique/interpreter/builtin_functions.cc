@@ -1255,6 +1255,11 @@ static Result<Value> builtin_rotate(Interpreter &i, std::vector<Value> args)
 
 	if (args.size()) {
 		if (auto const offset_source = get_if<Number>(args.front())) {
+
+			if (args.size() == 1) {
+				return Array{};
+			}
+
 			auto offset = offset_source->as_int();
 			auto array = Try(flatten(i, std::span(args).subspan(1)));
 			if (offset > 0) {
