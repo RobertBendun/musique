@@ -849,30 +849,31 @@ static Result<Value> builtin_while(Interpreter &i, std::span<Ast> args)  {
 //: TODO
 //: ```
 /// Try executing all but last block and if it fails execute last one
-static Result<Value> builtin_try(Interpreter &interpreter, std::vector<Value> args)
+static Result<Value> builtin_try(Interpreter &interpreter, std::span<Ast> args)
 {
-	constexpr auto guard = Guard<1> {
-		.name = "try",
-		.possibilities = {
-			"(...function) -> any"
-		}
-	};
-
 	if (args.size() == 1) {
-		auto callable = Try(guard.match<Function>(args[0]));
-		return std::move(*callable)(interpreter, {}).value_or(Value{});
+		// TODO This should be abstracted
+		auto result = (args[0].type == Ast::Type::Block)
+			? interpreter.eval((Ast)args[0].arguments.front())
+			: interpreter.eval((Ast)args[0]);
+		return result.value_or(Value{});
 	}
 
 	Value success;
 
-	for (usize i = 0; i+1 < args.size(); ++i) {
-		auto callable = Try(guard.match<Function>(args[i]));
-		if (auto result = std::move(*callable)(interpreter, {})) {
-			success = *std::move(result);
-		} else {
-			auto callable = Try(guard.match<Function>(args.back()));
-			return std::move(*callable)(interpreter, {});
+	for (auto const& node : args.subspan(0, args.size()-1)) {
+		auto result = (node.type == Ast::Type::Block)
+			? interpreter.eval((Ast)node.arguments.front())
+			: interpreter.eval((Ast)node);
+
+		if (result.has_value()) {
+			success = *result;
+			continue;
 		}
+
+		return (args.back().type == Ast::Type::Block)
+			? interpreter.eval((Ast)args.back().arguments.front())
+			: interpreter.eval((Ast)args.back());
 	}
 
 	return success;
