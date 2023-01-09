@@ -1588,6 +1588,7 @@ static Result<Value> builtin_port(Interpreter &interpreter, std::vector<Value> a
 			if (port == interpreter.current_context->port) {
 				return std::visit(Overloaded {
 					[](midi::connections::Virtual_Port) { return Value(Symbol("virtual")); },
+					[](midi::connections::Serial_Port)  { return Value(Symbol("serial")); },
 					[](midi::connections::Established_Port port) { return Value(Number(port)); },
 				}, key);
 			}
@@ -1605,6 +1606,19 @@ static Result<Value> builtin_port(Interpreter &interpreter, std::vector<Value> a
 		auto [port_type] = *a;
 		if (port_type == "virtual") {
 			Try(interpreter.current_context->connect(std::nullopt));
+			return {};
+		}
+
+		if (port_type == "serial") {
+			if (auto it = Context::established_connections.find(midi::connections::Serial_Port{}); it != Context::established_connections.end()) {
+				interpreter.current_context->port = it->second;
+				return {};
+			}
+
+			auto serial = std::make_shared<midi::Serial_Midi>();
+			serial->serialport = interpreter.serialport;
+			interpreter.current_context->port = serial;
+			Context::established_connections[midi::connections::Serial_Port{}] = serial;
 			return {};
 		}
 
