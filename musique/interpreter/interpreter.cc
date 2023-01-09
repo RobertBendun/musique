@@ -7,7 +7,6 @@
 #include <random>
 #include <thread>
 
-midi::Connection *Interpreter::midi_connection = nullptr;
 std::unordered_map<std::string, Intrinsic> Interpreter::operators {};
 
 /// Registers constants like `fn = full note = 1/1`
@@ -249,7 +248,7 @@ std::optional<Error> Interpreter::play(Chord chord)
 	// Turn all notes on
 	for (auto const& note : chord.notes) {
 		if (note.base) {
-			midi_connection->send_note_on(0, *note.into_midi_note(), 127);
+			current_context->port->send_note_on(0, *note.into_midi_note(), 127);
 		}
 	}
 
@@ -260,16 +259,16 @@ std::optional<Error> Interpreter::play(Chord chord)
 			std::this_thread::sleep_for(ctx.length_to_duration(*note.length));
 		}
 		if (note.base) {
-			midi_connection->send_note_off(0, *note.into_midi_note(), 127);
+			current_context->port->send_note_off(0, *note.into_midi_note(), 127);
 		}
 	}
 
 	return {};
 }
 
-std::optional<Error> ensure_midi_connection_available(Interpreter &i, std::string_view operation_name)
+std::optional<Error> ensure_midi_connection_available(Interpreter &interpreter, std::string_view operation_name)
 {
-	if (i.midi_connection == nullptr || !i.midi_connection->supports_output()) {
+	if (interpreter.current_context->port == nullptr || !interpreter.current_context->port->supports_output()) {
 		return Error {
 			.details = errors::Operation_Requires_Midi_Connection {
 				.is_input = false,

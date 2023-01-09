@@ -160,33 +160,16 @@ struct Runner
 {
 	static inline Runner *the;
 
-	midi::Rt_Midi midi;
 	Interpreter interpreter;
 
 	/// Setup interpreter and midi connection with given port
 	explicit Runner(std::optional<unsigned> output_port)
-		: midi()
-		, interpreter{}
+		: interpreter{}
 	{
 		ensure(the == nullptr, "Only one instance of runner is supported");
 		the = this;
 
-		interpreter.midi_connection = &midi;
-		if (output_port) {
-			midi.connect_output(*output_port);
-			if (!quiet_mode) {
-				std::cout << "Connected MIDI output to port " << *output_port << ". Ready to play!" << std::endl;
-			}
-		} else {
-			bool connected_to_existing_port = midi.connect_or_create_output();
-			if (!quiet_mode) {
-				if (connected_to_existing_port) {
-					std::cout << "Connected MIDI output to port " << midi.output->getPortName(0) << std::endl;
-				} else {
-					std::cout << "Created new MIDI output port 'Musique'. Ready to play!" << std::endl;
-				}
-			}
-		}
+		interpreter.current_context->connect(output_port);
 
 		Env::global->force_define("say", +[](Interpreter &interpreter, std::vector<Value> args) -> Result<Value> {
 			for (auto it = args.begin(); it != args.end(); ++it) {

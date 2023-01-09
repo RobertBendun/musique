@@ -9,10 +9,6 @@
 /// Given program tree evaluates it into Value
 struct Interpreter
 {
-	/// MIDI connection that is used to play music.
-	/// It's optional for simple interpreter testing.
-	static midi::Connection *midi_connection;
-
 	/// Operators defined for language
 	static std::unordered_map<std::string, Intrinsic> operators;
 
