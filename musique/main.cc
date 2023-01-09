@@ -17,6 +17,9 @@
 #include <musique/try.hh>
 #include <musique/unicode.hh>
 #include <musique/value/block.hh>
+#include <musique/serialport/serialport.hh>
+
+#include <serial/serial.h>
 
 #ifdef _WIN32
 extern "C" {
@@ -161,6 +164,8 @@ struct Runner
 	static inline Runner *the;
 
 	Interpreter interpreter;
+	std::shared_ptr<serialport::State> serial_state;
+	std::optional<std::jthread> serial_event_loop;
 
 	/// Setup interpreter and midi connection with given port
 	explicit Runner(std::optional<unsigned> output_port)
@@ -171,6 +176,15 @@ struct Runner
 
 		interpreter.current_context->connect(output_port);
 
+		/// Setup communication over serial
+		serial_state = std::make_shared<serialport::State>();
+		interpreter.serialport = serial_state;
+		serialport::initialize();
+
+		serial_event_loop = std::jthread([this](std::stop_token token) mutable{
+			serialport::event_loop(token, *serial_state);
+		});
+
 		Env::global->force_define("say", +[](Interpreter &interpreter, std::vector<Value> args) -> Result<Value> {
 			for (auto it = args.begin(); it != args.end(); ++it) {
 				std::cout << Try(format(interpreter, *it));
@@ -179,6 +193,10 @@ struct Runner
 			}
 			std::cout << std::endl;
 			return {};
+		});
+
+		Env::global->force_define("ctrl", +[](Interpreter &interpreter, std::vector<Value> args) -> Result<Value> {
+			return interpreter.serialport->get(std::get<Number>(args[0].data).as_int());
 		});
 	}
 

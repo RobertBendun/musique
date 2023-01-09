@@ -4,6 +4,7 @@
 #include <functional>
 #include <optional>
 #include <string>
+#include <musique/serialport/serialport.hh>
 
 // Documentation of midi messages available at http://midi.teragonaudio.com/tech/midispec.htm
 namespace midi
@@ -20,6 +21,20 @@ namespace midi
 		virtual void send_controller_change(uint8_t channel, uint8_t controller_number, uint8_t value) = 0;
 
 		void send_all_sounds_off(uint8_t channel);
+	};
+
+	struct Serial_Midi : Connection
+	{
+		~Serial_Midi() = default;
+
+		bool supports_output() const override;
+
+		void send_note_on (uint8_t channel, uint8_t note_number, uint8_t velocity) override;
+		void send_note_off(uint8_t channel, uint8_t note_number, uint8_t velocity) override;
+		void send_program_change(uint8_t channel, uint8_t program) override;
+		void send_controller_change(uint8_t channel, uint8_t controller_number, uint8_t value) override;
+
+		std::shared_ptr<serialport::State> serialport;
 	};
 
 	struct Rt_Midi : Connection
