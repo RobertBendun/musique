@@ -17,6 +17,15 @@ namespace serialport{
         state[position] = value;
         return;
     }
+    void State::send(uint8_t message_type, uint8_t note_number)
+    {
+        if((head + 1) % 128 != tail){
+            message_data[head] = note_number;
+            message_types[head] = message_type;
+            head = (head + 1)%128;
+        }
+        return;
+    }
 
     void initialize()
     {
@@ -80,14 +89,16 @@ namespace serialport{
 
                     state.set(control - 65, value);
 
-                    switch(control){
-                        case 68: // D
-                        
-                        break;
-                        case 66: // B
-                        
-                        break;
-                    } 
+                    while(state.head != state.tail){
+                        if(state.message_types[state.tail] == 0){
+                            uint8_t bytes_to_send[3] = {0b10010000, state.message_data[state.tail], 0b00000000};
+                            serial_conn.write(bytes_to_send, 3);
+                        }else if(state.message_types[state.tail] == 1){
+                            uint8_t bytes_to_send[3] = {0b10000000, state.message_data[state.tail], 0b00000000};
+                            serial_conn.write(bytes_to_send, 3);
+                        }
+                        state.tail = (state.tail + 1) % 128;
+                    }
                 }
             } catch (std::exception &e) {
                 /// No connection to the device

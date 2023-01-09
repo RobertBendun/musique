@@ -15,8 +15,13 @@ namespace serialport{
     constexpr std::size_t MAX_VALUE = 4095;
     struct State{
         std::array<std::atomic<std::uint32_t>, MAX_STATE_COUNT> state;
+        std::array<std::atomic<std::uint8_t>, 128> message_types;
+        std::array<std::atomic<std::uint8_t>, 128> message_data;
+        std::atomic<std::uint8_t> head = 0;
+        std::atomic<std::uint8_t> tail = 0;
         int test();
         Number get(unsigned position) const;
+        void send(uint8_t message_type, uint8_t note_number);
         void set(unsigned position, std::uint32_t value);
     };
     
