@@ -212,7 +212,7 @@ invalid_argument_type:
 		},
 	};
 }
-//: Funkcja `ceil` zwraca liczbę zaokrągloną do pierwszej mniejszej liczby całkowitej.
+//: Funkcja `ceil` zwraca liczbę zaokrągloną do pierwszej większej liczby całkowitej.
 //:
 //: # Przykład
 //: ```
@@ -221,7 +221,7 @@ invalid_argument_type:
 //: ```
 Forward_Implementation(builtin_ceil, apply_numeric_transform<&Number::ceil>)
 
-//: Funkcja `floor` zwraca liczbę zaokrągloną do pierwszej większej liczby całkowitej.
+//: Funkcja `floor` zwraca liczbę zaokrągloną do pierwszej mniejszej liczby całkowitej.
 //:
 //: # Przykład
 //: ```
@@ -304,6 +304,8 @@ Forward_Implementation(builtin_up, range<Range_Direction::Up>)
 //: ```
 //: > down 10
 //: (9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
+//: > down 5 10
+//: (9, 8, 7, 6, 5)
 //: ```
 Forward_Implementation(builtin_down, range<Range_Direction::Down>)
 
@@ -943,6 +945,11 @@ static Result<Value> builtin_typeof(Interpreter&, std::vector<Value> args)
 	return Symbol(type_name(args.front()));
 }
 
+//: Funkcja `len` ustawia domyślną długość nuty.
+//: # Przykład – ustawienie domyślnej długości nuty na ósemkę
+//: ```
+//: len (1/8)
+//: ```
 /// Return length of container or set/get default length to play
 static Result<Value> builtin_len(Interpreter &i, std::vector<Value> args)
 {
@@ -1054,7 +1061,10 @@ static Result<Value> builtin_set_oct(Interpreter &interpreter, std::vector<Value
 //:
 //: # Przykład
 //: ```
-//: TODO
+//: > duration a
+//: 1/4
+//: > duration chord a b c
+//: 3/4
 //: ```
 static Result<Value> builtin_duration(Interpreter &interpreter, std::vector<Value> args)
 {
@@ -1073,6 +1083,7 @@ static Result<Value> builtin_duration(Interpreter &interpreter, std::vector<Valu
 //:
 //: # Przykład
 //: ```
+//: > B := chord a b c
 //: > flat B a b c 1
 //: (chord (a, b, c), a, b, c, 1)
 //: ```
