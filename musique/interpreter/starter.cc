@@ -1,6 +1,6 @@
-#include <musique/interpreter/starter.hh>
 #include <ableton/Link.hpp>
 #include <musique/errors.hh>
+#include <musique/interpreter/starter.hh>
 
 struct Starter::Implementation
 {
@@ -23,7 +23,7 @@ struct State
 	ableton::Link *link;
 	std::mutex mutex;
 	std::condition_variable condition;
-	std::stop_source source;
+	std::atomic<bool> stop = false;
 };
 
 void Starter::start()
@@ -47,21 +47,21 @@ void Starter::start()
 	{
 		if (is_playing) {
 			state->condition.notify_all();
-			state->source.request_stop();
+			state->stop = true;
 		}
 	});
 
-	std::thread starter([quantum = quantum, state = state, token = state->source.get_token()]()
+	std::thread starter([quantum = quantum, state = state]
 	{
 		auto counter = 0;
-		while (!token.stop_requested()) {
+		while (!state->stop) {
 			auto const time = state->link->clock().micros();
 			auto sessionState = state->link->captureAppSessionState();
 			if (counter == 10) {
 				sessionState.setIsPlaying(true, time);
 				state->link->commitAppSessionState(sessionState);
 				state->condition.notify_all();
-				state->source.request_stop();
+				state->stop = true;
 				return;
 			}
 			auto const phase = sessionState.phaseAtTime(time, quantum);
