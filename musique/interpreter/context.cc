@@ -13,18 +13,15 @@ std::chrono::duration<float> Context::length_to_duration(std::optional<Number> l
 	return std::chrono::duration<float>(float(len.num * (60.f / (float(bpm) / 4))) / len.den);
 }
 
-template<>
-struct std::hash<midi::connections::Key>
+std::size_t std::hash<midi::connections::Key>::operator()(midi::connections::Key const& value) const
 {
-	std::size_t operator()(midi::connections::Key const& value) const
-	{
-		using namespace midi::connections;
-		return hash_combine(value.index(), std::visit(Overloaded {
-			[](Virtual_Port) { return 0u; },
-			[](Established_Port port) { return port; },
-		}, value));
-	}
-};
+	using namespace midi::connections;
+	return hash_combine(value.index(), std::visit(Overloaded {
+		[](Virtual_Port) { return 0u; },
+		[](Serial_Port) { return 0u; },
+		[](Established_Port port) { return port; },
+	}, value));
+}
 
 std::unordered_map<midi::connections::Key, std::shared_ptr<midi::Connection>> Context::established_connections;
 

@@ -18,7 +18,12 @@ namespace midi::connections
 		bool operator==(Virtual_Port const&) const = default;
 	};
 
-	using Key = std::variant<Established_Port, Virtual_Port>;
+	struct Serial_Port
+	{
+		bool operator==(Serial_Port const&) const = default;
+	};
+
+	using Key = std::variant<Established_Port, Virtual_Port, Serial_Port>;
 }
 
 /// Context holds default values for music related actions
@@ -53,6 +58,12 @@ struct Context
 	std::chrono::duration<float> length_to_duration(std::optional<Number> length) const;
 
 	std::shared_ptr<Context> parent;
+};
+
+template<>
+struct std::hash<midi::connections::Key>
+{
+	std::size_t operator()(midi::connections::Key const& value) const;
 };
 
 #endif
