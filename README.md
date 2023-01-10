@@ -71,5 +71,6 @@ Skopiuj katalog [editor/vscode-musique](editor/vscode-musique) do folderu `<user
 - Creator of [tl::expected](https://github.com/TartanLlama/expected) - [Sy Brand](https://sybrand.ink/)
 - Creator of [bestline](https://github.com/jart/bestline) - [Justine Tunney](https://justinetunney.com/)
 - Creator of [rtmidi](https://github.com/thestk/rtmidi/) - [Gary P. Scavone](http://www.music.mcgill.ca/~gary/)
+- Creators of [link](https://github.com/Ableton/link)
 
 and all contributors that created libraries above.
