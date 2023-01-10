@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New builtins: digits
 - Negative numbers!
 - Version command via `:version` in REPL or `--version`, `-v` in command line.
+- Introduced start synchronization with builtins: `peers` and `start`
 
 ### Removed
 
