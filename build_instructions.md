@@ -2,7 +2,14 @@
 
 ## Linux
 
-Consult README.md.
+Use your local C++ compiler (supporting C++20) and ALSA dev libraries.
+
+Or included dockerfile:
+```
+bash> docker build -t musique-builder .
+bash> docker run -it -v "$PWD:/src" musique-builder:latest
+docker> make CC=gcc-11 CXX=g++-11
+```
 
 ## MacOS
 
@@ -17,7 +24,7 @@ Next you should be able to build project by running `make` command inside main d
 
 ## Windows
 
-Windows support is provided via cross compilation. Mingw GCC C++ compiler is required to produce Windows binaries.
+Windows support is provided via cross compilation. Mingw GCC C++ compiler supporting C++20 is required to produce Windows binaries.
 
 ```
 $ make os=windows
