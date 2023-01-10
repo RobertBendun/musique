@@ -270,6 +270,18 @@
           "5"
         ],
         "stderr_lines": []
+      },
+      {
+        "name": "duration.mq",
+        "exit_code": 0,
+        "stdin_lines": [],
+        "stdout_lines": [
+          "3/4",
+          "1/4",
+          "1",
+          "3/10"
+        ],
+        "stderr_lines": []
       }
     ]
   }

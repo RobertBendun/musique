@@ -741,7 +741,7 @@ static Result<Value> builtin_map(Interpreter &interpreter, std::vector<Value> ar
 //:
 //: # Przykład
 //: ```
-//: 
+//:
 //: ```
 /// Scan computes inclusive prefix sum
 static Result<Value> builtin_scan(Interpreter &interpreter, std::vector<Value> args)
@@ -1071,9 +1071,11 @@ static Result<Value> builtin_duration(Interpreter &interpreter, std::vector<Valu
 	auto total = Number{};
 	for (auto &arg : args) {
 		Try(traverse(interpreter, std::move(arg), [&](Chord &c) {
+			auto chord_length = Number();
 			for (Note &note : c.notes) {
-				total += note.length ? *note.length : interpreter.current_context->length;
+				chord_length = std::max(chord_length, note.length ? *note.length : interpreter.current_context->length);
 			}
+			total += chord_length;
 		}));
 	}
 	return total;
@@ -1149,7 +1151,7 @@ static Result<Value> builtin_permute(Interpreter &i, std::vector<Value> args)
 	return array;
 }
 
-//: Funkcja `sortuje` elementy od najmniejszego do największego (w tym nuty). 
+//: Funkcja `sortuje` elementy od najmniejszego do największego (w tym nuty).
 //:
 //: # Sortowanie liczb
 //: ```

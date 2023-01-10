@@ -9,13 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Printing version number on non-quiet launch, or when provided `--version` or `:version`
 - Builtin function documentation generation from C++ Musique implementation source code
 - New builtins: digits
+- Negative numbers!
 
 ### Removed
 
 - Release builder, since it's separate part of the project
+
+### Fixed
+
+- `ceil`, `round`, `floor` didn't behave well with negative numbers
+- `duration` wasn't filling note length from context and summed all notes inside chord, when it should take max
+- `try` evaluated arguments too quickly
 
 ## [0.3.1]
 

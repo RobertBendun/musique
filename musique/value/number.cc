@@ -242,7 +242,7 @@ parse_fractional:
 				.location = std::move(token.location)
 			};
 		}
-		result += Number{ frac, pow10(frac_end - num_end) };
+		result += Number{ (result.num < 0 ? -1 : 1) * frac, pow10(frac_end - num_end) };
 	}
 
 	return result.simplify();
