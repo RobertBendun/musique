@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Serial communication with dedicated device including
+	- knob and button updates
+	- support for CV as MIDI output inside Musique
+
 ## [0.3.1]
 
 ### Fixed
