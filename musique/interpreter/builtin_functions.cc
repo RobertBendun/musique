@@ -1069,9 +1069,11 @@ static Result<Value> builtin_duration(Interpreter &interpreter, std::vector<Valu
 	auto total = Number{};
 	for (auto &arg : args) {
 		Try(traverse(interpreter, std::move(arg), [&](Chord &c) {
+			auto chord_length = Number();
 			for (Note &note : c.notes) {
-				total += note.length ? *note.length : interpreter.current_context->length;
+				chord_length = std::max(chord_length, note.length ? *note.length : interpreter.current_context->length);
 			}
+			total += chord_length;
 		}));
 	}
 	return total;
