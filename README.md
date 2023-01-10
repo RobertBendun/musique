@@ -72,5 +72,6 @@ Skopiuj katalog [editor/vscode-musique](editor/vscode-musique) do folderu `<user
 - Creator of [bestline](https://github.com/jart/bestline) - [Justine Tunney](https://justinetunney.com/)
 - Creator of [rtmidi](https://github.com/thestk/rtmidi/) - [Gary P. Scavone](http://www.music.mcgill.ca/~gary/)
 - Creators of [link](https://github.com/Ableton/link)
+- Creators of [serial](https://github.com/wjwwood/serial) - [William Woodall](https://github.com/wjwwood/) and [John Harrison](https://github.com/ashgti)
 
 and all contributors that created libraries above.

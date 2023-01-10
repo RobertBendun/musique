@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New builtins: digits
 - Negative numbers!
 - Introduced start synchronization with builtins: `peers` and `start`
+- Serial communication with dedicated device including
+	- knob and button updates
+	- support for CV as MIDI output inside Musique
 
 ### Removed
 
