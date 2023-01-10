@@ -844,7 +844,7 @@ static Result<Value> builtin_while(Interpreter &i, std::span<Ast> args)  {
 	return Value{};
 }
 
-//: Funkcja `try` przystępuje do wykonania bloków kodu, a jeżeli którykolwiek z nich zakończy się niepowodzeniem, wykonuje ostatni. Jeżeli ostatni też zakończy się niepowodzeniem, to trudno.
+//: Funkcja `try` przystępuje do wykonania bloków kodu, a jeżeli którykolwiek z nich zakończy się niepowodzeniem, wykonuje ostatni.
 //:
 //: # Przykład
 //: ```
@@ -1013,9 +1013,7 @@ static Result<Value> builtin_set_len(Interpreter &interpreter, std::vector<Value
 	return errors::Unsupported_Types_For {
 		.type = errors::Unsupported_Types_For::Function,
 		.name = "set_len",
-		.possibilities = {
-			"TODO"
-		}
+		.possibilities = {}
 	};
 }
 
@@ -1581,6 +1579,23 @@ static Result<Value> builtin_call(Interpreter &i, std::vector<Value> args)
 	return callable(i, std::move(args));
 }
 
+//: Ustaw wyjście MIDI w danym kontekście na dany port
+//:
+//: Dostępne opcje to numer portu, symbol `'virtual` tworzacy port wirtualny MIDI oraz
+//: `'serial` łączący z wyjściem CV na dedykowanym urządzeniu
+//:
+//: Podobnie jak funkcje `bpm` czy `oct` wywołanie bez podania argumentów zwraca aktualnie wybrany port
+//:
+//: # Przykład
+//:
+//: ```
+//: > port 0, play c e g
+//: > call port
+//: 0
+//: > port 'serial
+//: > call port
+//: serial
+//: ```
 static Result<Value> builtin_port(Interpreter &interpreter, std::vector<Value> args)
 {
 	if (args.empty()) {
@@ -1628,6 +1643,12 @@ static Result<Value> builtin_port(Interpreter &interpreter, std::vector<Value> a
 	unimplemented();
 }
 
+//: Rozpocznij równo z podłączonymi instancjami w sieci dane fragment kodu
+//:
+//: # Przykład
+//: ```
+//: start (play (c, e, g))
+//: ```
 static Result<Value> builtin_start(Interpreter &interpreter, std::span<Ast> args)
 {
 	interpreter.starter.start();
@@ -1641,6 +1662,14 @@ static Result<Value> builtin_start(Interpreter &interpreter, std::span<Ast> args
 	return result;
 }
 
+//: Wypisz liczbę podłączonych instancji w sieci
+//:
+//: # Przykład
+//:
+//: ```
+//: > call peers
+//: 0
+//: ```
 static Result<Value> builtin_peers(Interpreter &interpreter, std::vector<Value>)
 {
 	return Number(interpreter.starter.peers());
