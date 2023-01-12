@@ -90,11 +90,27 @@ Result<Value> Interpreter::eval(Ast &&ast)
 			if (ast.token.source == "=") {
 				auto lhs = std::move(ast.arguments.front());
 				auto rhs = std::move(ast.arguments.back());
-				ensure(lhs.type == Ast::Type::Literal && lhs.token.type == Token::Type::Symbol,
-					"Currently LHS of assigment must be an identifier"); // TODO(assert)
+
+				if (lhs.type != Ast::Type::Literal || lhs.token.type != Token::Type::Symbol) {
+					return Error {
+						.details = errors::Unsupported_Types_For {
+							.type = errors::Unsupported_Types_For::Operator,
+							.name = "=",
+							.possibilities = {},
+						},
+						.location = ast.token.location,
+					};
+				}
 
 				Value *v = env->find(std::string(lhs.token.source));
-				ensure(v, "Cannot resolve variable: "s + std::string(lhs.token.source)); // TODO(assert)
+				if (v == nullptr) {
+					return Error {
+						.details = errors::Missing_Variable {
+							.name = std::string(lhs.token.source)
+						},
+						.location = lhs.location,
+					};
+				}
 				return *v = Try(eval(std::move(rhs)).with_location(ast.token.location));
 			}
 
@@ -118,7 +134,7 @@ Result<Value> Interpreter::eval(Ast &&ast)
 					auto op = operators.find(std::string(ast.token.source.substr(0, ast.token.source.size()-1)));
 					if (op == operators.end()) {
 						return Error {
-							.details = errors::Undefined_Operator { .op = ast.token.source },
+							.details = errors::Undefined_Operator { .op = std::string(ast.token.source) },
 							.location = ast.token.location
 						};
 					}
@@ -137,7 +153,7 @@ Result<Value> Interpreter::eval(Ast &&ast)
 				}
 
 				return Error {
-					.details = errors::Undefined_Operator { .op = ast.token.source },
+					.details = errors::Undefined_Operator { .op = std::string(ast.token.source) },
 					.location = ast.token.location
 				};
 			}

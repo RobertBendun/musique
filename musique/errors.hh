@@ -45,19 +45,19 @@ namespace errors
 	/// When user forgot semicolon or brackets
 	struct Expected_Expression_Separator_Before
 	{
-		std::string_view what;
+		std::string what;
 	};
 
 	/// When some keywords are not allowed in given context
 	struct Unexpected_Keyword
 	{
-		std::string_view keyword;
+		std::string keyword;
 	};
 
 	/// When user tried to use operator that was not defined
 	struct Undefined_Operator
 	{
-		std::string_view op;
+		std::string op;
 	};
 
 	/// When user tries to use operator with wrong arity of arguments
@@ -67,7 +67,7 @@ namespace errors
 		enum Type { Operator, Function } type;
 
 		/// Name of operation
-		std::string_view name;
+		std::string name;
 
 		/// Arity that was expected by given operation
 		size_t expected_arity;
@@ -79,15 +79,15 @@ namespace errors
 	/// When user tried to call something that can't be called
 	struct Not_Callable
 	{
-		std::string_view type;
+		std::string type;
 	};
 
 	/// When user provides literal where identifier should be
 	struct Literal_As_Identifier
 	{
-		std::string_view type_name;
-		std::string_view source;
-		std::string_view context;
+		std::string type_name;
+		std::string source;
+		std::string context;
 	};
 
 	/// When user provides wrong type for given operation
@@ -108,6 +108,10 @@ namespace errors
 	{
 		/// Name of variable
 		std::string name;
+
+		// TODO std::vector<std::string> similar_names;
+		// Pull all names reachable from given point and similar onces
+		// put in this array
 	};
 
 	/// When user tries to invoke some MIDI action but haven't established MIDI connection
@@ -155,13 +159,13 @@ namespace errors
 		struct Unexpected_Token
 		{
 			/// Type of the token
-			std::string_view type;
+			std::string type;
 
 			/// Source of the token
-			std::string_view source;
+			std::string source;
 
 			/// Where this token was encountered that was unexpected?
-			std::string_view when;
+			std::string when;
 		};
 	}
 

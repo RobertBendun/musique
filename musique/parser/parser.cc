@@ -248,7 +248,7 @@ Result<Ast> Parser::parse_atomic_expression()
 		// So we need to explicitly allow only keywords that are also literals
 		if (std::find(Literal_Keywords.begin(), Literal_Keywords.end(), peek()->source) == Literal_Keywords.end()) {
 			return Error {
-				.details = errors::Unexpected_Keyword { .keyword = peek()->source },
+				.details = errors::Unexpected_Keyword { .keyword = std::string(peek()->source) },
 				.location = peek()->location
 			};
 		}
@@ -313,8 +313,8 @@ Result<Ast> Parser::parse_atomic_expression()
 					if (success && invalid_token) {
 						return Error {
 							.details = errors::Literal_As_Identifier {
-								.type_name = type_name(invalid_token->type),
-								.source = invalid_token->source,
+								.type_name = std::string(type_name(invalid_token->type)),
+								.source = std::string(invalid_token->source),
 								.context = "block parameter list"
 							},
 							.location = invalid_token->location
@@ -329,7 +329,7 @@ Result<Ast> Parser::parse_atomic_expression()
 		return Error {
 			.details = errors::Wrong_Arity_Of {
 				.type = errors::Wrong_Arity_Of::Operator,
-				.name = peek()->source,
+				.name = std::string(peek()->source),
 				.expected_arity = 2, // TODO This should be resolved based on operator
 				.actual_arity = 0,
 			},
@@ -340,8 +340,8 @@ Result<Ast> Parser::parse_atomic_expression()
 	default:
 		return Error {
 			.details = errors::internal::Unexpected_Token {
-				.type = type_name(peek()->type),
-				.source = peek()->source,
+				.type = std::string(type_name(peek()->type)),
+				.source = std::string(peek()->source),
 				.when = "atomic expression parsing"
 			},
 			.location = peek()->location
@@ -355,8 +355,8 @@ Result<Ast> Parser::parse_identifier_with_trailing_separators()
 		// TODO Specific error message
 		return Error {
 			.details = errors::internal::Unexpected_Token {
-				.type = type_name(peek()->type),
-				.source = peek()->source,
+				.type = std::string(type_name(peek()->type)),
+				.source = std::string(peek()->source),
 				.when = "identifier parsing"
 			},
 			.location = peek()->location
@@ -373,8 +373,8 @@ Result<Ast> Parser::parse_identifier()
 		// TODO Specific error message
 		return Error {
 			.details = errors::internal::Unexpected_Token {
-				.type = type_name(peek()->type),
-				.source = peek()->source,
+				.type = std::string(type_name(peek()->type)),
+				.source = std::string(peek()->source),
 				.when = "identifier parsing"
 			},
 			.location = peek()->location
