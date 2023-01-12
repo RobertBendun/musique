@@ -91,8 +91,16 @@ Result<Value> Interpreter::eval(Ast &&ast)
 			if (ast.token.source == "=") {
 				auto lhs = std::move(ast.arguments.front());
 				auto rhs = std::move(ast.arguments.back());
-				ensure(lhs.type == Ast::Type::Literal && lhs.token.type == Token::Type::Symbol,
-					"Currently LHS of assigment must be an identifier"); // TODO(assert)
+
+				if (lhs.type != Ast::Type::Literal || lhs.token.type != Token::Type::Symbol) {
+					return Error {
+						.details = errors::Unsupported_Types_For {
+							.type = errors::Unsupported_Types_For::Operator,
+							.name = "=",
+						},
+						.location = ast.token.location,
+					};
+				}
 
 				Value *v = env->find(std::string(lhs.token.source));
 				ensure(v, "Cannot resolve variable: "s + std::string(lhs.token.source)); // TODO(assert)

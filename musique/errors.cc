@@ -268,7 +268,7 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 
 		[&](errors::Unsupported_Types_For const& err) {
 			switch (err.type) {
-			case errors::Unsupported_Types_For::Function:
+			break; case errors::Unsupported_Types_For::Function:
 				{
 					os << "I tried to call function '" << err.name << "' but you gave me wrong types for it!\n";
 
@@ -281,9 +281,26 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 						os << "  " << possibility << '\n';
 					}
 				}
-				break;
-			case errors::Unsupported_Types_For::Operator:
+			break; case errors::Unsupported_Types_For::Operator:
 				{
+					if (err.name == "=") {
+						os << "Operator '=' expects name on it's left side.\n";
+						os << "\n";
+
+						print_error_line(loc);
+
+						pretty::begin_comment(os);
+						os << "If you want to test if two values are equal use '==' operator:\n";
+					  // TODO Maybe we can use code serialization mechanism to print here actual equation
+					  // but transformed to account for use of == operator. If produced string is too big
+					  // then we can skip and show this silly example
+						os << "  3 == 4\n";
+						os << "If you want to change element of an array use update function:\n";
+						os << "  instead of a[i] = x you may write a = update a i x\n";
+						pretty::end(os);
+						return;
+					}
+
 					os << "I tried and failed to evaluate operator '" << err.name << "' due to values with wrong types provided\n";
 					os << "Make sure that both values matches one of supported signatures listed below!\n";
 					os << '\n';
@@ -297,7 +314,6 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 						os << "  " << possibility << '\n';
 					}
 				}
-				break;
 			}
 		},
 
