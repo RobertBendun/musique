@@ -201,7 +201,12 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 			print_error_line(loc);
 
 			os << "Variables can only be references in scope (block) where they been created\n";
-			os << "or from parent blocks to variable block\n";
+			os << "or from parent blocks to variable block\n\n";
+
+			pretty::begin_comment(os);
+			os << "Maybe you want to defined it. To do this you must use ':=' operator.\n";
+			os << "   name := value\n";
+			pretty::end(os);
 		},
 		[&](errors::Unrecognized_Character const& err) {
 			os << "I encountered character in the source code that was not supposed to be here.\n";
