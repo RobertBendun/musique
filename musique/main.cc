@@ -167,7 +167,8 @@ struct Runner
 
 	Interpreter interpreter;
 	std::shared_ptr<serialport::State> serial_state;
-	std::optional<std::jthread> serial_event_loop;
+	std::thread serial_event_loop;
+	std::atomic<bool> serial_event_loop_stop = false;
 
 	/// Setup interpreter and midi connection with given port
 	explicit Runner(std::optional<unsigned> output_port)
@@ -183,8 +184,8 @@ struct Runner
 		interpreter.serialport = serial_state;
 		serialport::initialize();
 
-		serial_event_loop = std::jthread([this](std::stop_token token) mutable{
-			serialport::event_loop(token, *serial_state);
+		serial_event_loop = std::thread([this]() mutable {
+			serialport::event_loop(serial_event_loop_stop, *serial_state);
 		});
 
 		Env::global->force_define("say", +[](Interpreter &interpreter, std::vector<Value> args) -> Result<Value> {
@@ -206,6 +207,13 @@ struct Runner
 	Runner(Runner &&) = delete;
 	Runner& operator=(Runner const&) = delete;
 	Runner& operator=(Runner &&) = delete;
+
+	~Runner() {
+		serial_event_loop_stop = true;
+		if (serial_event_loop.joinable()) {
+			serial_event_loop.join();
+		}
+	}
 
 	/// Consider given input file as new definition of parametless function
 	///

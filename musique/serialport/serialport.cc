@@ -38,9 +38,9 @@ namespace serialport{
         return 8;
     }
 
-    void event_loop(std::stop_token token, State &state)
+    void event_loop(std::atomic<bool> &stop, State &state)
     {
-        while(!token.stop_requested()){
+        while(!stop){
             try {
                 /// Search for the right device
                 auto const ports = serial::list_ports();
@@ -61,18 +61,18 @@ namespace serialport{
                         }
                     }
                 }
-                
+
 
                 /// Start connection
                 serial::Serial serial_conn(connection_port, 115200, serial::Timeout::simpleTimeout(1000));
 
-                
+
 
                 /*if(serial_conn.isOpen())
                     std::cout << "[SERIAL] Serial open\n";
                 else
                     std::cout << "[SERIAL] Serial not open\n";
-                
+
                 std::cout << "[SERIAL] commence serial communication\n";
                 */
 

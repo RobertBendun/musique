@@ -3,7 +3,6 @@
 
 #include <string>
 #include <serial/serial.h>
-#include <stop_token>
 #include <memory>
 #include <array>
 #include <atomic>
@@ -24,9 +23,9 @@ namespace serialport{
         void send(uint8_t message_type, uint8_t note_number);
         void set(unsigned position, std::uint32_t value);
     };
-    
+
     void initialize();
-    void event_loop(std::stop_token token, State &state);
+    void event_loop(std::atomic<bool> &stop, State &state);
     std::uint8_t get_byte();
 }
 
