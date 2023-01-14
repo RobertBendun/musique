@@ -84,6 +84,9 @@ static T pop(std::span<char const*> &span)
 		"    --ast\n"
 		"      prints ast for given code\n"
 		"\n"
+		"    -v,--version\n"
+		"      prints Musique interpreter version\n"
+		"\n"
 		"Thanks to:\n"
 		"  Sy Brand, https://sybrand.ink/, creator of tl::expected https://github.com/TartanLlama/expected\n"
 		"  Justine Tunney, https://justinetunney.com, creator of bestline readline library https://github.com/jart/bestline\n"
@@ -289,6 +292,12 @@ static Result<bool> handle_repl_session_commands(std::string_view input, Runner 
 				std::exit(0);
 			}
 		},
+		Command { "version",
+			+[](Runner&, std::optional<std::string_view>) -> std::optional<Error> {
+				std::cout << Musique_Version << std::endl;
+				return {};
+			},
+		},
 		Command { "clear",
 			+[](Runner&, std::optional<std::string_view>) -> std::optional<Error> {
 				std::cout << "\x1b[1;1H\x1b[2J" << std::flush;
@@ -422,6 +431,11 @@ static std::optional<Error> Main(std::span<char const*> args)
 		if (arg == "--repl" || arg == "-I" || arg == "--interactive")  {
 			enable_repl = true;
 			continue;
+		}
+
+		if (arg == "--version" || arg == "-v") {
+			std::cout << Musique_Version << std::endl;
+			return {};
 		}
 
 		if (arg == "-o" || arg == "--output") {

@@ -1,7 +1,18 @@
 MAKEFLAGS="-j $(grep -c ^processor /proc/cpuinfo)"
 
+MAJOR := 0
+MINOR := 3
+PATCH := 1
+COMMIT := gc$(shell git rev-parse --short HEAD 2>/dev/null)
+
+ifeq ($(COMMIT),gc)
+	COMMIT = "gcunknown"
+endif
+
+VERSION := $(MAJOR).$(MINOR).$(PATCH)-dev+$(COMMIT)
+
 CXXFLAGS:=$(CXXFLAGS) -std=c++20 -Wall -Wextra -Werror=switch -Werror=return-type -Werror=unused-result
-CPPFLAGS:=$(CPPFLAGS) -Ilib/expected/ -I. -Ilib/bestline/ -Ilib/rtmidi/
+CPPFLAGS:=$(CPPFLAGS) -Ilib/expected/ -I. -Ilib/bestline/ -Ilib/rtmidi/ -DMusique_Version='"$(VERSION)"'
 LDFLAGS=-flto
 LDLIBS= -lpthread
 

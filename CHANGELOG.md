@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Builtin function documentation generation from C++ Musique implementation source code
 - New builtins: digits
 - Negative numbers!
+- Version command via `:version` in REPL or `--version`, `-v` in command line.
 
 ### Removed
 
