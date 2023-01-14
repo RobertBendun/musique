@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Introduced start synchronization with builtins: `peers` and `start`
 - Connection with MIDI ports via parameters dropped in favour of function using context system: `port`
 - Listing ports via REPL command: `:ports` instead of commandline parameter
+- Building release with `make musique.zip` using Docker
 
 ### Changed
 
@@ -23,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-- Release builder, since it's separate part of the project
+- Release script builder
 
 ### Fixed
 

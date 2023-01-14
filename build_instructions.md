@@ -2,7 +2,7 @@
 
 ## Linux
 
-Consult README.md.
+Use your local C++ compiler (supporting C++20) and ALSA dev libraries or included Dockerfile.
 
 ## MacOS
 
@@ -23,5 +23,5 @@ Windows support is provided via cross compilation. Mingw GCC C++ compiler is req
 $ make os=windows
 ```
 
-will create `bin/musique.exe` that can be used on x86_64 Windows operating systems.
+will create `bin/musique.exe` that can be used on x86_64 Windows operating systems or use included Dockerfile
 

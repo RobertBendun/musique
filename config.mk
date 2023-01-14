@@ -6,7 +6,7 @@ PATCH := 1
 COMMIT := gc$(shell git rev-parse --short HEAD 2>/dev/null)
 
 ifeq ($(COMMIT),gc)
-	COMMIT = "gcunknown"
+	COMMIT = gcunknown
 endif
 
 VERSION := $(MAJOR).$(MINOR).$(PATCH)-dev+$(COMMIT)

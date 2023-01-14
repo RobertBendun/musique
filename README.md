@@ -1,5 +1,7 @@
 # Musique interpreter
 
+Reference implementation of Musique programming language.
+
 ## Building
 
 Reference [`build_instructions.md`](./build_instructions.md).
