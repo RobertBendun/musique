@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Connection with MIDI ports via parameters dropped in favour of function using context system: `port`
 - Listing ports via REPL command: `:ports` instead of commandline parameter
 
+### Changed
+
+- Readme from Polish to English
+
 ### Removed
 
 - Release builder, since it's separate part of the project
