@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Negative numbers!
 - Version command via `:version` in REPL or `--version`, `-v` in command line.
 - Introduced start synchronization with builtins: `peers` and `start`
+- Connection with MIDI ports via parameters dropped in favour of function using context system: `port`
+- Listing ports via REPL command: `:ports` instead of commandline parameter
 
 ### Removed
 

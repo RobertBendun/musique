@@ -68,11 +68,6 @@ static T pop(std::span<char const*> &span)
 		"usage: musique <options> [filename]\n"
 		"  where filename is path to file with Musique code that will be executed\n"
 		"  where options are:\n"
-		"    -o,--output PORT\n"
-		"      provides output port, a place where Musique produces MIDI messages\n"
-		"    -l,--list\n"
-		"      lists all available MIDI ports and quit\n"
-		"\n"
 		"    -c,--run CODE\n"
 		"      executes given code\n"
 		"    -I,--interactive,--repl\n"
@@ -105,6 +100,7 @@ void print_repl_help()
 		":!<command> - allows for execution of any shell command\n"
 		":clear - clears screen\n"
 		":load <file> - loads file into Musique session\n"
+		":ports - print list available ports"
 		;
 }
 
@@ -164,33 +160,16 @@ struct Runner
 {
 	static inline Runner *the;
 
-	midi::Rt_Midi midi;
 	Interpreter interpreter;
 
 	/// Setup interpreter and midi connection with given port
-	explicit Runner(std::optional<unsigned> output_port)
-		: midi()
-		, interpreter{}
+	explicit Runner()
+		: interpreter{}
 	{
 		ensure(the == nullptr, "Only one instance of runner is supported");
 		the = this;
 
-		interpreter.midi_connection = &midi;
-		if (output_port) {
-			midi.connect_output(*output_port);
-			if (!quiet_mode) {
-				std::cout << "Connected MIDI output to port " << *output_port << ". Ready to play!" << std::endl;
-			}
-		} else {
-			bool connected_to_existing_port = midi.connect_or_create_output();
-			if (!quiet_mode) {
-				if (connected_to_existing_port) {
-					std::cout << "Connected MIDI output to port " << midi.output->getPortName(0) << std::endl;
-				} else {
-					std::cout << "Created new MIDI output port 'Musique'. Ready to play!" << std::endl;
-				}
-			}
-		}
+		interpreter.current_context->connect(std::nullopt);
 
 		Env::global->force_define("say", +[](Interpreter &interpreter, std::vector<Value> args) -> Result<Value> {
 			for (auto it = args.begin(); it != args.end(); ++it) {
@@ -340,6 +319,14 @@ static Result<bool> handle_repl_session_commands(std::string_view input, Runner 
 				return std::nullopt;
 			}
 		},
+
+		Command {
+			"ports",
+			+[](Runner&, std::optional<std::string_view>) -> std::optional<Error> {
+				midi::Rt_Midi{}.list_ports(std::cout);
+				return {};
+			},
+		},
 	};
 
 	if (input.starts_with('!')) {
@@ -384,9 +371,6 @@ static std::optional<Error> Main(std::span<char const*> args)
 		std::string_view argument;
 	};
 
-	// Arbitraly chosen for conviniance of the author
-	std::optional<unsigned> output_port{};
-
 	std::vector<Run> runnables;
 
 	while (not args.empty()) {
@@ -395,11 +379,6 @@ static std::optional<Error> Main(std::span<char const*> args)
 		if (arg == "-" || !arg.starts_with('-')) {
 			runnables.push_back({ .type = Run::File, .argument = std::move(arg) });
 			continue;
-		}
-
-		if (arg == "-l" || arg == "--list") {
-			midi::Rt_Midi{}.list_ports(std::cout);
-			return {};
 		}
 
 		if (arg == "-c" || arg == "--run") {
@@ -439,15 +418,6 @@ static std::optional<Error> Main(std::span<char const*> args)
 			return {};
 		}
 
-		if (arg == "-o" || arg == "--output") {
-			if (args.empty()) {
-				std::cerr << "musique: error: option " << arg << " requires an argument" << std::endl;
-				std::exit(1);
-			}
-			output_port = pop<unsigned>(args);
-			continue;
-		}
-
 		if (arg == "-h" || arg == "--help") {
 			usage();
 		}
@@ -456,7 +426,7 @@ static std::optional<Error> Main(std::span<char const*> args)
 		std::exit(1);
 	}
 
-	Runner runner{output_port};
+	Runner runner;
 
 	for (auto const& [type, argument] : runnables) {
 		if (type == Run::Argument) {

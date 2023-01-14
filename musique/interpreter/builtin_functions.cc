@@ -322,13 +322,13 @@ Forward_Implementation(builtin_down, range<Range_Direction::Down>)
 static auto builtin_program_change(Interpreter &i, std::vector<Value> args) -> Result<Value> {
 	if (auto a = match<Number>(args)) {
 		auto [program] = *a;
-		i.midi_connection->send_program_change(0, program.as_int());
+		i.current_context->port->send_program_change(0, program.as_int());
 		return Value{};
 	}
 
 	if (auto a = match<Number, Number>(args)) {
 		auto [chan, program] = *a;
-		i.midi_connection->send_program_change(chan.as_int(), program.as_int());
+		i.current_context->port->send_program_change(chan.as_int(), program.as_int());
 		return Value{};
 	}
 
@@ -430,7 +430,7 @@ static Result<Value> builtin_par(Interpreter &interpreter, std::vector<Value> ar
 
 	for (auto const& note : chord->notes) {
 		if (note.base) {
-			interpreter.midi_connection->send_note_on(0, *note.into_midi_note(), 127);
+			interpreter.current_context->port->send_note_on(0, *note.into_midi_note(), 127);
 		}
 	}
 
@@ -438,7 +438,7 @@ static Result<Value> builtin_par(Interpreter &interpreter, std::vector<Value> ar
 
 	for (auto const& note : chord->notes) {
 		if (note.base) {
-			interpreter.midi_connection->send_note_off(0, *note.into_midi_note(), 127);
+			interpreter.current_context->port->send_note_off(0, *note.into_midi_note(), 127);
 		}
 	}
 	return result;
@@ -552,8 +552,8 @@ static Result<Value> builtin_sim(Interpreter &interpreter, std::vector<Value> ar
 			start_time = dur;
 		}
 		switch (instruction.action) {
-		break; case Instruction::On:  interpreter.midi_connection->send_note_on(0, instruction.note, 127);
-		break; case Instruction::Off: interpreter.midi_connection->send_note_off(0, instruction.note, 127);
+		break; case Instruction::On:  interpreter.current_context->port->send_note_on(0, instruction.note, 127);
+		break; case Instruction::Off: interpreter.current_context->port->send_note_off(0, instruction.note, 127);
 		}
 	}
 
@@ -1377,7 +1377,7 @@ static Result<Value> builtin_note_on(Interpreter &interpreter, std::vector<Value
 {
 	if (auto a = match<Number, Number, Number>(args)) {
 		auto [chan, note, vel] = *a;
-		interpreter.midi_connection->send_note_on(chan.as_int(), note.as_int(), vel.as_int());
+		interpreter.current_context->port->send_note_on(chan.as_int(), note.as_int(), vel.as_int());
 		return Value {};
 	}
 
@@ -1385,7 +1385,7 @@ static Result<Value> builtin_note_on(Interpreter &interpreter, std::vector<Value
 		auto [chan, chord, vel] = *a;
 		for (auto note : chord.notes) {
 			note = interpreter.current_context->fill(note);
-			interpreter.midi_connection->send_note_on(chan.as_int(), *note.into_midi_note(), vel.as_int());
+			interpreter.current_context->port->send_note_on(chan.as_int(), *note.into_midi_note(), vel.as_int());
 		}
 		return Value{};
 	}
@@ -1414,7 +1414,7 @@ static Result<Value> builtin_note_off(Interpreter &interpreter, std::vector<Valu
 {
 	if (auto a = match<Number, Number>(args)) {
 		auto [chan, note] = *a;
-		interpreter.midi_connection->send_note_off(chan.as_int(), note.as_int(), 127);
+		interpreter.current_context->port->send_note_off(chan.as_int(), note.as_int(), 127);
 		return Value {};
 	}
 
@@ -1423,7 +1423,7 @@ static Result<Value> builtin_note_off(Interpreter &interpreter, std::vector<Valu
 
 		for (auto note : chord.notes) {
 			note = interpreter.current_context->fill(note);
-			interpreter.midi_connection->send_note_off(chan.as_int(), *note.into_midi_note(), 127);
+			interpreter.current_context->port->send_note_off(chan.as_int(), *note.into_midi_note(), 127);
 		}
 		return Value{};
 	}
@@ -1601,6 +1601,39 @@ static Result<Value> builtin_peers(Interpreter &interpreter, std::vector<Value>)
 	return Number(interpreter.starter.peers());
 }
 
+static Result<Value> builtin_port(Interpreter &interpreter, std::vector<Value> args)
+{
+	if (args.empty()) {
+		for (auto const& [key, port] : Context::established_connections) {
+			if (port == interpreter.current_context->port) {
+				return std::visit(Overloaded {
+					[](midi::connections::Virtual_Port) { return Value(Symbol("virtual")); },
+					[](midi::connections::Established_Port port) { return Value(Number(port)); },
+				}, key);
+			}
+		}
+		unreachable();
+	}
+
+	if (auto a = match<Number>(args)) {
+		auto [port_number] = *a;
+		Try(interpreter.current_context->connect(port_number.floor().as_int()));
+		return {};
+	}
+
+	if (auto a = match<Symbol>(args)) {
+		auto [port_type] = *a;
+		if (port_type == "virtual") {
+			Try(interpreter.current_context->connect(std::nullopt));
+			return {};
+		}
+
+		unimplemented();
+	}
+
+	unimplemented();
+}
+
 void Interpreter::register_builtin_functions()
 {
 	auto &global = *Env::global;
@@ -1635,6 +1668,7 @@ void Interpreter::register_builtin_functions()
 	global.force_define("pgmchange",      builtin_program_change);
 	global.force_define("pick",           builtin_pick);
 	global.force_define("play",           builtin_play);
+	global.force_define("port",           builtin_port);
 	global.force_define("program_change", builtin_program_change);
 	global.force_define("range",          builtin_range);
 	global.force_define("reverse",        builtin_reverse);
