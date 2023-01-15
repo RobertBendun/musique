@@ -37,7 +37,7 @@ try {
 bool midi::Rt_Midi::connect_or_create_output()
 try {
 	output.emplace();
-	if (auto pc = output->getPortCount()) {
+	if (output->getPortCount()) {
 		output->openPort(0);
 		return true;
 	}
