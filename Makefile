@@ -47,13 +47,13 @@ doc/wprowadzenie.html: doc/wprowadzenie.md
 doc/functions.html: musique/interpreter/builtin_functions.cc scripts/document-builtin.py
 	scripts/document-builtin.py -o $@ $<
 
-musique.zip: doc/* $(Sources) scripts/*
-	docker build -t musique-builder .
+musique.zip:
+	docker build -t musique-builder --build-arg "VERSION=$(VERSION)" .
 	docker create --name musique musique-builder
 	docker cp musique:/musique.zip musique.zip
 	docker rm -f musique
 
-.PHONY: clean doc doc-open all test unit-tests release install
+.PHONY: clean doc doc-open all test unit-tests release install musique.zip
 
 $(shell mkdir -p $(subst musique/,bin/$(os)/,$(shell find musique/* -type d)))
 $(shell mkdir -p $(subst musique/,bin/$(os)/debug/,$(shell find musique/* -type d)))

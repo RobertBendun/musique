@@ -1,5 +1,6 @@
 FROM ubuntu:20.04 AS linux
 ARG TZ=Europe/Warsaw
+ARG VERSION
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 RUN apt update && apt install -y make software-properties-common zip unzip git
 RUN add-apt-repository ppa:ubuntu-toolchain-r/test
@@ -11,10 +12,11 @@ COPY .git /src/.git/
 COPY musique /src/musique/
 COPY lib /src/lib/
 COPY scripts /src/scripts/
-RUN make clean && make CC=gcc-11 CXX=g++-11
+RUN make clean && make CC=gcc-11 CXX=g++-11 VERSION="$VERSION"
 
 
 FROM ubuntu:22.04 AS windows
+ARG VERSION
 RUN apt update && apt install -y git make gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64
 RUN mkdir -p /src/
 WORKDIR /src/
@@ -23,7 +25,7 @@ COPY .git /src/.git/
 COPY musique /src/musique/
 COPY lib /src/lib/
 COPY scripts /src/scripts/
-RUN make clean && make os=windows CC=x86_64-w64-mingw32-gcc-posix CXX=x86_64-w64-mingw32-g++-posix
+RUN make clean && make os=windows CC=x86_64-w64-mingw32-gcc-posix CXX=x86_64-w64-mingw32-g++-posix VERSION="$VERSION"
 
 
 FROM ubuntu:22.04 AS release
