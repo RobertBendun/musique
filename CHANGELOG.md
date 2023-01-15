@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ceil`, `round`, `floor` didn't behave well with negative numbers
 - `duration` wasn't filling note length from context and summed all notes inside chord, when it should take max
 - `try` evaluated arguments too quickly
+- Nested arithmetic expression with undefined operator reports proper error and don't crash
 
 ## [0.3.1]
 

@@ -7,7 +7,7 @@
 
 static Ast wrap_if_several(std::vector<Ast> &&ast, Ast(*wrapper)(std::vector<Ast>));
 
-static usize precedense(std::string_view op);
+static std::optional<usize> precedense(std::string_view op);
 
 static inline bool is_identifier_looking(Token::Type type)
 {
@@ -159,8 +159,23 @@ Result<Ast> Parser::parse_rhs_of_infix_expression(Ast lhs)
 	}
 
 	auto op = consume();
+	auto lhs_precedense = precedense(lhs.token.source);
+	auto op_precedense  = precedense(op.source);
 
-	if (precedense(lhs.token.source) >= precedense(op.source)) {
+	if (!lhs_precedense) {
+		return Error {
+			.details = errors::Undefined_Operator { .op = std::string(lhs.token.source), },
+			.location = lhs.token.location,
+		};
+	}
+	if (!op_precedense) {
+		return Error {
+			.details = errors::Undefined_Operator { .op = std::string(op.source), },
+			.location = op.location,
+		};
+	}
+
+	if (*lhs_precedense >= *op_precedense) {
 		lhs.arguments.emplace_back(std::move(rhs));
 		Ast ast;
 		ast.location = op.location;
@@ -544,7 +559,7 @@ constexpr bool one_of(std::string_view id, auto const& ...args)
 	return ((id == args) || ...);
 }
 
-static usize precedense(std::string_view op)
+static std::optional<usize> precedense(std::string_view op)
 {
 	// Operators that are not included below are
 	//  postfix index operator [] since it have own precedense rules and is not binary expression but its own kind of expression
@@ -562,7 +577,7 @@ static usize precedense(std::string_view op)
 	if (one_of(op, "*", "/", "%", "&")) return 400;
 	if (one_of(op, "**")) return 500;
 
-	unreachable();
+	return std::nullopt;
 }
 
 bool operator==(Ast const& lhs, Ast const& rhs)
