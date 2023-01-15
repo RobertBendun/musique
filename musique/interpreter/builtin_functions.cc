@@ -1583,6 +1583,12 @@ static Result<Value> builtin_call(Interpreter &i, std::vector<Value> args)
 	return callable(i, std::move(args));
 }
 
+//: Rozpocznij równo z podłączonymi instancjami w sieci dane fragment kodu
+//:
+//: # Przykład
+//: ```
+//: start (play (c, e, g))
+//: ```
 static Result<Value> builtin_start(Interpreter &interpreter, std::span<Ast> args)
 {
 	interpreter.starter.start();
@@ -1596,11 +1602,35 @@ static Result<Value> builtin_start(Interpreter &interpreter, std::span<Ast> args
 	return result;
 }
 
+//: Wypisz liczbę podłączonych instancji w sieci
+//:
+//: # Przykład
+//:
+//: ```
+//: > call peers
+//: 0
+//: ```
 static Result<Value> builtin_peers(Interpreter &interpreter, std::vector<Value>)
 {
 	return Number(interpreter.starter.peers());
 }
 
+//: Ustaw wyjście MIDI w danym kontekście na dany port
+//:
+//: Dostępne opcje to numer portu oraz symbol `'virtual` tworzacy port wirtualny MIDI
+//:
+//: Podobnie jak funkcje `bpm` czy `oct` wywołanie bez podania argumentów zwraca aktualnie wybrany port
+//:
+//: # Przykład
+//:
+//: ```
+//: > port 0, play c e g
+//: > call port
+//: 0
+//: > port 'virtual
+//: > call port
+//: virtual
+//: ```
 static Result<Value> builtin_port(Interpreter &interpreter, std::vector<Value> args)
 {
 	if (args.empty()) {
