@@ -6,7 +6,7 @@
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; Copyright (c) 2023 STMicroelectronics.
+  * <h2><center>&copy; Copyright (c) 2022 STMicroelectronics.
   * All rights reserved.</center></h2>
   *
   * This software component is licensed by ST under BSD 3-Clause license,
@@ -42,6 +42,11 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
+
+extern uint8_t rx;
+extern uint8_t rx_buf[128];
+extern uint8_t head;
+extern uint8_t tail;
 
 /* USER CODE END PV */
 
@@ -225,6 +230,12 @@ void USART2_IRQHandler(void)
   /* USER CODE END USART2_IRQn 0 */
   HAL_UART_IRQHandler(&huart2);
   /* USER CODE BEGIN USART2_IRQn 1 */
+
+  if ((head+1)%128 != tail){
+	  rx_buf[head] = rx;
+	  head = (head+1)%128;
+  }
+  HAL_UART_Receive_IT(&huart2, &rx, 1);
 
   /* USER CODE END USART2_IRQn 1 */
 }

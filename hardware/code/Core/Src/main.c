@@ -6,7 +6,7 @@
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; Copyright (c) 2023 STMicroelectronics.
+  * <h2><center>&copy; Copyright (c) 2022 STMicroelectronics.
   * All rights reserved.</center></h2>
   *
   * This software component is licensed by ST under BSD 3-Clause license,
@@ -36,6 +36,8 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
+#define min(a,b) (((a) < (b)) ? (a) : (b))
+#define max(a,b) (((a) > (b)) ? (a) : (b))
 
 /* USER CODE END PM */
 
@@ -47,6 +49,28 @@ DAC_HandleTypeDef hdac1;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
+
+uint32_t adc_vals_old[2] = {};
+uint32_t adc_vals[2];
+
+uint8_t rx = 0;
+uint8_t rx_buf[128] = {0};
+int tail = 0, head = 0;
+
+uint8_t notes[128] = {0};
+uint8_t note_priority = 1;
+uint32_t tones[] = {1508, 1587, 1666, 1745, 1824, 1903, 1986, 2065, 2146, 2225, 2304, 2383,
+		1508, 1587, 1666, 1745, 1824, 1903, 1986, 2065, 2146, 2225, 2304, 2383,
+		1508, 1587, 1666, 1745, 1824, 1903, 1986, 2065, 2146, 2225, 2304, 2383,
+		1508, 1587, 1666, 1745, 1824, 1903, 1986, 2065, 2146, 2225, 2304, 2383,
+		1508, 1587, 1666, 1745, 1824, 1903, 1986, 2065, 2146, 2225, 2304, 2383,
+		/*c4*/ 1508, 1587, 1666, 1745, 1824, 1903, 1986, 2065, 2146, 2225, 2304, 2383,
+		1508, 1587, 1666, 1745, 1824, 1903, 1986, 2065, 2146, 2225, 2304, 2383,
+		1508, 1587, 1666, 1745, 1824, 1903, 1986, 2065, 2146, 2225, 2304, 2383,
+		1508, 1587, 1666, 1745, 1824, 1903, 1986, 2065, 2146, 2225, 2304, 2383,
+		1508, 1587, 1666, 1745, 1824, 1903, 1986, 2065, 2146, 2225, 2304, 2383,
+		1508, 1587, 1666, 1745, 1824, 1903, 1986, 2065, 2146, 2225, 2304, 2383,
+		1508, 1587, 1666, 1745, 1824, 1903, 1986, 2065};
 
 /* USER CODE END PV */
 
@@ -62,6 +86,69 @@ static void MX_DAC1_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+uint32_t endian_swap(uint32_t value)
+{
+	_Static_assert(sizeof(uint32_t) == 4, "I can't imagine world where this is false");
+	char buf[sizeof(uint32_t)];
+	memcpy(buf, &value, sizeof(value));
+	// swap(buf[0], buf[3])
+	uint32_t t = buf[0]; buf[0] = buf[3]; buf[3] = t;
+	// swap(buf[1], buf[2])
+	t = buf[1];	buf[1] = buf[2]; buf[2] = t;
+	memcpy(&value, buf, sizeof(value));
+	return value;
+}
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+	if (GPIO_Pin == IT1_Pin) {
+		uint8_t val = 0b10000000;
+		//HAL_UART_Transmit(&huart2, (uint8_t *) &val, sizeof(val), HAL_MAX_DELAY);
+
+		if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_9)){
+			// falling
+			printf("D%04lu\n", 0);
+		} else{
+			// rising
+			printf("D%04lu\n", 4095);
+		}
+	}
+
+	if (GPIO_Pin == IT2_Pin) {
+		uint8_t val = 0b10000001;
+		//HAL_UART_Transmit(&huart2, (uint8_t *) &val, sizeof(val), HAL_MAX_DELAY);
+		if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_8)){
+			// falling
+			printf("C%04lu\n", 0);
+		} else{
+			// rising
+			printf("C%04lu\n", 4095);
+		}
+	}
+
+	if (GPIO_Pin == IT3_Pin) {
+		uint8_t val = 0b10000010;
+		//HAL_UART_Transmit(&huart2, (uint8_t *) &val, sizeof(val), HAL_MAX_DELAY);
+		if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_7)){
+			// falling
+			printf("E%04lu\n", 0);
+		} else{
+			// rising
+			printf("E%04lu\n", 4095);
+		}
+	}
+}
+
+int __io_putchar(int ch)
+{
+	if (ch == '\n') {
+		__io_putchar('\r');
+	}
+    HAL_UART_Transmit(&huart2, (uint8_t*)&ch, 1, HAL_MAX_DELAY);
+    return 1;
+}
+
 
 /* USER CODE END 0 */
 
@@ -98,12 +185,132 @@ int main(void)
   MX_DAC1_Init();
   /* USER CODE BEGIN 2 */
 
+
+  // start both DAC channels
+  HAL_DAC_Start(&hdac1, DAC1_CHANNEL_1);
+  HAL_DAC_Start(&hdac1, DAC1_CHANNEL_2);
+
+  // configure built-in ADC
+  HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
+
+  HAL_UART_Receive_IT(&huart2, &rx, 1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	/*int transmit_flag = 0;
+	char adc_chars[sizeof(uint32_t)] = {};
+
+	for(int i = 0; i < 2; i++){
+		HAL_ADC_Start(&hadc1);
+		HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
+		adc_vals[i] = HAL_ADC_GetValue(&hadc1);
+		if((adc_vals[i] > adc_vals_old[i] && adc_vals[i] - adc_vals_old[i] > 100) ||
+				(adc_vals[i] < adc_vals_old[i] && adc_vals_old[i] - adc_vals[i] > 100)){
+			printf("NR %d do zmiany\n", i);
+			uint32_t temp = adc_vals[i];
+			adc_vals_old[i] = temp;
+
+			adc_vals[i] = endian_swap(temp);
+			memcpy(adc_chars + (sizeof(uint32_t)*i), &adc_vals[i], sizeof(uint32_t));
+			transmit_flag = 1;
+		}
+
+	}
+
+	if(transmit_flag == 1){
+		//HAL_UART_Transmit(&huart2, (uint8_t *) &adc_chars[0], 2 * sizeof(uint32_t), HAL_MAX_DELAY);
+	}*/
+
+
+	int note_update_flag = 0;
+	if (head != tail){
+		if((rx_buf[tail] & 0b11110000) == 0b10010000){
+			// note on
+			int bytes_available = (head - tail + 128) % 128;
+			if (bytes_available >= 3){
+				// if all 3 bytes available
+				// printf("G%04d\n", rx_buf[tail+1]);
+				notes[rx_buf[tail+1]] = note_priority++;
+				note_update_flag = 1;
+				tail = (tail+3)%128;
+			}
+
+
+		}else if((rx_buf[tail] & 0b11110000) == 0b10000000){
+			// note off
+			int bytes_available = (head - tail + 128) % 128;
+			if (bytes_available >= 3){
+				// if all 3 bytes available
+				// printf("G%04d\n", rx_buf[tail+1]);
+				notes[rx_buf[tail+1]] = 0;
+				note_update_flag = 1;
+				tail = (tail+3)%128;
+			}
+		}else{
+			// anything else
+			// for now drop the data
+			tail = (tail+1)%128;
+		}
+
+		if(note_update_flag){
+			int newest_note = -1;
+			uint8_t max_priority = 0;
+			for(int i = 0; i < 128; i++){
+				if(notes[i] > max_priority){
+					max_priority = notes[i];
+					newest_note = i;
+				}
+			}
+			if(newest_note >= 0){
+				DAC1->DHR12R1 = max(min(tones[newest_note], 4095), 0);
+				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, GPIO_PIN_SET);
+			}else{
+				HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, GPIO_PIN_RESET);
+			}
+		}
+
+
+		/////////////////////// A //////////////////////
+		/*uint8_t data[3];
+		data[0] = 0b10010000;
+		data[1] = rx_buf[tail];
+		data[2] = 0b01111111;
+		HAL_UART_Transmit(&huart3, &data[0], 3, HAL_MAX_DELAY);
+
+		HAL_Delay(500);
+		data[0] = 0b10000000;
+		HAL_UART_Transmit(&huart3, &data[0], 3, HAL_MAX_DELAY);
+
+		tail = (tail+1)%128;*/
+	}
+
+
+	char adc_chars[sizeof(uint32_t)] = {};
+
+	for(int i = 0; i < 2; i++){
+		HAL_ADC_Start(&hadc1);
+		HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
+		adc_vals[i] = 4095 - HAL_ADC_GetValue(&hadc1);
+	}
+
+	printf("A%04lu\n", adc_vals[0]);
+	printf("B%04lu\n", adc_vals[1]);
+
+/*
+	for(int i = 0; i < 2; i++){
+		uint32_t temp = adc_vals[i];
+		adc_vals[i] = endian_swap(temp) << 3;
+
+		memcpy(adc_chars + (sizeof(uint32_t)*i), &adc_vals[i], sizeof(uint32_t));
+	}
+
+	HAL_UART_Transmit(&huart2, (uint8_t *) &adc_chars[0], 2 * sizeof(uint32_t), HAL_MAX_DELAY);
+*/
+	HAL_Delay(100);
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
