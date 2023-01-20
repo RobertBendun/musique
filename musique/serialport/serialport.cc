@@ -102,8 +102,13 @@ namespace serialport{
                 }
             } catch (std::exception &e) {
                 /// No connection to the device
-
+							state.error_message = e.what();
                 // std::cerr << "Unhandled Exception: " << e.what() << '\n';
+								//
+							// Sleep until error message is cleared since we don't need to try always to reconnect
+							while (!state.error_message->empty()) {
+								std::this_thread::yield();
+							}
             }
         }
         return;

@@ -169,6 +169,11 @@ namespace errors
 		};
 	}
 
+	struct Temporary_Error_Serial_Port
+	{
+		std::string message;
+	};
+
 	/// All possible error types
 	using Details = std::variant<
 		Arithmetic,
@@ -180,6 +185,7 @@ namespace errors
 		Not_Callable,
 		Operation_Requires_Midi_Connection,
 		Out_Of_Range,
+		Temporary_Error_Serial_Port,
 		Undefined_Operator,
 		Unexpected_Empty_Source,
 		Unexpected_Keyword,

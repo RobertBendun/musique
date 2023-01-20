@@ -150,6 +150,7 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 		[](errors::Unexpected_Keyword const&)                   { return "Unexpected keyword"; },
 		[](errors::Unrecognized_Character const&)               { return "Unrecognized character"; },
 		[](errors::Wrong_Arity_Of const&)                       { return "Different arity then expected"; },
+		[](errors::Temporary_Error_Serial_Port const&)          { return "Serial port connection failed"; },
 		[](errors::internal::Unexpected_Token const&)           { return "Unexpected token"; },
 		[](errors::Arithmetic const& err)                       {
 			switch (err.type) {
@@ -269,6 +270,15 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 					"and cannot be reused as an identifier to prevent ambiguity\n"
 					<< pretty::end;
 			}
+		},
+
+		[&](errors::Temporary_Error_Serial_Port const& error) {
+			os << "Error serial port: " << error.message << '\n';
+			os << "\n";
+
+			pretty::begin_comment(os);
+			os << "This error message is temporary\n";
+			pretty::end(os);
 		},
 
 		[&](errors::Unsupported_Types_For const& err) {

@@ -1615,6 +1615,18 @@ static Result<Value> builtin_peers(Interpreter &interpreter, std::vector<Value>)
 	return Number(interpreter.starter.peers());
 }
 
+static std::optional<Error> ensure_serial_available(Interpreter &interpreter)
+{
+	if (interpreter.serialport->error_message->empty())
+		return std::nullopt;
+
+	return Error{
+		errors::Temporary_Error_Serial_Port {
+			.message = *std::exchange(interpreter.serialport->error_message, std::nullopt),
+		}
+	};
+}
+
 //: Ustaw wyjście MIDI w danym kontekście na dany port
 //:
 //: Dostępne opcje to numer portu oraz symbol `'virtual` tworzacy port wirtualny MIDI
@@ -1660,6 +1672,7 @@ static Result<Value> builtin_port(Interpreter &interpreter, std::vector<Value> a
 		}
 
 		if (port_type == "serial") {
+			Try(ensure_serial_available(interpreter));
 			if (auto it = Context::established_connections.find(midi::connections::Serial_Port{}); it != Context::established_connections.end()) {
 				interpreter.current_context->port = it->second;
 				return {};
@@ -1685,7 +1698,7 @@ static Result<Value> builtin_port(Interpreter &interpreter, std::vector<Value> a
 //: Kolejne parametry tworzą zbiór z którego równomiernie wejście będzie wybierane na podstawie wartości
 static Result<Value> builtin_ctrl(Interpreter &interpreter, std::vector<Value> args)
 {
-	if (args.size() == 1) {
+	if (args.empty()) {
 	error:
 		return errors::Unsupported_Types_For {
 			.type = errors::Unsupported_Types_For::Function,
@@ -1694,6 +1707,7 @@ static Result<Value> builtin_ctrl(Interpreter &interpreter, std::vector<Value> a
 			},
 		};
 	}
+	Try(ensure_serial_available(interpreter));
 
 	auto input_index = 0;
 	if (auto a = get_if<Number>(args.front())) {
