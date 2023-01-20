@@ -1664,6 +1664,48 @@ static Result<Value> builtin_port(Interpreter &interpreter, std::vector<Value> a
 	unimplemented();
 }
 
+
+//: Zwróć wybraną wartość z dedykowanego urządzenia.
+//:
+//: Pierwszy parametr to numer wejścia lub jego nazwa (kolejno: `'knob`, `'knob2`, `'btn1`, `'btn2`, `'btn3`)
+//: Kolejne parametry tworzą zbiór z którego równomiernie wejście będzie wybierane na podstawie wartości
+static Result<Value> builtin_ctrl(Interpreter &interpreter, std::vector<Value> args)
+{
+	if (args.size() == 1) {
+	error:
+		return errors::Unsupported_Types_For {
+			.type = errors::Unsupported_Types_For::Function,
+			.name = "ctrl",
+			.possibilities = {
+			},
+		};
+	}
+
+	auto input_index = 0;
+	if (auto a = get_if<Number>(args.front())) {
+		input_index = a->floor().as_int();
+	} else if (auto a = get_if<Symbol>(args.front())) {
+		static std::string_view names[] = { "knob1", "knob2", "btn1", "btn2", "btn3" };
+
+		if (auto matched = std::find(std::begin(names), std::end(names), *a); matched != std::end(names)) {
+			input_index = std::distance(std::begin(names), matched);
+		} else {
+			goto error;
+		}
+	} else {
+		goto error;
+	}
+
+	auto const value = interpreter.serialport->get(input_index);
+	if (args.size() == 1) {
+		return value;
+	}
+
+	auto const arguments = Try(flatten(interpreter, std::span(args).subspan(1)));
+	auto const arguments_index = (Number(arguments.size()) * value).floor().as_int();
+	return arguments[std::min(arguments_index, Number::value_type(arguments.size()-1))];
+}
+
 void Interpreter::register_builtin_functions()
 {
 	auto &global = *Env::global;
@@ -1672,6 +1714,7 @@ void Interpreter::register_builtin_functions()
 	global.force_define("call",           builtin_call);
 	global.force_define("ceil",           builtin_ceil);
 	global.force_define("chord",          builtin_chord);
+	global.force_define("ctrl",           builtin_ctrl);
 	global.force_define("digits",         builtin_digits);
 	global.force_define("down",           builtin_down);
 	global.force_define("duration",       builtin_duration);

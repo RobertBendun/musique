@@ -196,10 +196,6 @@ struct Runner
 			std::cout << std::endl;
 			return {};
 		});
-
-		Env::global->force_define("ctrl", +[](Interpreter &interpreter, std::vector<Value> args) -> Result<Value> {
-			return interpreter.serialport->get(std::get<Number>(args[0].data).as_int());
-		});
 	}
 
 	Runner(Runner const&) = delete;
