@@ -13,6 +13,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 	- knob and button updates
 	- support for CV as MIDI output inside Musique
 
+## [0.4.0]
+
+### Added
+
+- Builtin function documentation generation from C++ Musique implementation source code
+- New builtins: digits
+- Negative numbers!
+- Version command via `:version` in REPL or `--version`, `-v` in command line.
+- Introduced start synchronization with builtins: `peers` and `start`
+- Connection with MIDI ports via parameters dropped in favour of function using context system: `port`
+- Listing ports via REPL command: `:ports` instead of commandline parameter
+- Building release with `make musique.zip` using Docker
+
+### Changed
+
+- Readme from Polish to English
+
+### Removed
+
+- Release script builder
+
+### Fixed
+
+- `ceil`, `round`, `floor` didn't behave well with negative numbers
+- `duration` wasn't filling note length from context and summed all notes inside chord, when it should take max
+- `try` evaluated arguments too quickly
+- Nested arithmetic expression with undefined operator reports proper error and don't crash
+
 ## [0.3.1]
 
 ### Fixed

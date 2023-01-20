@@ -1606,7 +1606,7 @@ static char *GetLineChar(int fin, int fout) {
                     break;
                 }
             } else {
-                write(fout, "\n", 1);
+                (void)write(fout, "\n", 1);
                 break;
             }
         } else if (seq[0] == Ctrl('D')) {

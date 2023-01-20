@@ -1,8 +1,9 @@
 #ifndef MUSIQUE_INTERPRETER_HH
 #define MUSIQUE_INTERPRETER_HH
 
-#include <musique/midi/midi.hh>
 #include <musique/interpreter/context.hh>
+#include <musique/interpreter/starter.hh>
+#include <musique/midi/midi.hh>
 #include <musique/value/value.hh>
 #include <unordered_map>
 #include <musique/serialport/serialport.hh>
@@ -10,10 +11,6 @@
 /// Given program tree evaluates it into Value
 struct Interpreter
 {
-	/// MIDI connection that is used to play music.
-	/// It's optional for simple interpreter testing.
-	static midi::Connection *midi_connection;
-
 	/// Operators defined for language
 	static std::unordered_map<std::string, Intrinsic> operators;
 
@@ -27,6 +24,8 @@ struct Interpreter
 	std::function<std::optional<Error>(Interpreter&, Value)> default_action;
 
 	std::shared_ptr<serialport::State> serialport;
+
+	Starter starter;
 
 	Interpreter();
 	~Interpreter();

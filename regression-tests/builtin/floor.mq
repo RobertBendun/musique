@@ -1,0 +1,11 @@
+say (floor -4),
+say (floor -4.2),
+say (floor -4.5),
+say (floor -4.8),
+say (floor -5),
+
+say (floor 4),
+say (floor 4.2),
+say (floor 4.5),
+say (floor 4.8),
+say (floor 5),

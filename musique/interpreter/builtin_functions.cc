@@ -11,6 +11,14 @@
 #include <chrono>
 #include <thread>
 
+/// This macro implements functions that are only implemented as forwarding
+/// all arguments to another function
+#define Forward_Implementation(New_Function_Name, Implementation)                                  \
+	static inline Result<Value> New_Function_Name(Interpreter &interpreter, std::vector<Value> args) \
+	{                                                                                                \
+		return Implementation(interpreter, std::move(args));                                           \
+	}
+
 /// Check if type has index method
 template<typename T>
 concept With_Index_Method = requires (T &t, Interpreter interpreter, usize position) {
@@ -103,6 +111,39 @@ static Result<Value> ctx_read_write_property(Interpreter &interpreter, std::vect
 	return Value{};
 }
 
+//: Funkcja `bpm` pozwala na zapisywanie i odczytywanie wartości BPM z aktualnego kontekstu.
+//:
+//: Domyślną wartością jest 120.
+//: # Odczytywanie wartości z kontekstu
+//: ```
+//: > call bpm
+//: 120
+//: ```
+//: # Zapisywanie wartości BPM do aktualnego kontekstu
+//: ```
+//: > bpm 144
+//: 144
+//: ```
+Forward_Implementation(builtin_bpm, ctx_read_write_property<&Context::bpm>)
+
+//: Funkcja `oct` pozwala na zapisywanie i odczytywanie wartości oktawy z aktualnego kontekstu.
+//:
+//: Wartość ta jest używana w momencie odtwarzania dźwięków nie posiadających ustalonego numeru oktawy:
+//: `c` zostanie uzupełnione oktawą domyślną z kontekstu, `c5` zachowa swój nr oktawy.
+//:
+//: Domyślną wartością jest 120.
+//: # Odczytywanie wartości z kontekstu
+//: ```
+//: > call bpm
+//: 120
+//: ```
+//: # Zapisywanie wartości BPM do aktualnego kontekstu
+//: ```
+//: > bpm 144
+//: 144
+//: ```
+Forward_Implementation(builtin_oct, ctx_read_write_property<&Context::octave>)
+
 /// Iterate over array and it's subarrays to create one flat array
 static Result<Array> into_flat_array(Interpreter &interpreter, std::span<Value> args)
 {
@@ -171,13 +212,41 @@ invalid_argument_type:
 		},
 	};
 }
+//: Funkcja `ceil` zwraca liczbę zaokrągloną do pierwszej większej liczby całkowitej.
+//:
+//: # Przykład
+//: ```
+//: > ceil (4.3)
+//: 4
+//: ```
+Forward_Implementation(builtin_ceil, apply_numeric_transform<&Number::ceil>)
+
+//: Funkcja `floor` zwraca liczbę zaokrągloną do pierwszej mniejszej liczby całkowitej.
+//:
+//: # Przykład
+//: ```
+//: > floor (4.3)
+//: 5
+//: ```
+Forward_Implementation(builtin_floor, apply_numeric_transform<&Number::floor>)
+
+//: Funkcja `round` zwraca liczbę zaokrągloną do najbliższej liczby parzystej.
+//:
+//: # Przykład
+//: ```
+//: > round (4.5)
+//: 4
+//: > round (3.5)
+//: 4
+//: ```
+Forward_Implementation(builtin_round, apply_numeric_transform<&Number::round>)
 
 /// Direction used in range definition (up -> 1, 2, 3; down -> 3, 2, 1)
 enum class Range_Direction { Up, Down };
 
 /// Create range according to direction and specification, similar to python
 template<Range_Direction dir>
-static Result<Value> builtin_range(Interpreter&, std::vector<Value> args)
+static Result<Value> range(Interpreter&, std::vector<Value> args)
 {
 	auto start = Number(0), stop = Number(0), step = Number(1);
 
@@ -209,18 +278,57 @@ static Result<Value> builtin_range(Interpreter&, std::vector<Value> args)
 	}
 	return array;
 }
+//: Funkcja `range` zwraca listę wartości liczbowych w podanych w zakresach `start, stop, step`.
+//:
+//: # Przykład
+//: ```
+//: > range 1 10 2
+//: (1, 3, 5, 7, 9)
+//: > range 13 17
+//: (13, 14, 15, 16)
+//: ```
+Forward_Implementation(builtin_range, range<Range_Direction::Up>)
 
-/// Send MIDI Program Change message
+//: Funkcja `up` zwraca listę wartości liczbowych od 0 do zadanej wartości pomniejszonej o 1.
+//:
+//: # Przykład
+//: ```
+//: > up 10
+//: (0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
+//: ```
+Forward_Implementation(builtin_up, range<Range_Direction::Up>)
+
+//: Funkcja `down` zwraca listę wartości liczbowych od zadanej wartości pomniejszonej o 1 do 0.
+//:
+//: # Przykład
+//: ```
+//: > down 10
+//: (9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
+//: > down 5 10
+//: (9, 8, 7, 6, 5)
+//: ```
+Forward_Implementation(builtin_down, range<Range_Direction::Down>)
+
+//: Funkcja `instrument` pozwala na wybór instrumentu na danym kanale MIDI.
+//: # Ustawienie instrumentu 4
+//: ```
+//: instrument 4
+//: ```
+//: # Ustawienie instrumentu 4 na kanale 6
+//: ```
+//: instrument 6 4
+//: ```
+//: Przyporządkowanie numerów instrumentów do standardowych nazw znajdziesz [tutaj](http://midi.teragonaudio.com/tutr/gm.htm#Patch)
 static auto builtin_program_change(Interpreter &i, std::vector<Value> args) -> Result<Value> {
 	if (auto a = match<Number>(args)) {
 		auto [program] = *a;
-		i.midi_connection->send_program_change(0, program.as_int());
+		i.current_context->port->send_program_change(0, program.as_int());
 		return Value{};
 	}
 
 	if (auto a = match<Number, Number>(args)) {
 		auto [chan, program] = *a;
-		i.midi_connection->send_program_change(chan.as_int(), program.as_int());
+		i.current_context->port->send_program_change(chan.as_int(), program.as_int());
 		return Value{};
 	}
 
@@ -264,6 +372,12 @@ static std::optional<Error> action_play(Interpreter &i, Value v)
 	return {};
 }
 
+//: Funkcja `play` odgrywa zadaną nutę lub sekwencję.
+//:
+//: # Przykład
+//: ```
+//: > play chord c e g
+//: ```
 /// Play notes
 template<With_Index_Operator Container = std::vector<Value>>
 static inline Result<Value> builtin_play(Interpreter &interpreter, Container args)
@@ -289,6 +403,12 @@ static inline Result<Value> builtin_play(Interpreter &interpreter, Container arg
 	return {};
 }
 
+//: Funkcja `par` odgrywa pierwszy element przez sumę długości pozostałych elementów. Odegranie pierwszego elementu wraz z pozostałymi następuje współbieżnie.
+//:
+//: # Przykład
+//: ```
+//: > par c (1/2) b b e
+//: ```
 /// Play first argument while playing all others
 static Result<Value> builtin_par(Interpreter &interpreter, std::vector<Value> args) {
 	Try(ensure_midi_connection_available(interpreter, "par"));
@@ -310,7 +430,7 @@ static Result<Value> builtin_par(Interpreter &interpreter, std::vector<Value> ar
 
 	for (auto const& note : chord->notes) {
 		if (note.base) {
-			interpreter.midi_connection->send_note_on(0, *note.into_midi_note(), 127);
+			interpreter.current_context->port->send_note_on(0, *note.into_midi_note(), 127);
 		}
 	}
 
@@ -318,12 +438,20 @@ static Result<Value> builtin_par(Interpreter &interpreter, std::vector<Value> ar
 
 	for (auto const& note : chord->notes) {
 		if (note.base) {
-			interpreter.midi_connection->send_note_off(0, *note.into_midi_note(), 127);
+			interpreter.current_context->port->send_note_off(0, *note.into_midi_note(), 127);
 		}
 	}
 	return result;
 }
 
+//: Funkcja `sim` odgrywa zadane sekwencje symultanicznie.
+//:
+//: # Przykład
+//: ```
+//: > A := c e g d
+//: > B := f f a a
+//: > sim A B
+//: ```
 /// Plays each argument simultaneously
 static Result<Value> builtin_sim(Interpreter &interpreter, std::vector<Value> args)
 {
@@ -424,8 +552,8 @@ static Result<Value> builtin_sim(Interpreter &interpreter, std::vector<Value> ar
 			start_time = dur;
 		}
 		switch (instruction.action) {
-		break; case Instruction::On:  interpreter.midi_connection->send_note_on(0, instruction.note, 127);
-		break; case Instruction::Off: interpreter.midi_connection->send_note_off(0, instruction.note, 127);
+		break; case Instruction::On:  interpreter.current_context->port->send_note_on(0, instruction.note, 127);
+		break; case Instruction::Off: interpreter.current_context->port->send_note_off(0, instruction.note, 127);
 		}
 	}
 
@@ -452,6 +580,13 @@ static inline size_t upper_sieve_bound_to_yield_n_primes(size_t n_primes)
 	return std::ceil(x);
 }
 
+//: Funkcja `nprimes` zwraca zadaną liczbę kolejnych liczb pierwszych.
+//:
+//: # Przykład
+//: ```
+//: > nprimes 4
+//: (2, 3, 5, 7)
+//: ```
 /// Generate n primes
 static Result<Value> builtin_primes(Interpreter&, std::vector<Value> args)
 {
@@ -501,6 +636,16 @@ static Result<Value> builtin_primes(Interpreter&, std::vector<Value> args)
 	};
 }
 
+//: Funkcja `nprimes` zwraca zadaną liczbę kolejnych liczb pierwszych.
+//:
+//: # Przykład
+//: ```
+//: > for (nprimes 4) (say)
+//: 2
+//: 3
+//: 5
+//: 7
+//: ```
 /// Iterate over container
 static Result<Value> builtin_for(Interpreter &i, std::vector<Value> args)
 {
@@ -521,6 +666,12 @@ static Result<Value> builtin_for(Interpreter &i, std::vector<Value> args)
 	}
 }
 
+//: Funkcja `fold` TODO.
+//:
+//: # Przykład
+//: ```
+//: TODO
+//: ```
 /// Fold container
 static Result<Value> builtin_fold(Interpreter &interpreter, std::vector<Value> args) {
 	constexpr auto guard = Guard<2> {
@@ -546,6 +697,14 @@ static Result<Value> builtin_fold(Interpreter &interpreter, std::vector<Value> a
 
 	return guard.yield_error();
 }
+
+//: Funkcja `map` aplikuje zadaną funkcję do każdego argumentu.
+//:
+//: # Przykład
+//: ```
+//: > map up (nprimes 3)
+//: ((0, 1), (0, 1, 2), (0, 1, 2, 3, 4))
+//: ```
 
 static Result<Value> builtin_map(Interpreter &interpreter, std::vector<Value> args)
 {
@@ -578,6 +737,12 @@ static Result<Value> builtin_map(Interpreter &interpreter, std::vector<Value> ar
 	return result;
 }
 
+//: Funkcja `scan` oblicza sumę prefiksową (dodaje do siebie wszystkie liczby od 1 do danej liczby).
+//:
+//: # Przykład
+//: ```
+//:
+//: ```
 /// Scan computes inclusive prefix sum
 static Result<Value> builtin_scan(Interpreter &interpreter, std::vector<Value> args)
 {
@@ -600,6 +765,19 @@ static Result<Value> builtin_scan(Interpreter &interpreter, std::vector<Value> a
 	};
 }
 
+//: Funkcja `if` wykonuje określony blok po spełnieniu warunku, alternatywnie wykonuje inny blok kodu w przeciwnym wypadku.
+//:
+//: # Przykład
+//: ```
+//: > if true (say 42)
+//: 42
+//: > if false (say 42)
+//: >
+//: > if true (say 42) (say 0)
+//: 42
+//: > if false (say 42) (say 0)
+//: 0
+//: ```
 /// Execute blocks depending on condition
 static Result<Value> builtin_if(Interpreter &i, std::span<Ast> args)  {
 	static constexpr auto guard = Guard<2> {
@@ -631,6 +809,18 @@ static Result<Value> builtin_if(Interpreter &i, std::span<Ast> args)  {
 	return Value{};
 }
 
+//: Funkcja `while` wykonuje określony blok dopóki warunek jest spełniony.
+//:
+//: # Przykład
+//: ```
+//: > i := 0
+//: > while (i < 10) (say i, i += 2)
+//: 0
+//: 2
+//: 4
+//: 6
+//: 8
+//: ```
 /// Loop block depending on condition
 static Result<Value> builtin_while(Interpreter &i, std::span<Ast> args)  {
 	static constexpr auto guard = Guard<2> {
@@ -654,36 +844,61 @@ static Result<Value> builtin_while(Interpreter &i, std::span<Ast> args)  {
 	return Value{};
 }
 
+//: Funkcja `try` przystępuje do wykonania bloków kodu, a jeżeli którykolwiek z nich zakończy się niepowodzeniem, wykonuje ostatni. Jeżeli ostatni też zakończy się niepowodzeniem, to trudno.
+//:
+//: # Przykład
+//: ```
+//: > try (nprimes -1) (say 0)
+//: 0
+//: > try (nprimes 2) (say 0)
+//: (2, 3)
+//: ```
+//: # W przypadku przekazania jednego bloku jako argumentu `try` zwróci pustą wartość w przypadku napotkania błędu podczas wykonania tego bloku.
+//: ```
+//: > try (nprimes -1)
+//: >
+//: ```
 /// Try executing all but last block and if it fails execute last one
-static Result<Value> builtin_try(Interpreter &interpreter, std::vector<Value> args)
+static Result<Value> builtin_try(Interpreter &interpreter, std::span<Ast> args)
 {
-	constexpr auto guard = Guard<1> {
-		.name = "try",
-		.possibilities = {
-			"(...function) -> any"
-		}
-	};
-
 	if (args.size() == 1) {
-		auto callable = Try(guard.match<Function>(args[0]));
-		return std::move(*callable)(interpreter, {}).value_or(Value{});
+		// TODO This should be abstracted
+		auto result = (args[0].type == Ast::Type::Block)
+			? interpreter.eval((Ast)args[0].arguments.front())
+			: interpreter.eval((Ast)args[0]);
+		return result.value_or(Value{});
 	}
 
 	Value success;
 
-	for (usize i = 0; i+1 < args.size(); ++i) {
-		auto callable = Try(guard.match<Function>(args[i]));
-		if (auto result = std::move(*callable)(interpreter, {})) {
-			success = *std::move(result);
-		} else {
-			auto callable = Try(guard.match<Function>(args.back()));
-			return std::move(*callable)(interpreter, {});
+	for (auto const& node : args.subspan(0, args.size()-1)) {
+		auto result = (node.type == Ast::Type::Block)
+			? interpreter.eval((Ast)node.arguments.front())
+			: interpreter.eval((Ast)node);
+
+		if (result.has_value()) {
+			success = *result;
+			continue;
 		}
+
+		return (args.back().type == Ast::Type::Block)
+			? interpreter.eval((Ast)args.back().arguments.front())
+			: interpreter.eval((Ast)args.back());
 	}
 
 	return success;
 }
 
+//: Funkcja `update` aktualizuje dany element listy na nową wartość.
+//:
+//: # Przykład
+//: ```
+//: > A := down 5
+//: > A
+//: (4, 3, 2, 1, 0)
+//: > update A 3 7
+//: (4, 3, 2, 7, 0)
+//: ```
 /// Update value inside of array
 static Result<Value> builtin_update(Interpreter &i, std::vector<Value> args)
 {
@@ -714,6 +929,15 @@ static Result<Value> builtin_update(Interpreter &i, std::vector<Value> args)
 	return guard.yield_error();
 }
 
+//: Funkcja `typeof` zwraca typ zmiennej.
+//: # Przykład
+//: ```
+//: > A := down 5
+//: > A
+//: (4, 3, 2, 1, 0)
+//: > typeof A
+//: array
+//: ```
 /// Return typeof variable
 static Result<Value> builtin_typeof(Interpreter&, std::vector<Value> args)
 {
@@ -721,6 +945,11 @@ static Result<Value> builtin_typeof(Interpreter&, std::vector<Value> args)
 	return Symbol(type_name(args.front()));
 }
 
+//: Funkcja `len` ustawia domyślną długość nuty.
+//: # Przykład – ustawienie domyślnej długości nuty na ósemkę
+//: ```
+//: len (1/8)
+//: ```
 /// Return length of container or set/get default length to play
 static Result<Value> builtin_len(Interpreter &i, std::vector<Value> args)
 {
@@ -752,6 +981,15 @@ Result<Value> traverse(Interpreter &interpreter, Value &&value, auto &&lambda)
 	return value;
 }
 
+//: Funkcja `set_len` przydziela wszystkim elementom listy zadaną długość.
+//: # Przykład
+//: ```
+//: > A := c d e f
+//: > A
+//: (c, d, e, f)
+//: > set_len (1/8) A
+//: (c 1/8, d 1/8, e 1/8, f 1/8)
+//: ```
 /// Set length (first argument) to all other arguments preserving their shape
 static Result<Value> builtin_set_len(Interpreter &interpreter, std::vector<Value> args)
 {
@@ -781,6 +1019,15 @@ static Result<Value> builtin_set_len(Interpreter &interpreter, std::vector<Value
 	};
 }
 
+//: Funkcja `set_oct` przydziela wszystkim elementom listy zadaną wysokość.
+//: # Przykład
+//: ```
+//: > A := c d e f
+//: > A
+//: (c, d, e, f)
+//: > set_oct 5 A
+//: (c5, d5, e5, f5)
+//: ```
 /// Set octave (first argument) to all other arguments preserving their shape
 static Result<Value> builtin_set_oct(Interpreter &interpreter, std::vector<Value> args)
 {
@@ -810,27 +1057,53 @@ static Result<Value> builtin_set_oct(Interpreter &interpreter, std::vector<Value
 	};
 }
 
+//: Funkcja `duration` zwraca długość trwania danej sekwencji, wyrażoną liczbowo.
+//:
+//: # Przykład
+//: ```
+//: > duration a
+//: 1/4
+//: > duration chord a b c
+//: 3/4
+//: ```
 static Result<Value> builtin_duration(Interpreter &interpreter, std::vector<Value> args)
 {
 	auto total = Number{};
 	for (auto &arg : args) {
 		Try(traverse(interpreter, std::move(arg), [&](Chord &c) {
+			auto chord_length = Number();
 			for (Note &note : c.notes) {
-				if (note.length) {
-					total += *note.length;
-				}
+				chord_length = std::max(chord_length, note.length ? *note.length : interpreter.current_context->length);
 			}
+			total += chord_length;
 		}));
 	}
 	return total;
 }
 
+//: Funkcja `flat` łączy zadane element w listę bez zagnieżdżeń (tzn. "odpakowuje" zawartość zagnieżdżonych list i zawiera je w pojedyńczej listy).
+//:
+//: # Przykład
+//: ```
+//: > B := chord a b c
+//: > flat B a b c 1
+//: (chord (a, b, c), a, b, c, 1)
+//: ```
 /// Join arguments into flat array
 static Result<Value> builtin_flat(Interpreter &i, std::vector<Value> args)
 {
 	return Try(into_flat_array(i, std::move(args)));
 }
 
+//: Funkcja `pick` zwraca pseudo-losowo element z listy argumentów.
+//:
+//: # Przykład
+//: ```
+//: > pick a b c
+//: c
+//: > pick a b c
+//: b
+//: ```
 /// Pick random value from arugments
 static Result<Value> builtin_pick(Interpreter &i, std::vector<Value> args)
 {
@@ -843,6 +1116,13 @@ static Result<Value> builtin_pick(Interpreter &i, std::vector<Value> args)
 	return array[dist(rnd)];
 }
 
+//: Funkcja `shuffle` pseudo-losowo tasuje elementy z listy argumentów.
+//:
+//: # Przykład
+//: ```
+//: > shuffle a b c
+//: (b, a, c)
+//: ```
 /// Shuffle arguments
 static Result<Value> builtin_shuffle(Interpreter &i, std::vector<Value> args)
 {
@@ -852,6 +1132,17 @@ static Result<Value> builtin_shuffle(Interpreter &i, std::vector<Value> args)
 	return array;
 }
 
+//: Funkcja `permute` permutuje elementy z listy argumentów.
+//:
+//: # Przykład
+//: ```
+//: > A := permute a b c
+//: > A
+//: (b, c, a)
+//: > B := permute A
+//: > B
+//: (b, a, c)
+//: ```
 /// Permute arguments
 static Result<Value> builtin_permute(Interpreter &i, std::vector<Value> args)
 {
@@ -860,6 +1151,18 @@ static Result<Value> builtin_permute(Interpreter &i, std::vector<Value> args)
 	return array;
 }
 
+//: Funkcja `sortuje` elementy od najmniejszego do największego (w tym nuty).
+//:
+//: # Sortowanie liczb
+//: ```
+//: > sort 64 7 112 99
+//: (7, 64, 99, 112)
+//: ```
+//: # Sortowanie nut
+//: ```
+//: > sort c# b a g
+//: (c#, g, a, b)
+//: ```
 /// Sort arguments
 static Result<Value> builtin_sort(Interpreter &i, std::vector<Value> args)
 {
@@ -868,6 +1171,13 @@ static Result<Value> builtin_sort(Interpreter &i, std::vector<Value> args)
 	return array;
 }
 
+//: Funkcja `reverse` odwraca kolejność zadanych elementów.
+//:
+//: # Przykład
+//: ```
+//: > reverse c e g b
+//: (b, g, e, c)
+//: ```
 /// Reverse arguments
 static Result<Value> builtin_reverse(Interpreter &i, std::vector<Value> args)
 {
@@ -876,6 +1186,13 @@ static Result<Value> builtin_reverse(Interpreter &i, std::vector<Value> args)
 	return array;
 }
 
+//: Funkcja `min` zwraca najmniejszy element z podanych argumentów.
+//:
+//: # Przykład
+//: ```
+//: > min 42 37 8 99
+//: 8
+//: ```
 /// Get minimum of arguments
 static Result<Value> builtin_min(Interpreter &i, std::vector<Value> args)
 {
@@ -885,6 +1202,13 @@ static Result<Value> builtin_min(Interpreter &i, std::vector<Value> args)
 	return Value{};
 }
 
+//: Funkcja `max` zwraca największy element z podanych argumentów.
+//:
+//: # Przykład
+//: ```
+//: > max 42 37 8 99
+//: 99
+//: ```
 /// Get maximum of arguments
 static Result<Value> builtin_max(Interpreter &i, std::vector<Value> args)
 {
@@ -894,6 +1218,12 @@ static Result<Value> builtin_max(Interpreter &i, std::vector<Value> args)
 	return Value{};
 }
 
+//: Funkcja `partition` dzieli zadany zbiór na dwa rozłączne względem zadanej funkcji.
+//:
+//: # Przykład
+//: ```
+//: TODO
+//: ```
 /// Parition arguments into 2 arrays based on predicate
 static Result<Value> builtin_partition(Interpreter &i, std::vector<Value> args)
 {
@@ -920,6 +1250,13 @@ static Result<Value> builtin_partition(Interpreter &i, std::vector<Value> args)
 	}};
 }
 
+//: Funkcja `rotate` przenosi na koniec listy zadaną ilość elementów.
+//:
+//: # Przykład
+//: ```
+//: > rotate 2 (1, 2, 3, 4)
+//: (3, 4, 1, 2)
+//: ```
 /// Rotate arguments by n steps
 static Result<Value> builtin_rotate(Interpreter &i, std::vector<Value> args)
 {
@@ -931,6 +1268,11 @@ static Result<Value> builtin_rotate(Interpreter &i, std::vector<Value> args)
 
 	if (args.size()) {
 		if (auto const offset_source = get_if<Number>(args.front())) {
+
+			if (args.size() == 1) {
+				return Array{};
+			}
+
 			auto offset = offset_source->as_int();
 			auto array = Try(flatten(i, std::span(args).subspan(1)));
 			if (offset > 0) {
@@ -947,6 +1289,13 @@ static Result<Value> builtin_rotate(Interpreter &i, std::vector<Value> args)
 	return guard.yield_error();
 }
 
+//: Funkcja `unique` zwraca listę argumentów z wyłączeniem powtórzeń.
+//:
+//: # Przykład
+//: ```
+//: > unique 1 2 3 2 2 3 4
+//: (1, 2, 3, 4)
+//: ```
 /// Returns unique collection of arguments
 static Result<Value> builtin_unique(Interpreter &i, std::vector<Value> args)
 {
@@ -963,6 +1312,13 @@ static Result<Value> builtin_unique(Interpreter &i, std::vector<Value> args)
 	return result;
 }
 
+//: Funkcja `uniq` usuwa z listy argumentów następujące po sobie powtórzenia elementów.
+//:
+//: # Przykład
+//: ```
+//: > uniq 1 2 3 2 2 2 2 2 2 3 4
+//: (1, 2, 3, 2, 3, 4)
+//: ```
 /// Returns arguments with all successive copies eliminated
 static Result<Value> builtin_uniq(Interpreter &i, std::vector<Value> args)
 {
@@ -980,6 +1336,13 @@ static Result<Value> builtin_uniq(Interpreter &i, std::vector<Value> args)
 	return result;
 }
 
+//: Funkcja `hash` zwraca wynik działania funkcji skrótu.
+//:
+//: # Przykład
+//: ```
+//: > hash 4
+//: 177902120014
+//: ```
 static Result<Value> builtin_hash(Interpreter&, std::vector<Value> args)
 {
 	return Number(
@@ -989,6 +1352,13 @@ static Result<Value> builtin_hash(Interpreter&, std::vector<Value> args)
 	);
 }
 
+//: Funkcja `chord` zwraca akord złożony z nut podanych jako argumenty.
+//:
+//: # Przykład
+//: ```
+//: > chord c# e a#
+//: chord (c#, e, a#)
+//: ```
 /// Build chord from arguments
 static Result<Value> builtin_chord(Interpreter &i, std::vector<Value> args)
 {
@@ -996,13 +1366,18 @@ static Result<Value> builtin_chord(Interpreter &i, std::vector<Value> args)
 	Try(create_chord(chord.notes, i, std::move(args)));
 	return chord;
 }
-
+//: Funkcja `note_on` włącza nutę (nuty) na danym kanale.
+//:
+//: # Przykład
+//: ```
+//: TODO
+//: ```
 /// Send MIDI message Note On
 static Result<Value> builtin_note_on(Interpreter &interpreter, std::vector<Value> args)
 {
 	if (auto a = match<Number, Number, Number>(args)) {
 		auto [chan, note, vel] = *a;
-		interpreter.midi_connection->send_note_on(chan.as_int(), note.as_int(), vel.as_int());
+		interpreter.current_context->port->send_note_on(chan.as_int(), note.as_int(), vel.as_int());
 		return Value {};
 	}
 
@@ -1010,8 +1385,9 @@ static Result<Value> builtin_note_on(Interpreter &interpreter, std::vector<Value
 		auto [chan, chord, vel] = *a;
 		for (auto note : chord.notes) {
 			note = interpreter.current_context->fill(note);
-			interpreter.midi_connection->send_note_on(chan.as_int(), *note.into_midi_note(), vel.as_int());
+			interpreter.current_context->port->send_note_on(chan.as_int(), *note.into_midi_note(), vel.as_int());
 		}
+		return Value{};
 	}
 
 	return Error {
@@ -1027,12 +1403,18 @@ static Result<Value> builtin_note_on(Interpreter &interpreter, std::vector<Value
 	};
 }
 
+//: Funkcja `note_off` wyłącza nutę (nuty) na danym kanale.
+//:
+//: # Przykład
+//: ```
+//: TODO
+//: ```
 /// Send MIDI message Note Off
 static Result<Value> builtin_note_off(Interpreter &interpreter, std::vector<Value> args)
 {
 	if (auto a = match<Number, Number>(args)) {
 		auto [chan, note] = *a;
-		interpreter.midi_connection->send_note_off(chan.as_int(), note.as_int(), 127);
+		interpreter.current_context->port->send_note_off(chan.as_int(), note.as_int(), 127);
 		return Value {};
 	}
 
@@ -1041,8 +1423,9 @@ static Result<Value> builtin_note_off(Interpreter &interpreter, std::vector<Valu
 
 		for (auto note : chord.notes) {
 			note = interpreter.current_context->fill(note);
-			interpreter.midi_connection->send_note_off(chan.as_int(), *note.into_midi_note(), 127);
+			interpreter.current_context->port->send_note_off(chan.as_int(), *note.into_midi_note(), 127);
 		}
+		return Value{};
 	}
 
 	return Error {
@@ -1058,6 +1441,13 @@ static Result<Value> builtin_note_off(Interpreter &interpreter, std::vector<Valu
 	};
 }
 
+//: Funkcja `mix` pozwala na łączenie pojedynczych elementów, jak i struktur, w nową strukturę, dobierając kolejne elementy do listy z zadanych argumentów (w szczególności iterowalnych).
+//:
+//: # Przykład
+//: ```
+//: > mix (a, b, c) (1, 2, 3)
+//: (a, 1, b, 2, c, 3)
+//: ```
 /// Interleaves arguments
 static Result<Value> builtin_mix(Interpreter &i, std::vector<Value> args)
 {
@@ -1089,6 +1479,90 @@ static Result<Value> builtin_mix(Interpreter &i, std::vector<Value> args)
 	return result;
 }
 
+inline void append_digits(std::vector<uint8_t> &digits, usize base, Number number)
+{
+	auto start = digits.size();
+
+	number.simplify_inplace();
+
+	auto integer_part = number.num / number.den;
+	number.num -= integer_part * number.den;
+
+	do {
+		digits.push_back(integer_part % base);
+		integer_part /= base;
+	} while (integer_part != 0);
+	std::reverse(digits.begin() + start, digits.end());
+
+	if (number.den != 1) {
+		std::unordered_set<Number> repeats;
+
+		do {
+			repeats.insert(number);
+			number.num *= base;
+
+			auto const digit = number.floor().as_int();
+			digits.push_back(digit);
+
+			number.num = number.num - digit * number.den;
+			number.simplify_inplace();
+		} while (number.num != 0 && !repeats.contains(number));
+	}
+}
+
+//: Funkcja `digits` zamienia liczbę na listę jej cyfr.
+//:
+//: # Przykład
+//: ```
+//: > digits 335
+//: (3, 3, 5)
+//: ```
+/// Converts number to array of its digits
+static Result<Value> builtin_digits(Interpreter &interpreter, std::vector<Value> args)
+{
+	// For now it's a constant. It waits on some kind of keyword parameters
+	// so base can be provided nicely
+	auto const base = 10;
+
+	std::vector<uint8_t> digits;
+
+	auto args_flattened = Try(deep_flat(interpreter, args));
+	for (auto const& arg : args_flattened) {
+		if (auto num = get_if<Number>(arg)) {
+			append_digits(digits, base, *num);
+		} else {
+			// TODO This may be an error. Currently we fail silently
+			continue;
+		}
+	}
+
+	std::vector<Value> result;
+	result.reserve(digits.size());
+	std::transform(digits.begin(), digits.end(), std::back_inserter(result), [](auto digit) { return Number(digit); });
+	return result;
+}
+
+//: Funkcja `call` wywołuje funkcje z pierwszego argumentu, aplikując pozostałe jej argumenty jako argumenty wywoływanej funkcji.
+//:
+//: # Przykład
+//: ```
+//: > call digits 88976
+//: (8, 8, 9, 7, 6)
+//: ```
+//:
+//: Funkcja `call` umożliwia wywoływanie funkcji, które nie przyjmują żadnych argumentów.
+//: Szczególnie przydatne jest to w przypadku funkcji `len`, `oct`, `bpm`, które zwracają
+//: aktualną wartośc domyślną w przypadku braku argumentów
+//:
+//: # Przykład
+//: ```
+//: > call bpm
+//: 120
+//: > x := (say 42, say 43)
+//: > call x
+//: 42
+//: 43
+//: ```
 /// Call operator. Calls first argument with remaining arguments
 static Result<Value> builtin_call(Interpreter &i, std::vector<Value> args)
 {
@@ -1109,18 +1583,100 @@ static Result<Value> builtin_call(Interpreter &i, std::vector<Value> args)
 	return callable(i, std::move(args));
 }
 
+//: Rozpocznij równo z podłączonymi instancjami w sieci dane fragment kodu
+//:
+//: # Przykład
+//: ```
+//: start (play (c, e, g))
+//: ```
+static Result<Value> builtin_start(Interpreter &interpreter, std::span<Ast> args)
+{
+	interpreter.starter.start();
+	auto result = algo::fold(args, Value{}, [&interpreter](auto const&, Ast const& ast)
+		-> Result<Value>
+	{
+		return Try(interpreter.eval((Ast)ast));
+	});
+	// FIXME this should be in "finally" block
+	interpreter.starter.stop();
+	return result;
+}
+
+//: Wypisz liczbę podłączonych instancji w sieci
+//:
+//: # Przykład
+//:
+//: ```
+//: > call peers
+//: 0
+//: ```
+static Result<Value> builtin_peers(Interpreter &interpreter, std::vector<Value>)
+{
+	return Number(interpreter.starter.peers());
+}
+
+//: Ustaw wyjście MIDI w danym kontekście na dany port
+//:
+//: Dostępne opcje to numer portu oraz symbol `'virtual` tworzacy port wirtualny MIDI
+//:
+//: Podobnie jak funkcje `bpm` czy `oct` wywołanie bez podania argumentów zwraca aktualnie wybrany port
+//:
+//: # Przykład
+//:
+//: ```
+//: > port 0, play c e g
+//: > call port
+//: 0
+//: > port 'virtual
+//: > call port
+//: virtual
+//: ```
+static Result<Value> builtin_port(Interpreter &interpreter, std::vector<Value> args)
+{
+	if (args.empty()) {
+		for (auto const& [key, port] : Context::established_connections) {
+			if (port == interpreter.current_context->port) {
+				return std::visit(Overloaded {
+					[](midi::connections::Virtual_Port) { return Value(Symbol("virtual")); },
+					[](midi::connections::Established_Port port) { return Value(Number(port)); },
+				}, key);
+			}
+		}
+		unreachable();
+	}
+
+	if (auto a = match<Number>(args)) {
+		auto [port_number] = *a;
+		Try(interpreter.current_context->connect(port_number.floor().as_int()));
+		return {};
+	}
+
+	if (auto a = match<Symbol>(args)) {
+		auto [port_type] = *a;
+		if (port_type == "virtual") {
+			Try(interpreter.current_context->connect(std::nullopt));
+			return {};
+		}
+
+		unimplemented();
+	}
+
+	unimplemented();
+}
+
 void Interpreter::register_builtin_functions()
 {
 	auto &global = *Env::global;
 
-	global.force_define("bpm",            ctx_read_write_property<&Context::bpm>);
+	global.force_define("bpm",            builtin_bpm);
 	global.force_define("call",           builtin_call);
-	global.force_define("ceil",           apply_numeric_transform<&Number::ceil>);
+	global.force_define("ceil",           builtin_ceil);
 	global.force_define("chord",          builtin_chord);
-	global.force_define("down",           builtin_range<Range_Direction::Down>);
+	global.force_define("digits",         builtin_digits);
+	global.force_define("down",           builtin_down);
 	global.force_define("duration",       builtin_duration);
 	global.force_define("flat",           builtin_flat);
-	global.force_define("floor",          apply_numeric_transform<&Number::floor>);
+	global.force_define("floor",          builtin_floor);
 	global.force_define("fold",           builtin_fold);
 	global.force_define("for",            builtin_for);
 	global.force_define("hash",           builtin_hash);
@@ -1134,29 +1690,32 @@ void Interpreter::register_builtin_functions()
 	global.force_define("note_off",       builtin_note_off);
 	global.force_define("note_on",        builtin_note_on);
 	global.force_define("nprimes",        builtin_primes);
-	global.force_define("oct",            ctx_read_write_property<&Context::octave>);
+	global.force_define("oct",            builtin_oct);
 	global.force_define("par",            builtin_par);
 	global.force_define("partition",      builtin_partition);
+	global.force_define("peers",          builtin_peers);
 	global.force_define("permute",        builtin_permute);
 	global.force_define("pgmchange",      builtin_program_change);
 	global.force_define("pick",           builtin_pick);
 	global.force_define("play",           builtin_play);
+	global.force_define("port",           builtin_port);
 	global.force_define("program_change", builtin_program_change);
-	global.force_define("range",          builtin_range<Range_Direction::Up>);
+	global.force_define("range",          builtin_range);
 	global.force_define("reverse",        builtin_reverse);
 	global.force_define("rotate",         builtin_rotate);
-	global.force_define("round",          apply_numeric_transform<&Number::round>);
+	global.force_define("round",          builtin_round);
 	global.force_define("scan",           builtin_scan);
 	global.force_define("set_len",        builtin_set_len);
 	global.force_define("set_oct",        builtin_set_oct);
 	global.force_define("shuffle",        builtin_shuffle);
 	global.force_define("sim",            builtin_sim);
 	global.force_define("sort",           builtin_sort);
+	global.force_define("start",          builtin_start);
 	global.force_define("try",            builtin_try);
 	global.force_define("typeof",         builtin_typeof);
 	global.force_define("uniq",           builtin_uniq);
 	global.force_define("unique",         builtin_unique);
-	global.force_define("up",             builtin_range<Range_Direction::Up>);
+	global.force_define("up",             builtin_up);
 	global.force_define("update",         builtin_update);
 	global.force_define("while",          builtin_while);
 }

@@ -71,11 +71,6 @@ static T pop(std::span<char const*> &span)
 		"usage: musique <options> [filename]\n"
 		"  where filename is path to file with Musique code that will be executed\n"
 		"  where options are:\n"
-		"    -o,--output PORT\n"
-		"      provides output port, a place where Musique produces MIDI messages\n"
-		"    -l,--list\n"
-		"      lists all available MIDI ports and quit\n"
-		"\n"
 		"    -c,--run CODE\n"
 		"      executes given code\n"
 		"    -I,--interactive,--repl\n"
@@ -87,11 +82,15 @@ static T pop(std::span<char const*> &span)
 		"    --ast\n"
 		"      prints ast for given code\n"
 		"\n"
+		"    -v,--version\n"
+		"      prints Musique interpreter version\n"
+		"\n"
 		"Thanks to:\n"
 		"  Sy Brand, https://sybrand.ink/, creator of tl::expected https://github.com/TartanLlama/expected\n"
 		"  Justine Tunney, https://justinetunney.com, creator of bestline readline library https://github.com/jart/bestline\n"
 		"  Gary P. Scavone, http://www.music.mcgill.ca/~gary/, creator of rtmidi https://github.com/thestk/rtmidi\n"
 		"  W. Wodall and J. Harrison, creators of https://github.com/wjwwood/serial\n"
+		"  Creators of ableton/link, https://github.com/Ableton/link\n"
 		;
 	std::exit(1);
 }
@@ -105,6 +104,7 @@ void print_repl_help()
 		":!<command> - allows for execution of any shell command\n"
 		":clear - clears screen\n"
 		":load <file> - loads file into Musique session\n"
+		":ports - print list available ports"
 		;
 }
 
@@ -164,16 +164,14 @@ struct Runner
 {
 	static inline Runner *the;
 
-	midi::Serial_Midi midi;
 	Interpreter interpreter;
 	std::shared_ptr<serialport::State> serial_state;
 	std::thread serial_event_loop;
 	std::atomic<bool> serial_event_loop_stop = false;
 
 	/// Setup interpreter and midi connection with given port
-	explicit Runner(std::optional<unsigned> output_port)
-		: midi()
-		, interpreter{}
+	explicit Runner()
+		: interpreter{}
 	{
 		ensure(the == nullptr, "Only one instance of runner is supported");
 		the = this;
@@ -181,14 +179,13 @@ struct Runner
 		/// Setup communication over serial
 		serial_state = std::make_shared<serialport::State>();
 		interpreter.serialport = serial_state;
-		midi.serialport = serial_state;
 		serialport::initialize();
 
 		serial_event_loop = std::thread([this]() mutable {
 			serialport::event_loop(serial_event_loop_stop, *serial_state);
 		});
 
-		interpreter.midi_connection = &midi;
+		interpreter.current_context->connect(std::nullopt);
 
 		Env::global->force_define("say", +[](Interpreter &interpreter, std::vector<Value> args) -> Result<Value> {
 			for (auto it = args.begin(); it != args.end(); ++it) {
@@ -302,6 +299,12 @@ static Result<bool> handle_repl_session_commands(std::string_view input, Runner 
 				std::exit(0);
 			}
 		},
+		Command { "version",
+			+[](Runner&, std::optional<std::string_view>) -> std::optional<Error> {
+				std::cout << Musique_Version << std::endl;
+				return {};
+			},
+		},
 		Command { "clear",
 			+[](Runner&, std::optional<std::string_view>) -> std::optional<Error> {
 				std::cout << "\x1b[1;1H\x1b[2J" << std::flush;
@@ -342,6 +345,14 @@ static Result<bool> handle_repl_session_commands(std::string_view input, Runner 
 				runner.interpreter.snapshot(*out);
 				return std::nullopt;
 			}
+		},
+
+		Command {
+			"ports",
+			+[](Runner&, std::optional<std::string_view>) -> std::optional<Error> {
+				midi::Rt_Midi{}.list_ports(std::cout);
+				return {};
+			},
 		},
 	};
 
@@ -387,9 +398,6 @@ static std::optional<Error> Main(std::span<char const*> args)
 		std::string_view argument;
 	};
 
-	// Arbitraly chosen for conviniance of the author
-	std::optional<unsigned> output_port{};
-
 	std::vector<Run> runnables;
 
 	while (not args.empty()) {
@@ -398,11 +406,6 @@ static std::optional<Error> Main(std::span<char const*> args)
 		if (arg == "-" || !arg.starts_with('-')) {
 			runnables.push_back({ .type = Run::File, .argument = std::move(arg) });
 			continue;
-		}
-
-		if (arg == "-l" || arg == "--list") {
-			midi::Rt_Midi{}.list_ports(std::cout);
-			return {};
 		}
 
 		if (arg == "-c" || arg == "--run") {
@@ -437,13 +440,9 @@ static std::optional<Error> Main(std::span<char const*> args)
 			continue;
 		}
 
-		if (arg == "-o" || arg == "--output") {
-			if (args.empty()) {
-				std::cerr << "musique: error: option " << arg << " requires an argument" << std::endl;
-				std::exit(1);
-			}
-			output_port = pop<unsigned>(args);
-			continue;
+		if (arg == "--version" || arg == "-v") {
+			std::cout << Musique_Version << std::endl;
+			return {};
 		}
 
 		if (arg == "-h" || arg == "--help") {
@@ -454,7 +453,7 @@ static std::optional<Error> Main(std::span<char const*> args)
 		std::exit(1);
 	}
 
-	Runner runner{output_port};
+	Runner runner;
 
 	for (auto const& [type, argument] : runnables) {
 		if (type == Run::Argument) {

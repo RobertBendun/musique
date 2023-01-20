@@ -113,7 +113,7 @@ Result<Value> Value::operator()(Interpreter &i, std::vector<Value> args) const
 		return (*func)(i, std::move(args));
 	}
 
-	return errors::Not_Callable { .type = type_name(*this) };
+	return errors::Not_Callable { .type = std::string(type_name(*this)) };
 }
 
 

@@ -5,6 +5,7 @@ import json
 import os
 import subprocess
 
+TEST_DIR = "regression-tests"
 TEST_DB = "test_db.json"
 INTERPRETER = "bin/linux/debug/musique"
 
@@ -94,7 +95,58 @@ class TestSuite:
 
 suites = list[TestSuite]()
 
-def traverse(discover: bool, update: bool):
+def suite_case_from_path(path: str) -> tuple[str, str]:
+    path = os.path.realpath(path)
+    test_suite, test_case = os.path.split(path)
+    test_dir, test_suite = os.path.split(test_suite)
+    _, test_dir = os.path.split(test_dir)
+
+    assert test_dir == TEST_DIR, "Provided path doesn't follow required directory structure"
+    assert test_case.endswith(".mq"), "Test case is not a Musique file"
+    assert os.path.isfile(path), "Test case is not a file"
+
+    return (test_suite, test_case)
+
+def add(path: str) -> list[tuple[TestSuite, TestCase]]:
+    test_suite, test_case = suite_case_from_path(path)
+
+    for suite in suites:
+        if suite.name == test_suite:
+            break
+    else:
+        print(f"Discovered new test suite: {test_suite}")
+        suite = TestSuite(name=test_suite)
+        suites.append(suite)
+
+    for case in suite.cases:
+        if case.name == test_case:
+            print(f"Test case {test_case} in suite {test_suite} already exists")
+            return []
+
+    case = TestCase(name=test_case)
+    suite.cases.append(case)
+    return [(suite, case)]
+
+def update(path: str) -> list[tuple[TestSuite, TestCase]]:
+    test_suite, test_case = suite_case_from_path(path)
+
+    for suite in suites:
+        if suite.name == test_suite:
+            break
+    else:
+        print(f"Cannot update case {test_case} where suite {test_suite} was not defined yet.")
+        print("Use --add to add new test case")
+        return []
+
+    for case in suite.cases:
+        if case.name == test_case:
+            return [(suite, case)]
+
+    print(f"Case {test_case} doesn't exists in suite {test_suite}")
+    print("Use --add to add new test case")
+    return []
+
+def traverse(discover: bool, update: bool) -> list[tuple[TestSuite, TestCase]]:
     to_record = list[tuple[TestSuite, TestCase]]()
     if discover:
         for suite_name in os.listdir(testing_dir):
@@ -114,16 +166,7 @@ def traverse(discover: bool, update: bool):
     if update:
         to_record.extend(((suite, case) for suite in suites for case in suite.cases))
 
-    for (suite, case) in to_record:
-        case.record(
-            interpreter=os.path.join(root, INTERPRETER),
-            source=os.path.join(testing_dir, suite.name, case.name),
-            cwd=root
-        )
-
-    with open(test_db_path, "w") as f:
-        json_suites = [dataclasses.asdict(suite) for suite in suites]
-        json.dump(json_suites, f, indent=2)
+    return to_record
 
 def test():
     successful, total = 0, 0
@@ -145,12 +188,14 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Regression test runner for Musique programming language")
     parser.add_argument("-d", "--discover", action="store_true", help="Discover all tests that are not in testing database")
-    parser.add_argument("-u", "--update", action="store_true", help="Update all tests")
+    parser.add_argument("--update-all", action="store_true", help="Update all tests", dest="update_all")
+    parser.add_argument("-a", "--add", action="append", help="Add new test to test suite", default=[])
+    parser.add_argument("-u", "--update", action="append", help="Update test case", default=[])
 
     args = parser.parse_args()
 
     root = os.path.dirname(os.path.dirname(__file__))
-    testing_dir = os.path.join(root, "regression-tests")
+    testing_dir = os.path.join(root, TEST_DIR)
     test_db_path = os.path.join(testing_dir, TEST_DB)
 
     with open(test_db_path, "r") as f:
@@ -158,7 +203,27 @@ if __name__ == "__main__":
             src["cases"] = [TestCase(**case) for case in src["cases"]]
             suites.append(TestSuite(**src))
 
-    if args.discover or args.update:
-        traverse(discover=args.discover, update=args.update)
-    else:
+    to_record = []
+
+    if args.discover or args.update_all:
+        to_record.extend(traverse(discover=args.discover, update=args.update_all))
+    elif not (args.add or args.update):
         test()
+
+    for case in args.add:
+        to_record.extend(add(case))
+
+    for case in args.update:
+        to_record.extend(update(case))
+
+    for (suite, case) in to_record:
+        case.record(
+            interpreter=os.path.join(root, INTERPRETER),
+            source=os.path.join(testing_dir, suite.name, case.name),
+            cwd=root
+        )
+
+    if to_record:
+        with open(test_db_path, "w") as f:
+            json_suites = [dataclasses.asdict(suite) for suite in suites]
+            json.dump(json_suites, f, indent=2)
