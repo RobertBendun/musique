@@ -17,6 +17,7 @@
 #include <musique/try.hh>
 #include <musique/unicode.hh>
 #include <musique/value/block.hh>
+#include <musique/interpreter/builtin_function_documentation.hh>
 
 #ifdef _WIN32
 extern "C" {
@@ -416,6 +417,20 @@ static std::optional<Error> Main(std::span<char const*> args)
 		if (arg == "--version" || arg == "-v") {
 			std::cout << Musique_Version << std::endl;
 			return {};
+		}
+
+		if (arg == "--doc" || arg == "-d") {
+			if (args.empty()) {
+				std::cerr << "musique: error: option " << arg << " requires an argument" << std::endl;
+				std::exit(1);
+			}
+			if (auto maybe_docs = find_documentation_for_builtin(pop(args)); maybe_docs) {
+				std::cout << *maybe_docs << std::endl;
+				return {};
+			} else {
+				std::cerr << "musique: error: cannot find documentation for given builtin" << std::endl;
+				std::exit(1);
+			}
 		}
 
 		if (arg == "-h" || arg == "--help") {
