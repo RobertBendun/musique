@@ -34,15 +34,16 @@ try {
 	std::exit(33);
 }
 
-bool midi::Rt_Midi::connect_or_create_output()
+midi::Port midi::Rt_Midi::establish_any_connection()
 try {
 	output.emplace();
 	if (output->getPortCount()) {
-		output->openPort(0);
-		return true;
+		output->openPort(0, "Musique");
+		return Established_Port { 0 };
 	}
+
 	output->openVirtualPort("Musique");
-	return false;
+	return Virtual_Port{};
 }
 catch (RtMidiError &error) {
 	// TODO(error)
@@ -50,23 +51,22 @@ catch (RtMidiError &error) {
 	std::exit(33);
 }
 
-void midi::Rt_Midi::connect_output()
+void midi::Rt_Midi::connect(midi::Port port)
 try {
-	ensure(not output.has_value(), "Reconeccting is not supported yet");
-	output.emplace();
-	output->openVirtualPort("Musique");
-} catch (RtMidiError &error) {
-	// TODO(error)
-	std::cerr << "Failed to use MIDI connection: " << error.getMessage() << std::endl;
-	std::exit(33);
+	std::visit(Overloaded{
+		[this](midi::Virtual_Port) {
+			output.emplace();
+			output->openVirtualPort("Musique");
+		},
+		[this](midi::Established_Port port) {
+			output.emplace();
+			output->openPort(port, "Musique");
+		},
+	}, port);
+	output->setClientName("Musique");
+	output->setPortName("Musique");
 }
-
-void midi::Rt_Midi::connect_output(unsigned target)
-try {
-	ensure(not output.has_value(), "Reconeccting is not supported yet");
-	output.emplace();
-	output->openPort(target);
-} catch (RtMidiError &error) {
+catch (RtMidiError &error) {
 	// TODO(error)
 	std::cerr << "Failed to use MIDI connection: " << error.getMessage() << std::endl;
 	std::exit(33);

@@ -169,7 +169,7 @@ struct Runner
 		ensure(the == nullptr, "Only one instance of runner is supported");
 		the = this;
 
-		interpreter.current_context->connect(std::nullopt);
+		// interpreter.current_context->connect(std::nullopt);
 
 		Env::global->force_define("say", +[](Interpreter &interpreter, std::vector<Value> args) -> Result<Value> {
 			for (auto it = args.begin(); it != args.end(); ++it) {

@@ -1637,8 +1637,8 @@ static Result<Value> builtin_port(Interpreter &interpreter, std::vector<Value> a
 		for (auto const& [key, port] : Context::established_connections) {
 			if (port == interpreter.current_context->port) {
 				return std::visit(Overloaded {
-					[](midi::connections::Virtual_Port) { return Value(Symbol("virtual")); },
-					[](midi::connections::Established_Port port) { return Value(Number(port)); },
+					[](midi::Virtual_Port) { return Value(Symbol("virtual")); },
+					[](midi::Established_Port port) { return Value(Number(port)); },
 				}, key);
 			}
 		}
@@ -1647,14 +1647,14 @@ static Result<Value> builtin_port(Interpreter &interpreter, std::vector<Value> a
 
 	if (auto a = match<Number>(args)) {
 		auto [port_number] = *a;
-		Try(interpreter.current_context->connect(port_number.floor().as_int()));
+		Try(interpreter.current_context->connect(midi::Established_Port(port_number.floor().as_int())));
 		return {};
 	}
 
 	if (auto a = match<Symbol>(args)) {
 		auto [port_type] = *a;
 		if (port_type == "virtual") {
-			Try(interpreter.current_context->connect(std::nullopt));
+			Try(interpreter.current_context->connect(midi::Virtual_Port{}));
 			return {};
 		}
 

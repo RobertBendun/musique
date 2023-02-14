@@ -4,10 +4,20 @@
 #include <functional>
 #include <optional>
 #include <string>
+#include <variant>
 
 // Documentation of midi messages available at http://midi.teragonaudio.com/tech/midispec.htm
 namespace midi
 {
+	using Established_Port = unsigned int;
+
+	struct Virtual_Port
+	{
+		bool operator==(Virtual_Port const&) const = default;
+	};
+
+	using Port = std::variant<Established_Port, Virtual_Port>;
+
 	struct Connection
 	{
 		virtual ~Connection() = default;
@@ -26,17 +36,14 @@ namespace midi
 	{
 		~Rt_Midi() override = default;
 
-		bool connect_or_create_output();
+		/// Connect to existing MIDI output or create virtual port
+		Port establish_any_connection();
 
-		/// Connect with MIDI virtual port
-		void connect_output();
-
-		/// Connect with specific MIDI port for outputing MIDI messages
-		void connect_output(unsigned target);
+		/// Connect to given port
+		void connect(Port port);
 
 		/// List available ports
 		void list_ports(std::ostream &out) const;
-
 
 		bool supports_output() const override;
 
@@ -44,6 +51,7 @@ namespace midi
 		void send_note_off(uint8_t channel, uint8_t note_number, uint8_t velocity) override;
 		void send_program_change(uint8_t channel, uint8_t program) override;
 		void send_controller_change(uint8_t channel, uint8_t controller_number, uint8_t value) override;
+
 
 		std::optional<RtMidiOut> output;
 	};

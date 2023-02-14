@@ -9,17 +9,6 @@
 #include <musique/value/note.hh>
 #include <musique/value/number.hh>
 
-namespace midi::connections
-{
-	using Established_Port = unsigned int;
-
-	struct Virtual_Port
-	{
-		bool operator==(Virtual_Port const&) const = default;
-	};
-
-	using Key = std::variant<Established_Port, Virtual_Port>;
-}
 
 /// Context holds default values for music related actions
 struct Context
@@ -39,12 +28,12 @@ struct Context
 	using Port_Number = unsigned int;
 
 	/// Connections that have been established so far
-	static std::unordered_map<midi::connections::Key, std::shared_ptr<midi::Connection>> established_connections;
+	static std::unordered_map<midi::Port, std::shared_ptr<midi::Connection>> established_connections;
 
 	/// Establish connection to given port
 	///
 	/// If port number wasn't provided connect to first existing one or create one
-	std::optional<Error> connect(std::optional<Port_Number>);
+	std::optional<Error> connect(std::optional<midi::Port>);
 
 	/// Fills empty places in Note like octave and length with default values from context
 	Note fill(Note) const;
