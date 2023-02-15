@@ -3,9 +3,7 @@
     "name": "boolean",
     "cases": [
       {
-        "name": "logical_or.mq",
         "exit_code": 0,
-        "stdin_lines": [],
         "stdout_lines": [
           "false",
           "true",
@@ -18,12 +16,13 @@
           "10",
           "42"
         ],
-        "stderr_lines": []
+        "stderr_lines": [],
+        "midi_events": null,
+        "name": "logical_or.mq",
+        "stdin_lines": []
       },
       {
-        "name": "logical_and.mq",
         "exit_code": 0,
-        "stdin_lines": [],
         "stdout_lines": [
           "false",
           "false",
@@ -37,7 +36,10 @@
           "32",
           "42"
         ],
-        "stderr_lines": []
+        "stderr_lines": [],
+        "midi_events": null,
+        "name": "logical_and.mq",
+        "stdin_lines": []
       }
     ]
   },
@@ -45,9 +47,7 @@
     "name": "builtin",
     "cases": [
       {
-        "name": "permute.mq",
         "exit_code": 0,
-        "stdin_lines": [],
         "stdout_lines": [
           "(0, 1, 3, 2)",
           "(0, 2, 1, 3)",
@@ -77,12 +77,13 @@
           "(0, 1, 4, (3, 2))",
           "(0, 4, (3, 2), 1)"
         ],
-        "stderr_lines": []
+        "stderr_lines": [],
+        "midi_events": null,
+        "name": "permute.mq",
+        "stdin_lines": []
       },
       {
-        "name": "range.mq",
         "exit_code": 0,
-        "stdin_lines": [],
         "stdout_lines": [
           "()",
           "()",
@@ -100,35 +101,38 @@
           "(9, 8, 7, 6, 5, 4, 3, 2, 1)",
           "(9, 7, 5, 3, 1)"
         ],
-        "stderr_lines": []
+        "stderr_lines": [],
+        "midi_events": null,
+        "name": "range.mq",
+        "stdin_lines": []
       },
       {
-        "name": "min.mq",
         "exit_code": 0,
-        "stdin_lines": [],
         "stdout_lines": [
           "1",
           "200",
           "100",
           "0"
         ],
-        "stderr_lines": []
+        "stderr_lines": [],
+        "midi_events": null,
+        "name": "min.mq",
+        "stdin_lines": []
       },
       {
-        "name": "call.mq",
         "exit_code": 0,
-        "stdin_lines": [],
         "stdout_lines": [
           "42",
           "11",
           "43"
         ],
-        "stderr_lines": []
+        "stderr_lines": [],
+        "midi_events": null,
+        "name": "call.mq",
+        "stdin_lines": []
       },
       {
-        "name": "if.mq",
         "exit_code": 0,
-        "stdin_lines": [],
         "stdout_lines": [
           "1",
           "2",
@@ -138,35 +142,38 @@
           "200",
           "9"
         ],
-        "stderr_lines": []
+        "stderr_lines": [],
+        "midi_events": null,
+        "name": "if.mq",
+        "stdin_lines": []
       },
       {
-        "name": "uniq.mq",
         "exit_code": 0,
-        "stdin_lines": [],
         "stdout_lines": [
           "(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)",
           "(1, 3, 5, 3, 4, 1)",
           "(1, 3, 5, 3, 4, 1)"
         ],
-        "stderr_lines": []
+        "stderr_lines": [],
+        "midi_events": null,
+        "name": "uniq.mq",
+        "stdin_lines": []
       },
       {
-        "name": "reverse.mq",
         "exit_code": 0,
-        "stdin_lines": [],
         "stdout_lines": [
           "()",
           "(9, 8, 7, 6, 5, 4, 3, 2, 1, 0)",
           "(0, 1, 2, 3, 4, 5, 6, 7, 8, 9)",
           "(9, 8, 7, 6, 5, 4, (1, 2, 3))"
         ],
-        "stderr_lines": []
+        "stderr_lines": [],
+        "midi_events": null,
+        "name": "reverse.mq",
+        "stdin_lines": []
       },
       {
-        "name": "typeof.mq",
         "exit_code": 0,
-        "stdin_lines": [],
         "stdout_lines": [
           "array",
           "number",
@@ -176,35 +183,38 @@
           "nil",
           "intrinsic"
         ],
-        "stderr_lines": []
+        "stderr_lines": [],
+        "midi_events": null,
+        "name": "typeof.mq",
+        "stdin_lines": []
       },
       {
-        "name": "unique.mq",
         "exit_code": 0,
-        "stdin_lines": [],
         "stdout_lines": [
           "(0, 1, 2, 3, 4, 5, 6, 7, 8, 9)",
           "(1, 3, 5, 4)",
           "(1, 3, 5, 4)"
         ],
-        "stderr_lines": []
+        "stderr_lines": [],
+        "midi_events": null,
+        "name": "unique.mq",
+        "stdin_lines": []
       },
       {
-        "name": "max.mq",
         "exit_code": 0,
-        "stdin_lines": [],
         "stdout_lines": [
           "5",
           "209",
           "109",
           "10"
         ],
-        "stderr_lines": []
+        "stderr_lines": [],
+        "midi_events": null,
+        "name": "max.mq",
+        "stdin_lines": []
       },
       {
-        "name": "digits.mq",
         "exit_code": 0,
-        "stdin_lines": [],
         "stdout_lines": [
           "(3, 4, 5, 6)",
           "(1, 0)",
@@ -215,73 +225,286 @@
           "(0, 5)",
           "(1, 2, 3, 4, 5, 6, 7, 8)"
         ],
-        "stderr_lines": []
+        "stderr_lines": [],
+        "midi_events": null,
+        "name": "digits.mq",
+        "stdin_lines": []
       },
       {
+        "exit_code": 0,
+        "stdout_lines": [
+          "-4",
+          "-4",
+          "-4",
+          "-4",
+          "-5",
+          "4",
+          "5",
+          "5",
+          "5",
+          "5"
+        ],
+        "stderr_lines": [],
+        "midi_events": null,
         "name": "ceil.mq",
-        "exit_code": 0,
-        "stdin_lines": [],
-        "stdout_lines": [
-          "-4",
-          "-4",
-          "-4",
-          "-4",
-          "-5",
-          "4",
-          "5",
-          "5",
-          "5",
-          "5"
-        ],
-        "stderr_lines": []
+        "stdin_lines": []
       },
       {
+        "exit_code": 0,
+        "stdout_lines": [
+          "-4",
+          "-5",
+          "-5",
+          "-5",
+          "-5",
+          "4",
+          "4",
+          "4",
+          "4",
+          "5"
+        ],
+        "stderr_lines": [],
+        "midi_events": null,
         "name": "floor.mq",
+        "stdin_lines": []
+      },
+      {
         "exit_code": 0,
-        "stdin_lines": [],
         "stdout_lines": [
+          "-4",
+          "-4",
           "-4",
           "-5",
           "-5",
-          "-5",
-          "-5",
           "4",
           "4",
-          "4",
-          "4",
+          "5",
+          "5",
           "5"
         ],
-        "stderr_lines": []
-      },
-      {
+        "stderr_lines": [],
+        "midi_events": null,
         "name": "round.mq",
-        "exit_code": 0,
-        "stdin_lines": [],
-        "stdout_lines": [
-          "-4",
-          "-4",
-          "-4",
-          "-5",
-          "-5",
-          "4",
-          "4",
-          "5",
-          "5",
-          "5"
-        ],
-        "stderr_lines": []
+        "stdin_lines": []
       },
       {
-        "name": "duration.mq",
         "exit_code": 0,
-        "stdin_lines": [],
         "stdout_lines": [
-          "3/4",
+          "1/4",
           "1/4",
           "1",
           "3/10"
         ],
-        "stderr_lines": []
+        "stderr_lines": [],
+        "midi_events": null,
+        "name": "duration.mq",
+        "stdin_lines": []
+      }
+    ]
+  },
+  {
+    "name": "music",
+    "cases": [
+      {
+        "exit_code": 0,
+        "stdout_lines": [],
+        "stderr_lines": [],
+        "midi_events": [
+          {
+            "type": "note_on",
+            "args": [
+              "0",
+              "60"
+            ],
+            "time": 0.008109543001410202
+          },
+          {
+            "type": "note_off",
+            "args": [
+              "0",
+              "60"
+            ],
+            "time": 0.07068762000017159
+          },
+          {
+            "type": "note_on",
+            "args": [
+              "0",
+              "61"
+            ],
+            "time": 0.07074685500083433
+          },
+          {
+            "type": "note_off",
+            "args": [
+              "0",
+              "61"
+            ],
+            "time": 0.13358810300087498
+          },
+          {
+            "type": "note_on",
+            "args": [
+              "0",
+              "62"
+            ],
+            "time": 0.13376853900081187
+          },
+          {
+            "type": "note_off",
+            "args": [
+              "0",
+              "62"
+            ],
+            "time": 0.19631889199990837
+          },
+          {
+            "type": "note_on",
+            "args": [
+              "0",
+              "63"
+            ],
+            "time": 0.1964232610007457
+          },
+          {
+            "type": "note_off",
+            "args": [
+              "0",
+              "63"
+            ],
+            "time": 0.2592293600009725
+          },
+          {
+            "type": "note_on",
+            "args": [
+              "0",
+              "64"
+            ],
+            "time": 0.2593720190016029
+          },
+          {
+            "type": "note_off",
+            "args": [
+              "0",
+              "64"
+            ],
+            "time": 0.321934201001568
+          },
+          {
+            "type": "note_on",
+            "args": [
+              "0",
+              "65"
+            ],
+            "time": 0.3221377190002386
+          },
+          {
+            "type": "note_off",
+            "args": [
+              "0",
+              "65"
+            ],
+            "time": 0.38442845700046746
+          },
+          {
+            "type": "note_on",
+            "args": [
+              "0",
+              "66"
+            ],
+            "time": 0.3844692580005358
+          },
+          {
+            "type": "note_off",
+            "args": [
+              "0",
+              "66"
+            ],
+            "time": 0.44720406100168475
+          },
+          {
+            "type": "note_on",
+            "args": [
+              "0",
+              "67"
+            ],
+            "time": 0.44733363700106565
+          },
+          {
+            "type": "note_off",
+            "args": [
+              "0",
+              "67"
+            ],
+            "time": 0.5101613840015489
+          },
+          {
+            "type": "note_on",
+            "args": [
+              "0",
+              "68"
+            ],
+            "time": 0.5104183930016006
+          },
+          {
+            "type": "note_off",
+            "args": [
+              "0",
+              "68"
+            ],
+            "time": 0.5728266430014628
+          },
+          {
+            "type": "note_on",
+            "args": [
+              "0",
+              "69"
+            ],
+            "time": 0.5729434800014133
+          },
+          {
+            "type": "note_off",
+            "args": [
+              "0",
+              "69"
+            ],
+            "time": 0.6357513590010058
+          },
+          {
+            "type": "note_on",
+            "args": [
+              "0",
+              "70"
+            ],
+            "time": 0.6359626870016655
+          },
+          {
+            "type": "note_off",
+            "args": [
+              "0",
+              "70"
+            ],
+            "time": 0.698417817000518
+          },
+          {
+            "type": "note_on",
+            "args": [
+              "0",
+              "71"
+            ],
+            "time": 0.6985397290009132
+          },
+          {
+            "type": "note_off",
+            "args": [
+              "0",
+              "71"
+            ],
+            "time": 0.7612005600003613
+          }
+        ],
+        "name": "all_midi_notes.mq",
+        "stdin_lines": []
       }
     ]
   }

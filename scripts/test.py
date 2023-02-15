@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import dacite
 import dataclasses
 import json
 import os
@@ -19,6 +20,7 @@ except ModuleNotFoundError as e:
 TEST_DIR = "regression-tests"
 TEST_DB = "test_db.json"
 INTERPRETER = "bin/linux/debug/musique"
+MIDI_TOLERANCE = 0.005
 
 @dataclasses.dataclass
 class MidiEvent:
@@ -28,6 +30,7 @@ class MidiEvent:
 
 def connect_to_default_midi_port():
     global midi_client
+    global port # this object keeps alive port, so it needs to live in global space (= live as long as program)
     midi_client = alsa.SequencerClient('Musique Tester')
     ports = midi_client.list_ports(input = True)
 
@@ -49,7 +52,7 @@ def listen_for_midi_events() -> list[MidiEvent] | None:
 
     events = []
     while True:
-        event = midi_client.event_input(timeout=2)
+        event = midi_client.event_input(timeout=5)
         if event is None:
             break
         end_time = time.monotonic()
@@ -68,6 +71,24 @@ def normalize_events(events) -> typing.Generator[MidiEvent, None, None]:
             case _:
                 assert False, f"Unmatched event type: {event.type}"
 
+def compare_midi(xs: list[MidiEvent] | None, ys: list[MidiEvent] | None) -> bool:
+    if xs is None or ys is None:
+        return (xs is None) == (ys is None)
+
+    # TODO Can we get better performance then O(n^2) algorithm?
+    #      Or at lexst optimize implementation of this one?
+    if len(xs) != len(ys):
+        return False
+
+    for x in xs:
+        if not any(x.type == y.type \
+                and x.args == y.args \
+                and x.time >= y.time - MIDI_TOLERANCE and x.time <= y.time + MIDI_TOLERANCE
+               for y in ys):
+            return False
+    return True
+
+
 @dataclasses.dataclass
 class Result:
     exit_code:    int       = 0
@@ -80,7 +101,7 @@ class TestCase(Result):
     name: str = "<unnamed>"
     stdin_lines:  list[str] = dataclasses.field(default_factory=list)
 
-    def run(self, interpreter: str, source: str, cwd: str, capture_midi: bool = False) -> Result:
+    def run(self, interpreter: str, source: str, cwd: str, *, capture_midi: bool = False) -> Result:
         process = subprocess.Popen(
             args=[interpreter, source, "-q"],
             cwd=cwd,
@@ -103,25 +124,36 @@ class TestCase(Result):
 
     def record(self, interpreter: str, source: str, cwd: str):
         print(f"Recording case {self.name}")
-        result = self.run(interpreter, source, cwd)
+        result = self.run(interpreter, source, cwd, capture_midi=True)
 
         changes = []
         if self.exit_code    != result.exit_code:    changes.append("exit code")
         if self.stderr_lines != result.stderr_lines: changes.append("stderr")
         if self.stdout_lines != result.stdout_lines: changes.append("stdout")
+        if self.midi_events  != result.midi_events:  changes.append("midi")
         if changes:
             print(f"  changed: {', '.join(changes)}")
             self.exit_code    = result.exit_code
             self.stderr_lines = result.stderr_lines
             self.stdout_lines = result.stdout_lines
+            self.midi_events  = result.midi_events
+
 
     def test(self, interpreter: str, source: str, cwd: str):
         print(f"  Testing case {self.name}  ", end="")
-        result = self.run(interpreter, source, cwd)
+
+        capture_midi = self.midi_events is not None
+
+        result = self.run(interpreter, source, cwd, capture_midi=capture_midi)
+        if self.midi_events is not None:
+            midi_events = [dacite.from_dict(MidiEvent, event) for event in self.midi_events]
+        else:
+            midi_events = None
 
         if self.exit_code == result.exit_code \
             and self.stdout_lines == result.stdout_lines \
-            and self.stderr_lines == result.stderr_lines:
+            and self.stderr_lines == result.stderr_lines \
+            and compare_midi(midi_events, result.midi_events):
             print("ok")
             return True
 
@@ -203,6 +235,25 @@ def update(path: str) -> list[tuple[TestSuite, TestCase]]:
             break
     else:
         print(f"Cannot update case {test_case} where suite {test_suite} was not defined yet.")
+        print("Use --add to add new test case")
+        return []
+
+    for case in suite.cases:
+        if case.name == test_case:
+            return [(suite, case)]
+
+    print(f"Case {test_case} doesn't exists in suite {test_suite}")
+    print("Use --add to add new test case")
+    return []
+
+def testcase(path: str) -> list[tuple[TestSuite, TestCase]]:
+    test_suite, test_case = suite_case_from_path(path)
+
+    for suite in suites:
+        if suite.name == test_suite:
+            break
+    else:
+        print(f"Cannot test case {test_case} where suite {test_suite} was not defined yet.")
         print("Use --add to add new test case")
         return []
 
