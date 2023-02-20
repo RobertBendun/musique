@@ -321,34 +321,20 @@ static Result<bool> handle_repl_session_commands(std::string_view input, Runner 
 /// Fancy main that supports Result forwarding on error (Try macro)
 static std::optional<Error> Main(std::span<char const*> args)
 {
+	enable_repl = args.empty();
+
 	if (cmd::is_tty() && getenv("NO_COLOR") == nullptr) {
 		pretty::terminal_mode();
 	}
 
-
 	std::vector<cmd::Run> runnables;
 
 
-	for (;;) if (!cmd::accept_commandline_argument(runnables, args)) {
-		if (args.size()) {
-			std::cerr << "musique: error: Failed to recognize parameter " << std::quoted(args.front()) << std::endl;
-			cmd::print_close_matches(args.front());
-			std::exit(1);
-		}
-		break;
+	while (args.size()) if (auto failed = cmd::accept_commandline_argument(runnables, args)) {
+		std::cerr << "musique: error: Failed to recognize parameter " << std::quoted(*failed) << std::endl;
+		cmd::print_close_matches(args.front());
+		std::exit(1);
 	}
-
-		/*
-		if (arg == "--ast") {
-			ast_only_mode = true;
-			continue;
-		}
-
-		if (arg == "--version" || arg == "-v") {
-			std::cout << Musique_Version << std::endl;
-			return {};
-		}
-		*/
 
 	Runner runner;
 

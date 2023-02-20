@@ -1,6 +1,7 @@
 #ifndef MUSIQUE_CMD_HH
 #define MUSIQUE_CMD_HH
 
+#include <optional>
 #include <span>
 #include <string_view>
 #include <variant>
@@ -22,7 +23,7 @@ namespace cmd
 	};
 
 	/// Accept and execute next command line argument with its parameters if it has any
-	bool accept_commandline_argument(std::vector<cmd::Run> &runnables, std::span<char const*> &args);
+	std::optional<std::string_view> accept_commandline_argument(std::vector<cmd::Run> &runnables, std::span<char const*> &args);
 
 	/// Print all arguments that are similar to one provided
 	void print_close_matches(std::string_view arg);

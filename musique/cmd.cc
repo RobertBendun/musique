@@ -50,7 +50,6 @@ static constexpr std::array all_parameters = [] {
 			std::cout << *maybe_docs << std::endl;
 			return;
 		}
-
 		std::cerr << "musique: error: cannot find documentation for given builtin" << std::endl;
 		std::exit(1);
 	};
@@ -99,42 +98,89 @@ static constexpr std::array all_parameters = [] {
 	};
 }();
 
-bool cmd::accept_commandline_argument(std::vector<cmd::Run> &runnables, std::span<char const*> &args)
-{
-	if (args.empty())
-		return false;
 
-	for (auto const& [name, handler] : all_parameters) {
-		// TODO Parameters starting with - or -- should be considered equal
-		if (name != args.front()) {
-			continue;
-		}
-		args = args.subspan(1);
-		std::visit(Overloaded {
-			[](Empty_Argument const& h) {
-				h();
-			},
-			[&args, name=name](Requires_Argument const& h) {
-				if (args.empty()) {
-					std::cerr << "musique: error: option " << std::quoted(name) << " requires an argument" << std::endl;
-					std::exit(1);
-				}
-				h(args.front());
-				args = args.subspan(1);
-			},
-			[&, name=name](Defines_Code const& h) {
-				if (args.empty()) {
-					std::cerr << "musique: error: option " << std::quoted(name) << " requires an argument" << std::endl;
-					std::exit(1);
-				}
-				runnables.push_back(h(args.front()));
-				args = args.subspan(1);
-			}
-		}, handler);
-		return true;
+// Supported types of argument input:
+// With arity = 0
+//   -i -j -k ≡ --i --j --k ≡ i j k
+// With arity = 1
+//   -i 1 -j 2 ≡ --i 1 --j 2 ≡ i 1 j 2 ≡ --i=1 --j=2
+// Arity ≥ 2 is not supported
+std::optional<std::string_view> cmd::accept_commandline_argument(std::vector<cmd::Run> &runnables, std::span<char const*> &args)
+{
+	if (args.empty()) {
+		return std::nullopt;
 	}
 
-	return false;
+	// This struct when function returns automatically ajust number of arguments used
+	struct Fix_Args_Array
+	{
+		std::string_view name() const { return m_name; }
+
+		std::optional<std::string_view> value() const
+		{
+			if (m_has_value) { m_success = m_value_consumed = true; return m_value; }
+			return std::nullopt;
+		}
+
+		void mark_success() { m_success = true; }
+
+		~Fix_Args_Array() { args = args.subspan(int(m_success) + (!m_packed * int(m_value_consumed))); }
+
+		std::span<char const*> &args;
+		std::string_view m_name = {};
+		std::string_view m_value = {};
+		bool m_has_value = false;
+		bool m_packed = false;
+		mutable bool m_success = false;
+		mutable bool m_value_consumed = false;
+	} state { .args = args };
+
+	std::string_view s = args.front();
+	if (s.starts_with("--")) s.remove_prefix(2);
+	if (s.starts_with('-'))  s.remove_prefix(1);
+
+	state.m_name = s;
+
+	if (auto p = s.find('='); p != std::string_view::npos) {
+		state.m_name = s.substr(0, p);
+		state.m_value = s.substr(p+1);
+		state.m_has_value = true;
+		state.m_packed = true;
+	} else if (args.size() >= 2) {
+		state.m_has_value = true;
+		state.m_value = args[1];
+	}
+
+	for (auto const& [name, handler] : all_parameters) {
+		if (name != state.name()) {
+			continue;
+		}
+		std::visit(Overloaded {
+			[&state](Empty_Argument const& h) {
+				state.mark_success();
+				h();
+			},
+			[&state, name=name](Requires_Argument const& h) {
+				auto arg = state.value();
+				if (!arg) {
+					std::cerr << "musique: error: option " << std::quoted(name) << " requires an argument" << std::endl;
+					std::exit(1);
+				}
+				h(*arg);
+			},
+			[&state, &runnables, name=name](Defines_Code const& h) {
+				auto arg = state.value();
+				if (!arg) {
+					std::cerr << "musique: error: option " << std::quoted(name) << " requires an argument" << std::endl;
+					std::exit(1);
+				}
+				runnables.push_back(h(*arg));
+			}
+		}, handler);
+		return std::nullopt;
+	}
+
+	return state.name();
 }
 
 
