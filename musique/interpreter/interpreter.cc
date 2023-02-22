@@ -265,6 +265,7 @@ std::optional<Error> Interpreter::play(Chord chord)
 	for (auto const& note : chord.notes) {
 		if (note.base) {
 			current_context->port->send_note_on(0, *note.into_midi_note(), 127);
+			active_notes.emplace(0, *note.into_midi_note());
 		}
 	}
 
@@ -276,11 +277,28 @@ std::optional<Error> Interpreter::play(Chord chord)
 		}
 		if (note.base) {
 			current_context->port->send_note_off(0, *note.into_midi_note(), 127);
+			active_notes.erase(active_notes.lower_bound(std::pair<unsigned, unsigned>{0, *note.into_midi_note()}));
 		}
 	}
 
 	return {};
 }
+
+void Interpreter::turn_off_all_active_notes()
+{
+	auto status = ensure_midi_connection_available(*this, "turn_off_all_active_notes");
+	if (!Try_Traits<decltype(status)>::is_ok(status)) {
+		return;
+	}
+
+	// TODO send to port that send_note_on was called on
+	for (auto [chan, note] : active_notes) {
+		current_context->port->send_note_off(chan, note, 0);
+	}
+
+	active_notes.clear();
+}
+
 
 std::optional<Error> ensure_midi_connection_available(Interpreter &interpreter, std::string_view operation_name)
 {

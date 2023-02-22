@@ -6,6 +6,7 @@
 #include <musique/midi/midi.hh>
 #include <musique/value/value.hh>
 #include <unordered_map>
+#include <set>
 
 /// Given program tree evaluates it into Value
 struct Interpreter
@@ -21,6 +22,9 @@ struct Interpreter
 	std::shared_ptr<Context> current_context;
 
 	std::function<std::optional<Error>(Interpreter&, Value)> default_action;
+
+	std::multiset<std::pair<unsigned, unsigned>> active_notes;
+
 
 	Starter starter;
 
@@ -53,8 +57,11 @@ struct Interpreter
 
 	/// Dumps snapshot of interpreter into stream
 	void snapshot(std::ostream& out);
+
+	void turn_off_all_active_notes();
 };
 
 std::optional<Error> ensure_midi_connection_available(Interpreter&, std::string_view operation_name);
+
 
 #endif

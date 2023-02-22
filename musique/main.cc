@@ -1,11 +1,12 @@
 #include <charconv>
+#include <cstdio>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <span>
 #include <thread>
-#include <cstring>
-#include <cstdio>
+#include <csignal>
 
 #include <musique/format.hh>
 #include <musique/interpreter/env.hh>
@@ -18,15 +19,14 @@
 #include <musique/unicode.hh>
 #include <musique/value/block.hh>
 
+#include <replxx.hxx>
+
 #ifdef _WIN32
 extern "C" {
 #include <io.h>
 }
 #else
 #include <unistd.h>
-extern "C" {
-#include <bestline.h>
-}
 #endif
 
 namespace fs = std::filesystem;
@@ -37,6 +37,13 @@ static bool enable_repl = false;
 static unsigned repl_line_number = 1;
 
 #define Ignore(Call) do { auto const ignore_ ## __LINE__ = (Call); (void) ignore_ ## __LINE__; } while(0)
+
+struct KeyboardInterrupt : std::exception
+{
+	~KeyboardInterrupt() = default;
+	char const* what() const noexcept override { return "KeyboardInterrupt"; }
+};
+
 
 /// Pop string from front of an array
 template<typename T = std::string_view>
@@ -84,7 +91,6 @@ static T pop(std::span<char const*> &span)
 		"\n"
 		"Thanks to:\n"
 		"  Sy Brand, https://sybrand.ink/, creator of tl::expected https://github.com/TartanLlama/expected\n"
-		"  Justine Tunney, https://justinetunney.com, creator of bestline readline library https://github.com/jart/bestline\n"
 		"  Gary P. Scavone, http://www.music.mcgill.ca/~gary/, creator of rtmidi https://github.com/thestk/rtmidi\n"
 		"  Creators of ableton/link, https://github.com/Ableton/link\n"
 		;
@@ -219,8 +225,13 @@ struct Runner
 			dump(ast);
 			return {};
 		}
-		if (auto result = Try(interpreter.eval(std::move(ast))); output && not holds_alternative<Nil>(result)) {
-			std::cout << Try(format(interpreter, result)) << std::endl;
+		try {
+			if (auto result = Try(interpreter.eval(std::move(ast))); output && not holds_alternative<Nil>(result)) {
+				std::cout << Try(format(interpreter, result)) << std::endl;
+			}
+		} catch (KeyboardInterrupt const&) {
+			interpreter.turn_off_all_active_notes();
+			std::cout << std::endl;
 		}
 		return {};
 	}
@@ -230,7 +241,7 @@ struct Runner
 /// some of the strings are only views into source
 std::vector<std::string> eternal_sources;
 
-#ifndef _WIN32
+#if 0
 void completion(char const* buf, bestlineCompletions *lc)
 {
 	std::string_view in{buf};
@@ -426,6 +437,32 @@ static std::optional<Error> Main(std::span<char const*> args)
 		std::exit(1);
 	}
 
+	{
+		static auto thread = pthread_self();
+		static auto thread_id = std::this_thread::get_id();
+
+		// TODO IS this a good solution?
+		static auto *handler = +[](int sig, siginfo_t*, void*) {
+			struct sigaction sa;
+			sigaction(SIGINT, nullptr, &sa);
+			pthread_sigmask(SIG_UNBLOCK, &sa.sa_mask, nullptr);
+			if (thread_id == std::this_thread::get_id()) {
+				if (sig == SIGINT) {
+					throw KeyboardInterrupt{};
+				}
+			} else {
+				pthread_kill(thread, SIGINT);
+			}
+		};
+
+		struct sigaction sa = {};
+		sigemptyset(&sa.sa_mask);
+		sigaddset(&sa.sa_mask, SIGINT);
+		sa.sa_sigaction = handler;
+		sa.sa_flags = 0;
+		sigaction(SIGINT, &sa, nullptr);
+	}
+
 	Runner runner;
 
 	for (auto const& [type, argument] : runnables) {
@@ -463,43 +500,38 @@ static std::optional<Error> Main(std::span<char const*> args)
 	if (runnables.empty() || enable_repl) {
 		repl_line_number = 1;
 		enable_repl = true;
-#ifndef _WIN32
-		bestlineSetCompletionCallback(completion);
-#else
-		std::vector<std::string> repl_source_lines;
-#endif
+
+
+		replxx::Replxx repl;
+
+		{
+			std::ifstream history(".musique_history");
+			repl.history_load(history);
+		}
+
+		repl.set_max_history_size(2048);
+		repl.set_max_hint_rows(3);
+
 		for (;;) {
-#ifndef _WIN32
-			char const* input_buffer = bestlineWithHistory("> ", "musique");
-			if (input_buffer == nullptr) {
+			char const* input = nullptr;
+			do input = repl.input("> "); while((input == nullptr) && (errno == EAGAIN));
+
+			if (input == nullptr) {
 				break;
 			}
-#else
-			std::cout << "> " << std::flush;
-			char const* input_buffer;
-			if (std::string s{}; std::getline(std::cin, s)) {
-				repl_source_lines.push_back(std::move(s));
-				input_buffer = repl_source_lines.back().c_str();
-			} else {
-				break;
-			}
-#endif
+
 			// Raw input line used for execution in language
-			std::string_view raw = input_buffer;
+			std::string_view raw = input;
 
 			// Used to recognize REPL commands
 			std::string_view command = raw;
 			trim(command);
 
 			if (command.empty()) {
-				// Line is empty so there is no need to execute it or parse it
-#ifndef _WIN32
-				free(const_cast<char*>(input_buffer));
-#else
-				repl_source_lines.pop_back();
-#endif
 				continue;
 			}
+
+			repl.history_add(std::string(command));
 
 			if (command.starts_with(':')) {
 				command.remove_prefix(1);
