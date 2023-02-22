@@ -8,6 +8,12 @@
 #include <unordered_map>
 #include <set>
 
+struct KeyboardInterrupt : std::exception
+{
+	~KeyboardInterrupt() = default;
+	char const* what() const noexcept override { return "KeyboardInterrupt"; }
+};
+
 /// Given program tree evaluates it into Value
 struct Interpreter
 {
@@ -24,7 +30,6 @@ struct Interpreter
 	std::function<std::optional<Error>(Interpreter&, Value)> default_action;
 
 	std::multiset<std::pair<unsigned, unsigned>> active_notes;
-
 
 	Starter starter;
 
@@ -58,10 +63,19 @@ struct Interpreter
 	/// Dumps snapshot of interpreter into stream
 	void snapshot(std::ostream& out);
 
+	/// Turn all notes that have been played but don't finished playing
 	void turn_off_all_active_notes();
+
+	/// Handles interrupt if any occured
+	void handle_potential_interrupt();
+
+	/// Issue new interrupt
+	void issue_interrupt();
+
+	/// Sleep for at least given time or until interrupt
+	void sleep(std::chrono::duration<float>);
 };
 
 std::optional<Error> ensure_midi_connection_available(Interpreter&, std::string_view operation_name);
-
 
 #endif

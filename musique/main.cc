@@ -38,12 +38,6 @@ static unsigned repl_line_number = 1;
 
 #define Ignore(Call) do { auto const ignore_ ## __LINE__ = (Call); (void) ignore_ ## __LINE__; } while(0)
 
-struct KeyboardInterrupt : std::exception
-{
-	~KeyboardInterrupt() = default;
-	char const* what() const noexcept override { return "KeyboardInterrupt"; }
-};
-
 
 /// Pop string from front of an array
 template<typename T = std::string_view>
@@ -437,33 +431,8 @@ static std::optional<Error> Main(std::span<char const*> args)
 		std::exit(1);
 	}
 
-	{
-		static auto thread = pthread_self();
-		static auto thread_id = std::this_thread::get_id();
-
-		// TODO IS this a good solution?
-		static auto *handler = +[](int sig, siginfo_t*, void*) {
-			struct sigaction sa;
-			sigaction(SIGINT, nullptr, &sa);
-			pthread_sigmask(SIG_UNBLOCK, &sa.sa_mask, nullptr);
-			if (thread_id == std::this_thread::get_id()) {
-				if (sig == SIGINT) {
-					throw KeyboardInterrupt{};
-				}
-			} else {
-				pthread_kill(thread, SIGINT);
-			}
-		};
-
-		struct sigaction sa = {};
-		sigemptyset(&sa.sa_mask);
-		sigaddset(&sa.sa_mask, SIGINT);
-		sa.sa_sigaction = handler;
-		sa.sa_flags = 0;
-		sigaction(SIGINT, &sa, nullptr);
-	}
-
-	Runner runner;
+	static Runner runner;
+	std::signal(SIGINT, [](int sig) { if (sig == SIGINT) runner.interpreter.issue_interrupt(); });
 
 	for (auto const& [type, argument] : runnables) {
 		if (type == Run::Argument) {

@@ -6,6 +6,8 @@
 #include <iostream>
 #include <random>
 #include <thread>
+#include <condition_variable>
+#include <mutex>
 
 std::unordered_map<std::string, Intrinsic> Interpreter::operators {};
 
@@ -53,6 +55,8 @@ Interpreter::~Interpreter()
 
 Result<Value> Interpreter::eval(Ast &&ast)
 {
+	handle_potential_interrupt();
+
 	switch (ast.type) {
 	case Ast::Type::Literal:
 		switch (ast.token.type) {
@@ -248,8 +252,10 @@ std::optional<Error> Interpreter::play(Chord chord)
 	Try(ensure_midi_connection_available(*this, "play"));
 	auto &ctx = *current_context;
 
+	handle_potential_interrupt();
+
 	if (chord.notes.size() == 0) {
-		std::this_thread::sleep_for(ctx.length_to_duration(ctx.length));
+		sleep(ctx.length_to_duration(ctx.length));
 		return {};
 	}
 
@@ -273,7 +279,7 @@ std::optional<Error> Interpreter::play(Chord chord)
 	for (auto const& note : chord.notes) {
 		if (max_time != Number(0)) {
 			max_time -= *note.length;
-			std::this_thread::sleep_for(ctx.length_to_duration(*note.length));
+			sleep(ctx.length_to_duration(*note.length));
 		}
 		if (note.base) {
 			current_context->port->send_note_off(0, *note.into_midi_note(), 127);
@@ -441,4 +447,32 @@ void Interpreter::snapshot(std::ostream& out)
 		}
 	}
 	out << std::flush;
+}
+
+// TODO This only supports single-threaded interpreter execution
+static std::atomic<bool> interrupted = false;
+static std::condition_variable condvar;
+static std::mutex mu;
+
+void Interpreter::handle_potential_interrupt()
+{
+	if (interrupted) {
+		interrupted = false;
+		throw KeyboardInterrupt{};
+	}
+}
+
+void Interpreter::issue_interrupt()
+{
+	interrupted = true;
+	condvar.notify_all();
+}
+
+void Interpreter::sleep(std::chrono::duration<float> time)
+{
+	if (std::unique_lock lock(mu); condvar.wait_for(lock, time) == std::cv_status::no_timeout) {
+		ensure(interrupted, "Only interruption can result in quiting conditional variable without timeout");
+		interrupted = false;
+		throw KeyboardInterrupt{};
+	}
 }
