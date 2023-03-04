@@ -14,7 +14,6 @@ namespace platform
 	static constexpr Operating_System os = Operating_System::Windows;
 #elif defined(__APPLE__)
 	static constexpr Operating_System os = Operating_System::MacOS;
-		Operating_System::MacOS
 #elif defined(__linux__) || defined(__unix__)
 	static constexpr Operating_System os = Operating_System::Unix;
 #else
