@@ -30,6 +30,9 @@ namespace cmd
 
 	/// Recognize if stdout is connected to terminal
 	bool is_tty();
+
+	[[noreturn]]
+	void usage();
 }
 
 #endif // MUSIQUE_CMD_HH

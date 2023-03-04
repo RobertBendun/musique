@@ -8,10 +8,11 @@ extern "C" {
 
 namespace starters
 {
-	static std::string_view Error;
-	static std::string_view Path;
+	static std::string_view Bold;
 	static std::string_view Comment;
 	static std::string_view End;
+	static std::string_view Error;
+	static std::string_view Path;
 }
 
 std::ostream& pretty::begin_error(std::ostream& os)
@@ -27,6 +28,11 @@ std::ostream& pretty::begin_path(std::ostream& os)
 std::ostream& pretty::begin_comment(std::ostream& os)
 {
 	return os << starters::Comment;
+}
+
+std::ostream& pretty::begin_bold(std::ostream& os)
+{
+	return os << starters::Bold;
 }
 
 std::ostream& pretty::end(std::ostream& os)
@@ -56,16 +62,18 @@ void pretty::terminal_mode()
 #endif
 
 
-	starters::Error    = "\x1b[31;1m";
-	starters::Path     = "\x1b[34;1m";
+	starters::Bold     = "\x1b[1m";
 	starters::Comment  = "\x1b[30;1m";
 	starters::End      = "\x1b[0m";
+	starters::Error    = "\x1b[31;1m";
+	starters::Path     = "\x1b[34;1m";
 }
 
 void pretty::no_color_mode()
 {
-	starters::Error   = {};
-	starters::Path    = {};
+	starters::Bold    = {};
 	starters::Comment = {};
 	starters::End     = {};
+	starters::Error   = {};
+	starters::Path    = {};
 }

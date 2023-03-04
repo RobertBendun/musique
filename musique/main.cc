@@ -35,39 +35,6 @@ static unsigned repl_line_number = 1;
 
 #define Ignore(Call) do { auto const ignore_ ## __LINE__ = (Call); (void) ignore_ ## __LINE__; } while(0)
 
-/// Print usage and exit
-[[noreturn]] void usage()
-{
-	std::cerr <<
-		"usage: musique [subcommand]...\n"
-		"  where available subcommands are:\n"
-		"    run FILENAME\n"
-		"      executes given file\n"
-		"\n"
-		"    fun FILENAME\n"
-		"      load file as function\n"
-		"\n"
-		"    repl\n"
-		"      enter interactive enviroment\n"
-		"\n"
-		"    version\n"
-		"      prints Musique interpreter version\n"
-		"\n"
-		"    doc BUILTIN\n"
-		"      print documentation for given builtin function\n"
-		"\n"
-		"    help\n"
-		"      prints this message\n"
-		"\n"
-		"Thanks to:\n"
-		"  Sy Brand, https://sybrand.ink/, creator of tl::expected https://github.com/TartanLlama/expected\n"
-		"  Justine Tunney, https://justinetunney.com, creator of bestline readline library https://github.com/jart/bestline\n"
-		"  Gary P. Scavone, http://www.music.mcgill.ca/~gary/, creator of rtmidi https://github.com/thestk/rtmidi\n"
-		"  Creators of ableton/link, https://github.com/Ableton/link\n"
-		;
-	std::exit(1);
-}
-
 void print_repl_help()
 {
 	std::cout <<
