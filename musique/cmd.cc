@@ -10,6 +10,7 @@
 #include <set>
 #include <unordered_set>
 #include <variant>
+#include <utility>
 
 #ifdef _WIN32
 extern "C" {
@@ -60,7 +61,12 @@ static constexpr std::array all_parameters = [] {
 	Empty_Argument print_version = [] { std::cout << Musique_Version << std::endl; };
 	Empty_Argument print_help = usage;
 
-	using Entry = std::pair<std::string_view, Parameter>;
+	struct Entry
+	{
+		std::string_view name;
+		Parameter handler;
+		bool internal = false;
+	};
 
 	// First entry for given action type should always be it's cannonical name
 	return std::array {
@@ -94,7 +100,11 @@ static constexpr std::array all_parameters = [] {
 		Entry { "version", print_version },
 		Entry { "v",       print_version },
 
-		Entry { "ast",     set_ast_only_mode },
+		Entry {
+			.name     = "ast",
+			.handler  = set_ast_only_mode,
+			.internal = true,
+		},
 	};
 }();
 
@@ -151,8 +161,8 @@ std::optional<std::string_view> cmd::accept_commandline_argument(std::vector<cmd
 		state.m_value = args[1];
 	}
 
-	for (auto const& [name, handler] : all_parameters) {
-		if (name != state.name()) {
+	for (auto const& p : all_parameters) {
+		if (p.name != state.name()) {
 			continue;
 		}
 		std::visit(Overloaded {
@@ -160,23 +170,23 @@ std::optional<std::string_view> cmd::accept_commandline_argument(std::vector<cmd
 				state.mark_success();
 				h();
 			},
-			[&state, name=name](Requires_Argument const& h) {
+			[&state, p](Requires_Argument const& h) {
 				auto arg = state.value();
 				if (!arg) {
-					std::cerr << "musique: error: option " << std::quoted(name) << " requires an argument" << std::endl;
+					std::cerr << "musique: error: option " << std::quoted(p.name) << " requires an argument" << std::endl;
 					std::exit(1);
 				}
 				h(*arg);
 			},
-			[&state, &runnables, name=name](Defines_Code const& h) {
+			[&state, &runnables, p](Defines_Code const& h) {
 				auto arg = state.value();
 				if (!arg) {
-					std::cerr << "musique: error: option " << std::quoted(name) << " requires an argument" << std::endl;
+					std::cerr << "musique: error: option " << std::quoted(p.name) << " requires an argument" << std::endl;
 					std::exit(1);
 				}
 				runnables.push_back(h(*arg));
 			}
-		}, handler);
+		}, p.handler);
 		return std::nullopt;
 	}
 
@@ -194,22 +204,37 @@ void cmd::print_close_matches(std::string_view arg)
 		all_parameters.begin(), all_parameters.end(),
 		closest.begin(), closest.end(),
 		[&minimum_distance, arg](auto const& lhs, auto const& rhs) {
-			auto const lhs_score = edit_distance(arg, lhs.first);
-			auto const rhs_score = edit_distance(arg, rhs.first);
+			auto const lhs_score = edit_distance(arg, lhs.name);
+			auto const rhs_score = edit_distance(arg, rhs.name);
 			minimum_distance = std::min({ minimum_distance, lhs_score, rhs_score });
 			return lhs_score < rhs_score;
 		}
 	);
 
-	std::cout << "The most similar commands are:\n";
-	std::unordered_set<void*> shown;
+	std::vector<std::string> shown;
 	if (minimum_distance <= 3) {
-		for (auto const& [ name, handler ] : closest) {
-			auto const handler_p = std::visit([](auto *v) { return reinterpret_cast<void*>(v); }, handler);
-			if (!shown.contains(handler_p)) {
-				std::cout << "  " << name << std::endl;
-				shown.insert(handler_p);
+		for (auto const& p : closest) {
+			if (std::find(shown.begin(), shown.end(), std::string(p.name)) == shown.end()) {
+				shown.push_back(std::string(p.name));
 			}
+		}
+	}
+
+	if (shown.empty()) {
+		void *previous = nullptr;
+		std::cout << "Available subcommands are:\n";
+		for (auto const& p : all_parameters) {
+			auto handler_p = std::visit([](auto const& h) { return reinterpret_cast<void*>(h); }, p.handler);
+			if (std::exchange(previous, handler_p) == handler_p || p.internal) {
+				continue;
+			}
+			std::cout << "  " << p.name << '\n';
+		}
+
+	} else {
+		std::cout << "The most similar commands are:\n";
+		for (auto const& name : shown) {
+			std::cout << "  " << name << '\n';
 		}
 	}
 }

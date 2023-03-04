@@ -368,14 +368,11 @@ static std::optional<Error> Main(std::span<char const*> args)
 		}
 	}
 
-	enable_repl = enable_repl || std::all_of(runnables.begin(), runnables.end(),
-		[](cmd::Run const& run) {
-			return run.type == cmd::Run::Deffered_File;
-		});
+	enable_repl = enable_repl || (!runnables.empty() && std::all_of(runnables.begin(), runnables.end(),
+		[](cmd::Run const& run) { return run.type == cmd::Run::Deffered_File; }));
 
-	if (runnables.empty() || enable_repl) {
+	if (enable_repl) {
 		repl_line_number = 1;
-		enable_repl = true;
 #ifndef _WIN32
 		bestlineSetCompletionCallback(completion);
 #else
