@@ -225,6 +225,7 @@ struct Runner
 			}
 		} catch (KeyboardInterrupt const&) {
 			interpreter.turn_off_all_active_notes();
+			interpreter.starter.stop();
 			std::cout << std::endl;
 		}
 		return {};
@@ -357,6 +358,16 @@ static Result<bool> handle_repl_session_commands(std::string_view input, Runner 
 	return false;
 }
 
+static Runner *runner;
+
+void sigint_handler(int sig)
+{
+	if (sig == SIGINT) {
+		runner->interpreter.issue_interrupt();
+	}
+	std::signal(SIGINT, sigint_handler);
+}
+
 /// Fancy main that supports Result forwarding on error (Try macro)
 static std::optional<Error> Main(std::span<char const*> args)
 {
@@ -431,8 +442,9 @@ static std::optional<Error> Main(std::span<char const*> args)
 		std::exit(1);
 	}
 
-	static Runner runner;
-	std::signal(SIGINT, [](int sig) { if (sig == SIGINT) runner.interpreter.issue_interrupt(); });
+	Runner runner;
+	::runner = &runner;
+	std::signal(SIGINT, sigint_handler);
 
 	for (auto const& [type, argument] : runnables) {
 		if (type == Run::Argument) {

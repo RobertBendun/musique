@@ -1,15 +1,15 @@
 Release_Obj=$(addprefix bin/$(os)/,$(Obj))
 
-bin/$(os)/libreplxx.a:
-	@CXX=$(CXX) os=$(os) scripts/build_replxx.sh
+# bin/$(os)/libreplxx.a:
+# 	@CXX=$(CXX) os=$(os) scripts/build_replxx.sh
 
 bin/$(os)/%.o: musique/%.cc
 	@echo "CXX $@"
 	@$(CXX) $(CXXFLAGS) $(RELEASE_FLAGS) $(CPPFLAGS) -o $@ $< -c
 
-bin/$(os)/$(Target): $(Release_Obj) bin/$(os)/main.o bin/$(os)/rtmidi.o bin/$(os)/libreplxx.a
+bin/$(os)/$(Target): $(Release_Obj) bin/$(os)/main.o bin/$(os)/rtmidi.o
 	@echo "CXX $@"
-	@$(CXX) $(CXXFLAGS) $(RELEASE_FLAGS) $(CPPFLAGS) -o $@ $(Release_Obj) bin/$(os)/rtmidi.o -Lbin/$(os)/ $(LDFLAGS) $(LDLIBS) -lreplxx
+	@$(CXX) $(CXXFLAGS) $(RELEASE_FLAGS) $(CPPFLAGS) -o $@ $(shell CXX=$(CXX) os=$(os) scripts/build_replxx.sh)  $(Release_Obj) bin/$(os)/rtmidi.o $(LDFLAGS) $(LDLIBS)
 
 Debug_Obj=$(addprefix bin/$(os)/debug/,$(Obj))
 

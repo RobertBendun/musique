@@ -13,7 +13,7 @@ VERSION := $(MAJOR).$(MINOR).$(PATCH)-dev+$(COMMIT)
 
 CXXFLAGS:=$(CXXFLAGS) -std=c++20 -Wall -Wextra -Werror=switch -Werror=return-type -Werror=unused-result -ggdb
 CPPFLAGS:=$(CPPFLAGS) -DMusique_Version='"$(VERSION)"' \
-	-Ilib/expected/ -I. -Ilib/bestline/ -Ilib/rtmidi/ -Ilib/link/include -Ilib/asio/include/ -Ilib/replxx/include
+	-Ilib/expected/ -I. -Ilib/bestline/ -Ilib/rtmidi/ -Ilib/link/include -Ilib/asio/include/ -Ilib/replxx/include  -DREPLXX_STATIC
 LDFLAGS=-flto
 LDLIBS= -lpthread
 
