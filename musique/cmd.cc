@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <edit_distance.hh>
 #include <iomanip>
 #include <iostream>
@@ -61,6 +62,9 @@ static Empty_Argument set_ast_only_mode = [] { ast_only_mode = true; };
 static Empty_Argument print_version = [] { std::cout << Musique_Version << std::endl; };
 static Empty_Argument print_help = usage;
 
+[[noreturn]]
+static void print_manpage();
+
 struct Entry
 {
 	std::string_view name;
@@ -80,16 +84,16 @@ struct Entry
 
 // First entry for given action type should always be it's cannonical name
 static auto all_parameters = std::array {
+	Entry { "run",  provide_file },
+	Entry { "r",    provide_file },
+	Entry { "exec", provide_file },
+	Entry { "load", provide_file },
+
 	Entry { "fun",      provide_function },
 	Entry { "def",      provide_function },
 	Entry { "f",        provide_function },
 	Entry { "func",     provide_function },
 	Entry { "function", provide_function },
-
-	Entry { "run",  provide_file },
-	Entry { "r",    provide_file },
-	Entry { "exec", provide_file },
-	Entry { "load", provide_file },
 
 	Entry { "repl",        set_interactive_mode },
 	Entry { "i",           set_interactive_mode },
@@ -98,6 +102,8 @@ static auto all_parameters = std::array {
 	Entry { "doc",  show_docs },
 	Entry { "d",    show_docs },
 	Entry { "docs", show_docs },
+
+	Entry { "man", print_manpage },
 
 	Entry { "inline", provide_inline_code },
 	Entry { "c",      provide_inline_code },
@@ -129,34 +135,65 @@ static auto documentation_for_handler = std::array {
 	Documentation_For_Handler_Entry {
 		.handler = reinterpret_cast<void*>(provide_function),
 		.short_documentation = "load file as function",
+		.long_documentation =
+			"Loads given file, placing it inside a function. The main use for this mechanism is\n"
+			"to delay execution of a file e.g. to play it using synchronization infrastructure.\n"
+			"Name of function is derived from file name, replacing special characters with underscores.\n"
+			"New name is reported when entering interactive mode."
 	},
 	Documentation_For_Handler_Entry {
 		.handler = reinterpret_cast<void*>(provide_file),
 		.short_documentation = "execute given file",
+		.long_documentation =
+			"Run provided Musique source file."
 	},
 	Documentation_For_Handler_Entry {
 		.handler = reinterpret_cast<void*>(set_interactive_mode),
 		.short_documentation = "enable interactive mode",
+		.long_documentation =
+			"Enables interactive mode. It's enabled by default when provided without arguments or\n"
+			"when all arguments are files loaded as functions."
 	},
 	Documentation_For_Handler_Entry {
 		.handler = reinterpret_cast<void*>(print_help),
 		.short_documentation = "print help",
+		.long_documentation =
+			"Prints short version of help, to provide version easy for quick lookup by the user."
 	},
 	Documentation_For_Handler_Entry {
 		.handler = reinterpret_cast<void*>(print_version),
 		.short_documentation = "print version information",
+		.long_documentation =
+			"Prints version of Musique, following Semantic Versioning.\n"
+			"It's either '<major>.<minor>.<patch>' for official releases or\n"
+			"'<major>.<minor>.<patch>-dev+gc<commit hash>' for self-build releases."
 	},
 	Documentation_For_Handler_Entry {
 		.handler = reinterpret_cast<void*>(show_docs),
 		.short_documentation = "print documentation for given builtin",
+		.long_documentation =
+			"Prints documentation for given builtin function (function predefined by language).\n"
+			"Documentation is in Markdown format and can be passed to render."
 	},
 	Documentation_For_Handler_Entry {
 		.handler = reinterpret_cast<void*>(provide_inline_code),
 		.short_documentation = "run code from an argument",
+		.long_documentation =
+			"Runs code passed as next argument. Same rules apply as for code inside a file."
 	},
 	Documentation_For_Handler_Entry {
 		.handler = reinterpret_cast<void*>(set_ast_only_mode),
 		.short_documentation = "don't run code, print AST of it",
+		.long_documentation =
+			"Parameter made for internal usage. Instead of executing provided code,\n"
+			"prints program syntax tree."
+	},
+	Documentation_For_Handler_Entry {
+		.handler = reinterpret_cast<void*>(print_manpage),
+		.short_documentation = "print man page source code to standard output",
+		.long_documentation =
+			"Prints Man page document to standard output of Musique full command line interface.\n"
+			"One can view it with 'musique man > /tmp/musique.1; man /tmp/musique.1'"
 	},
 };
 
@@ -347,6 +384,49 @@ void cmd::usage()
 	}
 
 	std::exit(2);
+}
+
+void print_manpage()
+{
+	auto const ymd = std::chrono::year_month_day(
+		std::chrono::floor<std::chrono::days>(
+			std::chrono::system_clock::now()
+		)
+	);
+
+	std::cout << ".TH MUSIQUE 1 "
+		<< int(ymd.year()) << '-'
+		<< std::setfill('0') << std::setw(2) << unsigned(ymd.month()) << '-'
+		<< std::setfill('0') << std::setw(2) << unsigned(ymd.day())
+		<< " Linux Linux\n";
+
+	std::cout << R"troff(.SH NAME
+musique \- interactive, musical programming language
+.SH SYNOPSIS
+.B musique
+[
+SUBCOMMANDS
+]
+.SH DESCRIPTION
+Musique is an interpreted, interactive, musical domain specific programming language
+that allows for algorythmic music composition, live-coding and orchestra performing.
+.SH SUBCOMMANDS
+TODO
+.SH ENVIROMENT
+TODO: NO_COLORS env
+.SH FILES
+TODO: History file
+.SH EXAMPLES
+.TP
+musique \-c "play (c5 + up 12)"
+Plays all semitones in 5th octave
+.TP
+musique run examples/ode-to-joy.mq
+Play Ode to Joy written as Musique source code in examples/ode-to-joy.mq
+)troff";
+
+
+	std::exit(0);
 }
 
 bool cmd::is_tty()
