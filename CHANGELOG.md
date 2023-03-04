@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `CTRL-C` handler that turns notes that are playing off
+
+### Changed
+
+- Moved from `bestline` to `replxx` Readline implementation due to lack of Windows support from bestline
+
 ## [0.4.0]
 
 ### Added

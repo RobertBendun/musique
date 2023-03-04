@@ -14,9 +14,11 @@
 #include <musique/lexer/lines.hh>
 #include <musique/midi/midi.hh>
 #include <musique/parser/parser.hh>
+#include <musique/platform.hh>
 #include <musique/pretty.hh>
 #include <musique/try.hh>
 #include <musique/unicode.hh>
+#include <musique/user_directory.hh>
 #include <musique/value/block.hh>
 
 #include <replxx.hxx>
@@ -251,8 +253,9 @@ void completion(char const* buf, bestlineCompletions *lc)
 }
 #endif
 
-bool is_tty()
+static bool is_tty()
 {
+// Can't use if constexpr since _isatty is not defined on non-windows platforms
 #ifdef _WIN32
 	return _isatty(STDOUT_FILENO);
 #else
@@ -485,13 +488,11 @@ static std::optional<Error> Main(std::span<char const*> args)
 
 		replxx::Replxx repl;
 
-		{
-			std::ifstream history(".musique_history");
-			repl.history_load(history);
-		}
+		auto const history_path = (user_directory::data_home() / "history").string();
 
 		repl.set_max_history_size(2048);
 		repl.set_max_hint_rows(3);
+		repl.history_load(history_path);
 
 		for (;;) {
 			char const* input = nullptr;
@@ -513,6 +514,7 @@ static std::optional<Error> Main(std::span<char const*> args)
 			}
 
 			repl.history_add(std::string(command));
+			repl.history_save(history_path);
 
 			if (command.starts_with(':')) {
 				command.remove_prefix(1);
