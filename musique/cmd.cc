@@ -50,7 +50,8 @@ static Requires_Argument show_docs = [](std::string_view builtin) {
 		std::cout << *maybe_docs << std::endl;
 		return;
 	}
-	std::cerr << "musique: error: cannot find documentation for given builtin" << std::endl;
+	std::cerr << pretty::begin_error << "musique: error:" << pretty::end;
+	std::cerr << " cannot find documentation for given builtin" << std::endl;
 	std::exit(1);
 };
 
@@ -223,7 +224,8 @@ std::optional<std::string_view> cmd::accept_commandline_argument(std::vector<cmd
 			[&state, p](Requires_Argument const& h) {
 				auto arg = state.value();
 				if (!arg) {
-					std::cerr << "musique: error: option " << std::quoted(p.name) << " requires an argument" << std::endl;
+					std::cerr << pretty::begin_error << "musique: error:" << pretty::end;
+					std::cerr << " option " << std::quoted(p.name) << " requires an argument" << std::endl;
 					std::exit(1);
 				}
 				h(*arg);
@@ -231,7 +233,8 @@ std::optional<std::string_view> cmd::accept_commandline_argument(std::vector<cmd
 			[&state, &runnables, p](Defines_Code const& h) {
 				auto arg = state.value();
 				if (!arg) {
-					std::cerr << "musique: error: option " << std::quoted(p.name) << " requires an argument" << std::endl;
+					std::cerr << pretty::begin_error << "musique: error:" << pretty::end;
+					std::cerr << " option " << std::quoted(p.name) << " requires an argument" << std::endl;
 					std::exit(1);
 				}
 				runnables.push_back(h(*arg));
@@ -300,11 +303,11 @@ void cmd::print_close_matches(std::string_view arg)
 	} else {
 		std::cout << "The most similar commands are:\n";
 		for (auto const& name : shown) {
-			std::cout << "  " << name << " - " << find_documentation_for_parameter(name).short_documentation;
+			std::cout << "  " << name << " - " << find_documentation_for_parameter(name).short_documentation << '\n';
 		}
 	}
 
-	std::cout << "Invoke 'musique help' to read more about available commands\n";
+	std::cout << "\nInvoke 'musique help' to read more about available commands\n";
 }
 
 void cmd::usage()

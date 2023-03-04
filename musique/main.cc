@@ -301,7 +301,8 @@ static std::optional<Error> Main(std::span<char const*> args)
 
 
 	while (args.size()) if (auto failed = cmd::accept_commandline_argument(runnables, args)) {
-		std::cerr << "musique: error: Failed to recognize parameter " << std::quoted(*failed) << std::endl;
+		std::cerr << pretty::begin_error << "musique: error:" << pretty::end;
+		std::cerr << " Failed to recognize parameter " << std::quoted(*failed) << std::endl;
 		cmd::print_close_matches(args.front());
 		std::exit(1);
 	}
@@ -320,7 +321,8 @@ static std::optional<Error> Main(std::span<char const*> args)
 			eternal_sources.emplace_back(std::istreambuf_iterator<char>(std::cin), std::istreambuf_iterator<char>());
 		} else {
 			if (not fs::exists(path)) {
-				std::cerr << "musique: error: couldn't open file: " << path << std::endl;
+				std::cerr << pretty::begin_error << "musique: error:" << pretty::end;
+				std::cerr << " couldn't open file: " << path << std::endl;
 				std::exit(1);
 			}
 			std::ifstream source_file{fs::path(path)};
@@ -381,7 +383,8 @@ static std::optional<Error> Main(std::span<char const*> args)
 			if (command.starts_with(':')) {
 				command.remove_prefix(1);
 				if (!Try(handle_repl_session_commands(command, runner))) {
-					std::cerr << "musique: error: unrecognized REPL command '" << command << '\'' << std::endl;
+					std::cerr << pretty::begin_error << "musique: error:" << pretty::end;
+					std::cerr << " unrecognized REPL command '" << command << '\'' << std::endl;
 				}
 				continue;
 			}
