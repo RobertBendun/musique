@@ -248,9 +248,28 @@ std::string_view Lexer::finish()
 	return result;
 }
 
+std::string quoted(std::string_view s)
+{
+	std::string r;
+	r.reserve(s.size() + 2);
+	r += '"';
+	for (auto c : s) {
+		switch (c) {
+		break; case '\'': r += "\\\\";
+		break; case '"':  r += "\\\"";
+		break; case '\t': r += "\\t";
+		break; case '\n': r += "\\n";
+		break; case '\v': r += "\\v";
+		break; case '\r': r += "\\r";
+		break; default:   r += c;
+		}
+	}
+	return r += '"';
+}
+
 std::ostream& operator<<(std::ostream& os, Token const& token)
 {
-	return os << '{' << token.type << ", " << std::quoted(token.source) << ", " << token.location << '}';
+	return os << '{' << token.type << ", " << quoted(token.source) << ", " << token.location << '}';
 }
 
 std::ostream& operator<<(std::ostream& os, Token::Type type)

@@ -36,6 +36,7 @@ extern "C" {
 
 namespace fs = std::filesystem;
 
+bool tokens_only_mode = false;
 bool ast_only_mode = false;
 bool enable_repl = false;
 static unsigned repl_line_number = 1;
@@ -144,7 +145,7 @@ struct Runner
 	/// is beeing known as working.
 	std::optional<Error> deffered_file(std::string_view source, std::string_view filename)
 	{
-		auto ast = Try(Parser::parse(source, filename, repl_line_number));
+		auto ast = Try(Parser::parse(source, filename, repl_line_number, tokens_only_mode));
 		if (ast_only_mode) {
 			dump(ast);
 			return {};
@@ -164,7 +165,7 @@ struct Runner
 	/// Run given source
 	std::optional<Error> run(std::string_view source, std::string_view filename, bool output = false)
 	{
-		auto ast = Try(Parser::parse(source, filename, repl_line_number));
+		auto ast = Try(Parser::parse(source, filename, repl_line_number, tokens_only_mode));
 
 		if (ast_only_mode) {
 			dump(ast);
