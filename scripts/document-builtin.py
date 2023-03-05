@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 import argparse
 import dataclasses
-import string
-import re
 import itertools
-import typing
+import json
+import re
+import string
 import subprocess
+import typing
 
 MARKDOWN_CONVERTER = "lowdown -m 'shiftheadinglevelby=3'"
 CPP_FUNC_IDENT_ALLOWLIST = string.ascii_letters + string.digits + "_"
@@ -60,6 +61,38 @@ HTML_SUFFIX = """
 </html>
 """
 
+FIND_DOCUMENTATION_FOR_BUILTIN = """
+std::optional<std::string_view> find_documentation_for_builtin(std::string_view builtin_name)
+{
+	for (auto [name, doc] : names_to_documentation) {
+		if (builtin_name == name)
+			return doc;
+	}
+	return std::nullopt;
+}
+
+std::vector<std::string_view> similar_names_to_builtin(std::string_view builtin_name)
+{
+    auto minimum_distance = std::numeric_limits<int>::max();
+
+    std::array<std::pair<std::string_view, std::string_view>, 4> closest;
+	std::partial_sort_copy(
+        names_to_documentation.begin(), names_to_documentation.end(),
+		closest.begin(), closest.end(),
+		[&minimum_distance, builtin_name](auto const& lhs, auto const& rhs) {
+			auto const lhs_score = edit_distance(builtin_name, lhs.first);
+			auto const rhs_score = edit_distance(builtin_name, rhs.first);
+			minimum_distance = std::min({ minimum_distance, lhs_score, rhs_score });
+			return lhs_score < rhs_score;
+		}
+	);
+
+    std::vector<std::string_view> result;
+    result.resize(4);
+    std::transform(closest.begin(), closest.end(), result.begin(), [](auto const& p) { return p.first; });
+    return result;
+}
+"""
 
 def warning(*args, prefix: str | None = None):
     if prefix is None:
@@ -151,7 +184,9 @@ def builtins_from_file(source_path: str) -> typing.Generator[Builtin, None, None
         yield builtin
 
 
-def filter_builtins(builtins: list[Builtin]) -> typing.Generator[Builtin, None, None]:
+def filter_builtins(
+    builtins: typing.Iterable[Builtin],
+) -> typing.Generator[Builtin, None, None]:
     for builtin in builtins:
         if not builtin.documentation:
             warning(f"builtin '{builtin.implementation}' doesn't have documentation")
@@ -167,7 +202,7 @@ def filter_builtins(builtins: list[Builtin]) -> typing.Generator[Builtin, None, 
 def each_musique_name_occurs_once(
     builtins: typing.Iterable[Builtin],
 ) -> typing.Generator[Builtin, None, None]:
-    names = {}
+    names: dict[str, str] = {}
     for builtin in builtins:
         for name in builtin.names:
             if name in names:
@@ -178,7 +213,7 @@ def each_musique_name_occurs_once(
         yield builtin
 
 
-def generate_html_document(builtins: list[Builtin], output_path: str):
+def generate_html_document(builtins: typing.Iterable[Builtin], output_path: str):
     with open(output_path, "w") as out:
         out.write(HTML_PREFIX)
 
@@ -218,7 +253,47 @@ def generate_html_document(builtins: list[Builtin], output_path: str):
         out.write(HTML_SUFFIX)
 
 
-def main(source_path: str, output_path: str):
+def generate_cpp_documentation(builtins: typing.Iterable[Builtin], output_path: str):
+    # TODO Support markdown rendering and colors using `pretty` sublibrary
+
+    def documentation_str_var(builtin: Builtin):
+        return f"{builtin.implementation}_doc"
+
+    with open(output_path, "w") as out:
+        includes = [
+            "algorithm",
+            "array",
+            "edit_distance.hh",
+            "musique/interpreter/builtin_function_documentation.hh",
+            "vector",
+        ]
+        for include in includes:
+            print(f"#include <{include}>", file=out)
+
+        # 1. Generate strings with documentation
+        for builtin in builtins:
+            # FIXME json.dumps will probably produce valid C++ strings for most cases,
+            # but can we ensure that will output valid strings for all cases?
+            print(
+                "static constexpr std::string_view %s = %s;"
+                % (documentation_str_var(builtin), json.dumps(builtin.documentation)),
+                file=out,
+            )
+        print("", file=out)
+
+        # 2. Generate array mapping from name to documentation variable
+        names_to_documentation = list(sorted((name, documentation_str_var(builtin)) for builtin in builtins for name in builtin.names))
+        print("static constexpr std::array<std::pair<std::string_view, std::string_view>, %d> names_to_documentation = {" % (len(names_to_documentation), ), file=out)
+        for name, doc in names_to_documentation:
+              print("  std::pair { std::string_view(%s), %s }," % (json.dumps(name), doc), file=out)
+        print("};", file=out);
+
+        # 3. Generate function that given builtin name results in documentation string
+        print(FIND_DOCUMENTATION_FOR_BUILTIN, file=out)
+
+
+
+def main(source_path: str, output_path: str, format: typing.Literal["html", "cpp"]):
     "Generates documentaiton from file source_path and saves in output_path"
 
     builtins = builtins_from_file(source_path)
@@ -226,7 +301,10 @@ def main(source_path: str, output_path: str):
     builtins = each_musique_name_occurs_once(builtins)
     builtins = sorted(list(builtins), key=lambda builtin: builtin.names[0])
 
-    generate_html_document(builtins, output_path)
+    if format == "md":
+        generate_html_document(builtins, output_path)
+    else:
+        generate_cpp_documentation(builtins, output_path)
 
 
 if __name__ == "__main__":
@@ -247,10 +325,21 @@ if __name__ == "__main__":
         required=True,
         help="path for standalone HTML file containing generated documentation",
     )
+    parser.add_argument(
+        "-f",
+        "--format",
+        type=str,
+        default="md",
+        help="output format. One of {html, cpp} are allowed, where HTML yields standalone docs, and C++ mode yields integrated docs",
+    )
 
     PROGRAM_NAME = parser.prog
     args = parser.parse_args()
     assert len(args.source) == 1
     assert len(args.output) == 1
+    assert args.format in (
+        "html",
+        "cpp",
+    ), "Only C++ and HTML output formats are supported"
 
-    main(source_path=args.source[0], output_path=args.output[0])
+    main(source_path=args.source[0], output_path=args.output[0], format=args.format)

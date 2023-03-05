@@ -1,13 +1,13 @@
 #include <charconv>
+#include <cstdio>
+#include <cstring>
+#include <edit_distance.hh>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
-#include <span>
-#include <thread>
-#include <cstring>
-#include <cstdio>
-
+#include <musique/cmd.hh>
 #include <musique/format.hh>
+#include <musique/interpreter/builtin_function_documentation.hh>
 #include <musique/interpreter/env.hh>
 #include <musique/interpreter/interpreter.hh>
 #include <musique/lexer/lines.hh>
@@ -17,13 +17,11 @@
 #include <musique/try.hh>
 #include <musique/unicode.hh>
 #include <musique/value/block.hh>
+#include <span>
+#include <thread>
+#include <unordered_set>
 
-#ifdef _WIN32
-extern "C" {
-#include <io.h>
-}
-#else
-#include <unistd.h>
+#ifndef _WIN32
 extern "C" {
 #include <bestline.h>
 }
@@ -31,65 +29,11 @@ extern "C" {
 
 namespace fs = std::filesystem;
 
-static bool quiet_mode = false;
-static bool ast_only_mode = false;
-static bool enable_repl = false;
+bool ast_only_mode = false;
+bool enable_repl = false;
 static unsigned repl_line_number = 1;
 
 #define Ignore(Call) do { auto const ignore_ ## __LINE__ = (Call); (void) ignore_ ## __LINE__; } while(0)
-
-/// Pop string from front of an array
-template<typename T = std::string_view>
-static T pop(std::span<char const*> &span)
-{
-	auto element = span.front();
-	span = span.subspan(1);
-
-	if constexpr (std::is_same_v<T, std::string_view>) {
-		return element;
-	} else if constexpr (std::is_arithmetic_v<T>) {
-		T result;
-		auto end = element + std::strlen(element);
-		auto [ptr, ec] = std::from_chars(element, end, result);
-		if (ec != decltype(ec){}) {
-			std::cout << "Expected natural number as argument" << std::endl;
-			std::exit(1);
-		}
-		return result;
-	} else {
-		static_assert(always_false<T>, "Unsupported type for pop operation");
-	}
-}
-
-/// Print usage and exit
-[[noreturn]] void usage()
-{
-	std::cerr <<
-		"usage: musique <options> [filename]\n"
-		"  where filename is path to file with Musique code that will be executed\n"
-		"  where options are:\n"
-		"    -c,--run CODE\n"
-		"      executes given code\n"
-		"    -I,--interactive,--repl\n"
-		"      enables interactive mode even when another code was passed\n"
-		"\n"
-		"    -f,--as-function FILENAME\n"
-		"      deffer file execution and turn it into a file\n"
-		"\n"
-		"    --ast\n"
-		"      prints ast for given code\n"
-		"\n"
-		"    -v,--version\n"
-		"      prints Musique interpreter version\n"
-		"\n"
-		"Thanks to:\n"
-		"  Sy Brand, https://sybrand.ink/, creator of tl::expected https://github.com/TartanLlama/expected\n"
-		"  Justine Tunney, https://justinetunney.com, creator of bestline readline library https://github.com/jart/bestline\n"
-		"  Gary P. Scavone, http://www.music.mcgill.ca/~gary/, creator of rtmidi https://github.com/thestk/rtmidi\n"
-		"  Creators of ableton/link, https://github.com/Ableton/link\n"
-		;
-	std::exit(1);
-}
 
 void print_repl_help()
 {
@@ -245,15 +189,6 @@ void completion(char const* buf, bestlineCompletions *lc)
 }
 #endif
 
-bool is_tty()
-{
-#ifdef _WIN32
-	return _isatty(STDOUT_FILENO);
-#else
-	return isatty(fileno(stdout));
-#endif
-}
-
 /// Handles commands inside REPL session (those starting with ':')
 ///
 /// Returns if one of command matched
@@ -352,84 +287,30 @@ static Result<bool> handle_repl_session_commands(std::string_view input, Runner 
 	return false;
 }
 
+
 /// Fancy main that supports Result forwarding on error (Try macro)
 static std::optional<Error> Main(std::span<char const*> args)
 {
-	if (is_tty() && getenv("NO_COLOR") == nullptr) {
+	enable_repl = args.empty();
+
+	if (cmd::is_tty() && getenv("NO_COLOR") == nullptr) {
 		pretty::terminal_mode();
 	}
 
-	/// Describes all arguments that will be run
-	struct Run
-	{
-		enum Type
-		{
-			File,
-			Argument,
-			Deffered_File
-		} type;
-		std::string_view argument;
-	};
+	std::vector<cmd::Run> runnables;
 
-	std::vector<Run> runnables;
 
-	while (not args.empty()) {
-		std::string_view arg = pop(args);
-
-		if (arg == "-" || !arg.starts_with('-')) {
-			runnables.push_back({ .type = Run::File, .argument = std::move(arg) });
-			continue;
-		}
-
-		if (arg == "-c" || arg == "--run") {
-			if (args.empty()) {
-				std::cerr << "musique: error: option " << arg << " requires an argument" << std::endl;
-				std::exit(1);
-			}
-			runnables.push_back({ .type = Run::Argument, .argument = pop(args) });
-			continue;
-		}
-
-		if (arg == "-f" || arg == "--as-function") {
-			if (args.empty()) {
-				std::cerr << "musique: error: option " << arg << " requires an argument" << std::endl;
-				std::exit(1);
-			}
-			runnables.push_back({ .type = Run::Deffered_File, .argument = pop(args) });
-			continue;
-		}
-
-		if (arg == "--quiet" || arg == "-q") {
-			quiet_mode = true;
-			continue;
-		}
-		if (arg == "--ast") {
-			ast_only_mode = true;
-			continue;
-		}
-
-		if (arg == "--repl" || arg == "-I" || arg == "--interactive")  {
-			enable_repl = true;
-			continue;
-		}
-
-		if (arg == "--version" || arg == "-v") {
-			std::cout << Musique_Version << std::endl;
-			return {};
-		}
-
-		if (arg == "-h" || arg == "--help") {
-			usage();
-		}
-
-		std::cerr << "musique: error: unrecognized command line option: " << arg << std::endl;
+	while (args.size()) if (auto failed = cmd::accept_commandline_argument(runnables, args)) {
+		std::cerr << pretty::begin_error << "musique: error:" << pretty::end;
+		std::cerr << " Failed to recognize parameter " << std::quoted(*failed) << std::endl;
+		cmd::print_close_matches(args.front());
 		std::exit(1);
 	}
 
 	Runner runner;
 
 	for (auto const& [type, argument] : runnables) {
-		if (type == Run::Argument) {
+		if (type == cmd::Run::Argument) {
 			Lines::the.add_line("<arguments>", argument, repl_line_number);
 			Try(runner.run(argument, "<arguments>"));
 			repl_line_number++;
@@ -440,7 +321,8 @@ static std::optional<Error> Main(std::span<char const*> args)
 			eternal_sources.emplace_back(std::istreambuf_iterator<char>(std::cin), std::istreambuf_iterator<char>());
 		} else {
 			if (not fs::exists(path)) {
-				std::cerr << "musique: error: couldn't open file: " << path << std::endl;
+				std::cerr << pretty::begin_error << "musique: error:" << pretty::end;
+				std::cerr << " couldn't open file: " << path << std::endl;
 				std::exit(1);
 			}
 			std::ifstream source_file{fs::path(path)};
@@ -448,21 +330,18 @@ static std::optional<Error> Main(std::span<char const*> args)
 		}
 
 		Lines::the.add_file(std::string(path), eternal_sources.back());
-		if (type == Run::File) {
+		if (type == cmd::Run::File) {
 			Try(runner.run(eternal_sources.back(), path));
 		} else {
 			Try(runner.deffered_file(eternal_sources.back(), argument));
 		}
 	}
 
-	enable_repl = enable_repl || std::all_of(runnables.begin(), runnables.end(),
-		[](Run const& run) {
-			return run.type == Run::Deffered_File;
-		});
+	enable_repl = enable_repl || (!runnables.empty() && std::all_of(runnables.begin(), runnables.end(),
+		[](cmd::Run const& run) { return run.type == cmd::Run::Deffered_File; }));
 
-	if (runnables.empty() || enable_repl) {
+	if (enable_repl) {
 		repl_line_number = 1;
-		enable_repl = true;
 #ifndef _WIN32
 		bestlineSetCompletionCallback(completion);
 #else
@@ -504,7 +383,8 @@ static std::optional<Error> Main(std::span<char const*> args)
 			if (command.starts_with(':')) {
 				command.remove_prefix(1);
 				if (!Try(handle_repl_session_commands(command, runner))) {
-					std::cerr << "musique: error: unrecognized REPL command '" << command << '\'' << std::endl;
+					std::cerr << pretty::begin_error << "musique: error:" << pretty::end;
+					std::cerr << " unrecognized REPL command '" << command << '\'' << std::endl;
 				}
 				continue;
 			}

@@ -15,6 +15,9 @@ namespace pretty
 	/// Mark start of printing a comment
 	std::ostream& begin_comment(std::ostream&);
 
+	/// Mark start of printing with bold face
+	std::ostream& begin_bold(std::ostream&);
+
 	/// Mark end of any above
 	std::ostream& end(std::ostream&);
 
