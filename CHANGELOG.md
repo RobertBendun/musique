@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.5.0]
+## [0.5.0] - 2023-03-05
 
 ### Added
 
@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New parameter passing convention for command line invocation. `musique help` to learn how it changed
 - `CTRL-C` handler that turns notes that are playing off
 
-## [0.4.0]
+## [0.4.0] - 2023-02-15
 
 ### Added
 
@@ -49,7 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `try` evaluated arguments too quickly
 - Nested arithmetic expression with undefined operator reports proper error and don't crash
 
-## [0.3.1]
+## [0.3.1] - 2022-11-28
 
 ### Fixed
 
@@ -58,7 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - in error reporting printing garbage instead of function name was fixed
 - sending proper program change message
 
-## [0.3.0]
+## [0.3.0] - 2022-11-21
 
 ### Added
 
