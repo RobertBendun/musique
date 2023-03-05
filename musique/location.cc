@@ -1,5 +1,22 @@
 #include <musique/location.hh>
 
+File_Range File_Range::operator+(File_Range const& rhs) const
+{
+	return {
+		.filename = filename.empty() ? rhs.filename : filename,
+		.start = std::min(start, rhs.start),
+		.stop = std::max(stop, rhs.stop),
+	};
+}
+
+File_Range& File_Range::operator+=(File_Range const& rhs)
+{
+	filename = filename.empty() ? rhs.filename : filename;
+	start = std::min(start, rhs.start);
+	stop = std::max(stop, rhs.stop);
+	return *this;
+}
+
 Location Location::at(usize line, usize column)
 {
 	Location loc;

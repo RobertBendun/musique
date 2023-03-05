@@ -8,6 +8,20 @@
 #include <musique/common.hh>
 #include <ostream>
 
+struct File_Range
+{
+	std::string_view filename{};
+	unsigned start = 0;
+	unsigned stop  = 0;
+
+	explicit inline operator bool() const { return filename.size(); }
+
+	File_Range operator+(File_Range const&) const;
+	File_Range& operator+=(File_Range const&);
+
+	bool operator==(File_Range const&) const = default;
+};
+
 /// \brief Location describes code position in `file line column` format.
 ///        It's used both to represent position in source files provided
 //         to interpreter and internal interpreter usage.

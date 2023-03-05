@@ -154,7 +154,7 @@ struct Runner
 		auto name = filename_to_function_name(filename);
 
 		Block block;
-		block.location = ast.location;
+		block.file = ast.file;
 		block.body = std::move(ast);
 		block.context = Env::global;
 		std::cout << "Defined function " << name << " as file " << filename << std::endl;

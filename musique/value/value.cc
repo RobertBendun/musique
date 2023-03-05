@@ -28,11 +28,11 @@ std::strong_ordering operator<=>(std::string const& lhs, std::string const& rhs)
 	}
 }
 
-Result<Value> Value::from(Token t)
+Result<Value> Value::from(std::string_view filename, Token t)
 {
 	switch (t.type) {
 	case Token::Type::Numeric:
-		return Try(Number::from(std::move(t)));
+		return Try(Number::from(filename, std::move(t)));
 
 	case Token::Type::Symbol:
 		return t.source;

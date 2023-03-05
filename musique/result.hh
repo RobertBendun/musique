@@ -52,11 +52,11 @@ struct [[nodiscard("This value may contain critical error, so it should NOT be i
 	}
 
 	/// Fill error location if it's empty and we have an error
-	inline Result<T> with_location(Location location) &&
+	inline Result<T> with(File_Range file) &&
 	{
 		if (!Storage::has_value()) {
-			if (auto& target = Storage::error().location; !target || target == Location{}) {
-				target = location;
+			if (auto& target = Storage::error().file; !target || target == File_Range{}) {
+				target = file;
 			}
 		}
 		return *this;

@@ -88,11 +88,12 @@ auto Lexer::next_token() -> Result<std::variant<Token, End_Of_File>>
 	}
 
 	switch (peek()) {
-	case '(':  consume(); return Token { Token::Type::Bra,         finish(), token_location };
-	case ')':  consume(); return Token { Token::Type::Ket,         finish(), token_location };
-	case '[':  consume(); return Token { Token::Type::Open_Index,  finish(), token_location };
-	case ']':  consume(); return Token { Token::Type::Close_Index, finish(), token_location };
-	case ',':  consume(); return Token { Token::Type::Comma,       finish(), token_location };
+	case '(':  consume(); return Token { Token::Type::Bra,         token_location, finish() };
+	case ')':  consume(); return Token { Token::Type::Ket,         token_location, finish() };
+	case '[':  consume(); return Token { Token::Type::Open_Index,  token_location, finish() };
+	case ']':  consume(); return Token { Token::Type::Close_Index, token_location, finish() };
+	case ',':  consume(); return Token { Token::Type::Comma,       token_location, finish() };
+	case '\n': consume(); return Token { Token::Type::Nl,          token_location, finish() };
 
 	case '|':
 		consume();
@@ -100,7 +101,7 @@ auto Lexer::next_token() -> Result<std::variant<Token, End_Of_File>>
 		// is operator, then this character is part of operator sequence.
 		// Additionally we explicitly allow for `|foo|=0` here
 		if (Valid_Operator_Chars.find(peek()) == std::string_view::npos || peek() == '=')
-			return Token { Token::Type::Parameter_Separator, finish(), token_location };
+			return Token { Token::Type::Parameter_Separator, token_location, finish() };
 	}
 
 	// Lex numeric literals
@@ -117,7 +118,7 @@ auto Lexer::next_token() -> Result<std::variant<Token, End_Of_File>>
 				rewind();
 			}
 		}
-		return Token { Token::Type::Numeric, finish(), token_location };
+		return Token { Token::Type::Numeric, token_location, finish() };
 	}
 
 	// Lex chord declaration
@@ -132,7 +133,7 @@ auto Lexer::next_token() -> Result<std::variant<Token, End_Of_File>>
 			goto symbol_lexing;
 		}
 
-		return Token { Token::Type::Chord, finish(), token_location };
+		return Token { Token::Type::Chord, token_location, finish() };
 	}
 
 	using namespace std::placeholders;
@@ -142,7 +143,7 @@ auto Lexer::next_token() -> Result<std::variant<Token, End_Of_File>>
 		for (auto predicate = std::bind(unicode::is_identifier, _1, unicode::First_Character::No);
 				consume_if(predicate) || consume_if(Valid_Operator_Chars);) {}
 
-		Token t = { Token::Type::Symbol, finish(), token_location };
+		Token t = { Token::Type::Symbol, token_location, finish() };
 		return t;
 	}
 
@@ -152,7 +153,7 @@ auto Lexer::next_token() -> Result<std::variant<Token, End_Of_File>>
 		for (auto predicate = std::bind(unicode::is_identifier, _1, unicode::First_Character::No);
 				consume_if(predicate);) {}
 
-		Token t = { Token::Type::Symbol, finish(), token_location };
+		Token t = { Token::Type::Symbol, token_location, finish() };
 		if (std::find(Keywords.begin(), Keywords.end(), t.source) != Keywords.end()) {
 			t.type = Token::Type::Keyword;
 		}
@@ -162,12 +163,15 @@ auto Lexer::next_token() -> Result<std::variant<Token, End_Of_File>>
 	// Lex operator
 	if (consume_if(Valid_Operator_Chars)) {
 		while (consume_if(Valid_Operator_Chars)) {}
-		return Token { Token::Type::Operator, finish(), token_location };
+		return Token { Token::Type::Operator, token_location, finish() };
 	}
 
 	return Error {
 		.details = errors::Unrecognized_Character { .invalid_character = peek() },
-		.location = token_location
+		.file = File_Range {
+			.start = token_location,
+			.stop  = token_location + 1
+		}
 	};
 }
 
@@ -189,7 +193,6 @@ auto Lexer::consume() -> u32
 			last_rune_length = remaining.data() - source.data();
 			source = remaining;
 			token_length += last_rune_length;
-			location.advance(rune);
 			return rune;
 		}
 	}
@@ -269,23 +272,24 @@ std::string quoted(std::string_view s)
 
 std::ostream& operator<<(std::ostream& os, Token const& token)
 {
-	return os << '{' << token.type << ", " << quoted(token.source) << ", " << token.location << '}';
+	return os << '{' << token.type << ", " << quoted(token.source) << ", " << token.start << '}';
 }
 
 std::ostream& operator<<(std::ostream& os, Token::Type type)
 {
 	switch (type) {
-	case Token::Type::Chord:                 return os << "CHORD";
-	case Token::Type::Ket:                   return os << "KET";
-	case Token::Type::Comma:                 return os << "COMMA";
-	case Token::Type::Keyword:               return os << "KEYWORD";
-	case Token::Type::Numeric:               return os << "NUMERIC";
 	case Token::Type::Bra:                   return os << "BRA";
+	case Token::Type::Chord:                 return os << "CHORD";
+	case Token::Type::Close_Index:           return os << "CLOSE INDEX";
+	case Token::Type::Comma:                 return os << "COMMA";
+	case Token::Type::Ket:                   return os << "KET";
+	case Token::Type::Keyword:               return os << "KEYWORD";
+	case Token::Type::Nl:                    return os << "NL";
+	case Token::Type::Numeric:               return os << "NUMERIC";
+	case Token::Type::Open_Index:            return os << "OPEN INDEX";
 	case Token::Type::Operator:              return os << "OPERATOR";
 	case Token::Type::Parameter_Separator:   return os << "PARAMETER SEPARATOR";
 	case Token::Type::Symbol:                return os << "SYMBOL";
-	case Token::Type::Open_Index:            return os << "OPEN INDEX";
-	case Token::Type::Close_Index:           return os << "CLOSE INDEX";
 	}
 	unreachable();
 }
@@ -293,13 +297,14 @@ std::ostream& operator<<(std::ostream& os, Token::Type type)
 std::string_view type_name(Token::Type type)
 {
 	switch (type) {
+	case Token::Type::Bra:                   return "(";
 	case Token::Type::Chord:                 return "chord";
-	case Token::Type::Ket:                   return ")";
 	case Token::Type::Close_Index:           return "]";
 	case Token::Type::Comma:                 return ",";
+	case Token::Type::Ket:                   return ")";
 	case Token::Type::Keyword:               return "keyword";
+	case Token::Type::Nl:                    return "newline";
 	case Token::Type::Numeric:               return "numeric";
-	case Token::Type::Bra:                   return "(";
 	case Token::Type::Open_Index:            return "[";
 	case Token::Type::Operator:              return "operator";
 	case Token::Type::Parameter_Separator:   return "parameter separator";

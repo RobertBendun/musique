@@ -90,13 +90,17 @@ bool unicode::is_space(u32 space)
 	switch (space) {
 	case ' ':
 	case '\t':
-	case '\n':
 	case '\f':
 	case '\r':
 	case '\v':
 		return true;
 	}
 	return false;
+}
+
+bool unicode::is_space_or_newline(u32 space)
+{
+	return '\n' == space || unicode::is_space(space);
 }
 
 bool unicode::is_identifier(u32 letter, unicode::First_Character is_first_character)

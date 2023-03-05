@@ -332,16 +332,13 @@ static auto builtin_program_change(Interpreter &i, std::vector<Value> args) -> R
 		return Value{};
 	}
 
-	return Error {
-		.details = errors::Unsupported_Types_For {
-			.type = errors::Unsupported_Types_For::Function,
-			.name = "program_change",
-			.possibilities = {
-				"(number) -> nil",
-				"(number, number) -> nil",
-			}
-		},
-		.location = {}
+	return errors::Unsupported_Types_For {
+		.type = errors::Unsupported_Types_For::Function,
+		.name = "program_change",
+		.possibilities = {
+			"(number) -> nil",
+			"(number, number) -> nil",
+		}
 	};
 }
 
@@ -1398,16 +1395,13 @@ static Result<Value> builtin_note_on(Interpreter &interpreter, std::vector<Value
 		return Value{};
 	}
 
-	return Error {
-		.details = errors::Unsupported_Types_For {
-			.type = errors::Unsupported_Types_For::Function,
-			.name = "note_on",
-			.possibilities = {
-				"(number, music, number) -> nil"
-				"(number, number, number) -> nil",
-			}
-		},
-		.location = {}
+	return errors::Unsupported_Types_For {
+		.type = errors::Unsupported_Types_For::Function,
+		.name = "note_on",
+		.possibilities = {
+			"(number, music, number) -> nil"
+			"(number, number, number) -> nil",
+		}
 	};
 }
 
@@ -1436,16 +1430,13 @@ static Result<Value> builtin_note_off(Interpreter &interpreter, std::vector<Valu
 		return Value{};
 	}
 
-	return Error {
-		.details = errors::Unsupported_Types_For {
-			.type = errors::Unsupported_Types_For::Function,
-			.name = "note_off",
-			.possibilities = {
-				"(number, music) -> nil"
-				"(number, number) -> nil",
-			}
-		},
-		.location = {}
+	return errors::Unsupported_Types_For {
+		.type = errors::Unsupported_Types_For::Function,
+		.name = "note_off",
+		.possibilities = {
+			"(number, music) -> nil"
+			"(number, number) -> nil",
+		}
 	};
 }
 

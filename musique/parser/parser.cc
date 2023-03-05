@@ -5,8 +5,6 @@
 #include <iostream>
 #include <numeric>
 
-static Ast wrap_if_several(std::vector<Ast> &&ast, Ast(*wrapper)(std::vector<Ast>));
-
 static std::optional<usize> precedense(std::string_view op);
 
 static inline bool is_identifier_looking(Token::Type type)
@@ -45,15 +43,22 @@ enum class At_Least : bool
 static Result<std::vector<Ast>> parse_many(
 	Parser &p,
 	Result<Ast> (Parser::*parser)(),
-	std::optional<Token::Type> separator,
-	At_Least at_least);
+	At_Least,
+	bool(*separator)(Parser &));
 
 Result<Ast> Parser::parse(std::string_view source, std::string_view filename, unsigned line_number, bool print_tokens)
 {
+	// TODO Fix line number calculation
+	(void)line_number;
+
+	// TODO Fix filename marking on ast nodes
+	(void)filename;
+
 	Lexer lexer{source};
-	lexer.location.filename = filename;
-	lexer.location.line = line_number;
+	lexer.location = line_number;
 	Parser parser;
+
+	parser.filename = filename;
 
 	for (;;) {
 		auto token_or_eof = Try(lexer.next_token());
@@ -77,7 +82,7 @@ Result<Ast> Parser::parse(std::string_view source, std::string_view filename, un
 				.details = errors::Closing_Token_Without_Opening {
 						errors::Closing_Token_Without_Opening::Paren
 				},
-				.location = tok.location
+				.file = tok.location(filename),
 			};
 		}
 
@@ -89,45 +94,23 @@ Result<Ast> Parser::parse(std::string_view source, std::string_view filename, un
 
 Result<Ast> Parser::parse_sequence()
 {
-	auto seq = Try(parse_many(*this, &Parser::parse_expression, Token::Type::Comma, At_Least::Zero));
+	auto seq = Try(parse_many(*this, &Parser::parse_expression, At_Least::Zero, +[](Parser &p) {
+		return p.expect(Token::Type::Comma) || p.expect(Token::Type::Nl);
+	}));
 	return Ast::sequence(std::move(seq));
 }
 
 Result<Ast> Parser::parse_expression()
 {
-	if (expect(Token::Type::Symbol, Token::Type::Operator, ":=")) {
-		return parse_variable_declaration();
+	if (expect(Token::Type::Symbol, Token::Type::Operator, "=")) {
+		return parse_assigment();
 	}
-	return parse_infix_expression();
+	return parse_infix();
 }
 
-Result<Ast> Parser::parse_variable_declaration()
+Result<Ast> Parser::parse_infix()
 {
-	auto lvalue = parse_identifier();
-	if (not lvalue.has_value()) {
-		auto details = lvalue.error().details;
-		if (auto ut = std::get_if<errors::internal::Unexpected_Token>(&details); ut) {
-			return Error {
-				.details = errors::Literal_As_Identifier {
-					.type_name = ut->type,
-					.source = ut->source,
-					.context = "variable declaration"
-				},
-				.location = lvalue.error().location
-			};
-		}
-		return std::move(lvalue).error();
-	}
-
-	ensure(expect(Token::Type::Operator, ":="), "This function should always be called with valid sequence");
-	consume();
-	return Ast::variable_declaration(lvalue->location, { *std::move(lvalue) }, Try(parse_expression()));
-}
-
-Result<Ast> Parser::parse_infix_expression()
-{
-	auto atomics = Try(parse_many(*this, &Parser::parse_index_expression, std::nullopt, At_Least::One));
-	auto lhs = wrap_if_several(std::move(atomics), Ast::call);
+	auto lhs = Try(parse_arithmetic_prefix());
 
 	bool const next_is_operator = expect(Token::Type::Operator)
 		|| expect(Token::Type::Keyword, "and")
@@ -137,20 +120,19 @@ Result<Ast> Parser::parse_infix_expression()
 		auto op = consume();
 
 		Ast ast;
-		ast.location = op.location;
+		ast.file = op.location(filename) + lhs.file;
 		ast.type = Ast::Type::Binary;
 		ast.token = std::move(op);
 		ast.arguments.emplace_back(std::move(lhs));
-		return parse_rhs_of_infix_expression(std::move(ast));
+		return parse_rhs_of_infix(std::move(ast));
 	}
 
 	return lhs;
 }
 
-Result<Ast> Parser::parse_rhs_of_infix_expression(Ast lhs)
+Result<Ast> Parser::parse_rhs_of_infix(Ast &&lhs)
 {
-	auto atomics = Try(parse_many(*this, &Parser::parse_index_expression, std::nullopt, At_Least::One));
-	auto rhs = wrap_if_several(std::move(atomics), Ast::call);
+	auto rhs = Try(parse_arithmetic_prefix());
 
 	bool const next_is_operator = expect(Token::Type::Operator)
 		|| expect(Token::Type::Keyword, "and")
@@ -168,39 +150,49 @@ Result<Ast> Parser::parse_rhs_of_infix_expression(Ast lhs)
 	if (!lhs_precedense) {
 		return Error {
 			.details = errors::Undefined_Operator { .op = std::string(lhs.token.source), },
-			.location = lhs.token.location,
+			.file = lhs.token.location(filename)
 		};
 	}
 	if (!op_precedense) {
 		return Error {
 			.details = errors::Undefined_Operator { .op = std::string(op.source), },
-			.location = op.location,
+			.file = op.location(filename),
 		};
 	}
 
 	if (*lhs_precedense >= *op_precedense) {
 		lhs.arguments.emplace_back(std::move(rhs));
 		Ast ast;
-		ast.location = op.location;
+		ast.file = op.location(filename);
 		ast.type = Ast::Type::Binary;
 		ast.token = std::move(op);
 		ast.arguments.emplace_back(std::move(lhs));
-		return parse_rhs_of_infix_expression(std::move(ast));
+		return parse_rhs_of_infix(std::move(ast));
 	}
 
 	Ast ast;
-	ast.location = op.location;
+	ast.file = op.location(filename);
 	ast.type = Ast::Type::Binary;
 	ast.token = std::move(op);
 	ast.arguments.emplace_back(std::move(rhs));
-	lhs.arguments.emplace_back(Try(parse_rhs_of_infix_expression(std::move(ast))));
+	lhs.arguments.emplace_back(Try(parse_rhs_of_infix(std::move(ast))));
 	return lhs;
+}
+
+Result<Ast> Parser::parse_arithmetic_prefix()
+{
+	if (expect(Token::Type::Operator, "-") || expect(Token::Type::Operator, "+")) {
+		// TODO Add unary operator AST node type
+		unimplemented();
+	}
+
+	return parse_function_call();
 }
 
 Result<Ast> parse_sequence_inside(
 	Parser &parser,
 	Token::Type closing_token,
-	Location start_location,
+	File_Range start_location,
 	bool is_lambda,
 	std::vector<Ast> &&parameters,
 	auto &&dont_arrived_at_closing_token
@@ -214,7 +206,7 @@ Result<Ast> parse_sequence_inside(
 				.reason = errors::Unexpected_Empty_Source::Block_Without_Closing_Bracket,
 				.start = start_location
 			},
-			.location = parser.tokens.back().location
+			.file = parser.tokens.back().location(parser.filename)
 		};
 	}
 
@@ -231,14 +223,41 @@ Result<Ast> parse_sequence_inside(
 	return Ast::block(start_location, std::move(ast));
 }
 
-Result<Ast> Parser::parse_index_expression()
+Result<Ast> Parser::parse_function_call()
 {
-	auto result = Try(parse_atomic_expression());
+	auto result = Try(parse_index());
+
+	while (expect(Token::Type::Bra)) {
+		auto op = consume();
+		auto start_location = op.location(filename);
+		auto sequence = Try(parse_sequence_inside(
+			*this,
+			Token::Type::Ket,
+			start_location,
+			false,
+			{},
+			[]() -> std::optional<Error> { return std::nullopt; }
+		));
+		if (sequence.type == Ast::Type::Sequence) {
+			sequence.arguments.insert(sequence.arguments.begin(), std::move(result));
+			result = Ast::call(std::move(sequence.arguments));
+		} else {
+			result = Ast::call({ std::move(result), std::move(sequence) });
+		}
+	}
+
+	return result;
+}
+
+Result<Ast> Parser::parse_index()
+{
+	auto result = Try(parse_atomic());
 
 	while (expect(Token::Type::Open_Index)) {
 		auto op = consume();
-		auto start_location = op.location;
+		auto start_location = op.location(filename);
 		result = Ast::binary(
+			filename,
 			std::move(op),
 			std::move(result),
 			Try(parse_sequence_inside(
@@ -247,15 +266,67 @@ Result<Ast> Parser::parse_index_expression()
 				start_location,
 				false,
 				{},
-				[]() -> std::optional<Error> {
-					return std::nullopt;
-				}
+				[]() -> std::optional<Error> { return std::nullopt; }
 			))
 		);
 	}
 
 	return result;
 }
+
+Result<Ast> Parser::parse_assigment()
+{
+	auto lvalue = parse_identifier();
+	if (not lvalue.has_value()) {
+		auto details = lvalue.error().details;
+		if (auto ut = std::get_if<errors::internal::Unexpected_Token>(&details); ut) {
+			return Error {
+				.details = errors::Literal_As_Identifier {
+					.type_name = ut->type,
+					.source = ut->source,
+					.context = "variable declaration"
+				},
+				.file = lvalue.error().file
+			};
+		}
+		return std::move(lvalue).error();
+	}
+
+	ensure(expect(Token::Type::Operator, "="), "This function should always be called with valid sequence");
+	consume();
+	return Ast::variable_declaration(lvalue->file, { *std::move(lvalue) }, Try(parse_expression()));
+}
+
+Result<Ast> Parser::parse_identifier()
+{
+	if (not expect(Token::Type::Symbol)) {
+		// TODO Specific error message
+		return Error {
+			.details = errors::internal::Unexpected_Token {
+				.type = std::string(type_name(peek()->type)),
+				.source = std::string(peek()->source),
+				.when = "identifier parsing"
+			},
+			.file = peek()->location(filename)
+		};
+	}
+	return Ast::literal(filename, consume());
+}
+
+Result<Ast> Parser::parse_atomic()
+{
+	switch (Try(peek_type())) {
+	case Token::Type::Numeric:
+	case Token::Type::Symbol:
+		return Ast::literal(filename, consume());
+
+	break; default:
+		std::cout << token_id << Try(peek());
+		unimplemented();
+	}
+}
+
+#if 0
 
 Result<Ast> Parser::parse_atomic_expression()
 {
@@ -385,34 +456,20 @@ Result<Ast> Parser::parse_identifier_with_trailing_separators()
 	return lit;
 }
 
-Result<Ast> Parser::parse_identifier()
-{
-	if (not expect(Token::Type::Symbol)) {
-		// TODO Specific error message
-		return Error {
-			.details = errors::internal::Unexpected_Token {
-				.type = std::string(type_name(peek()->type)),
-				.source = std::string(peek()->source),
-				.when = "identifier parsing"
-			},
-			.location = peek()->location
-		};
-	}
-	return Ast::literal(consume());
-}
+#endif
 
 static Result<std::vector<Ast>> parse_many(
 	Parser &p,
 	Result<Ast> (Parser::*parser)(),
-	std::optional<Token::Type> separator,
-	At_Least at_least)
+	At_Least at_least,
+	bool (*separator)(Parser &))
 {
 	std::vector<Ast> trees;
 	Result<Ast> expr;
 
 	// Consume random separators laying before sequence. This was added to prevent
 	// an error when input is only expression separator ";"
-	while (separator && at_least == At_Least::Zero && p.expect(*separator)) {
+	while (separator && at_least == At_Least::Zero && separator(p)) {
 		p.consume();
 	}
 
@@ -423,10 +480,10 @@ static Result<std::vector<Ast>> parse_many(
 	while ((expr = (p.*parser)()).has_value()) {
 		trees.push_back(std::move(expr).value());
 		if (separator) {
-			if (not p.expect(*separator)) {
+			if (not separator(p)) {
 				break;
 			}
-			do p.consume(); while (p.expect(*separator));
+			do p.consume(); while (separator(p));
 		}
 	}
 
@@ -442,7 +499,7 @@ Result<Token> Parser::peek() const
 	return token_id >= tokens.size()
 		? Error {
 				.details = errors::Unexpected_Empty_Source {},
-				.location = tokens.back().location
+				.file = tokens.back().location(filename)
 			}
 		: Result<Token>(tokens[token_id]);
 }
@@ -473,81 +530,6 @@ bool Parser::expect(Token::Type t1, Token::Type t2, std::string_view lexeme_for_
 		&& tokens[token_id].type == t1
 		&& tokens[token_id+1].type == t2
 		&& tokens[token_id+1].source == lexeme_for_t2;
-}
-
-// Don't know if it's a good idea to defer parsing of literal values up to value creation, which is current approach.
-// This may create unexpected performance degradation during program evaluation.
-Ast Ast::literal(Token token)
-{
-	Ast ast;
-	ast.type = Type::Literal;
-	ast.location = token.location;
-	ast.token = std::move(token);
-	return ast;
-}
-
-Ast Ast::binary(Token token, Ast lhs, Ast rhs)
-{
-	Ast ast;
-	ast.type = Type::Binary;
-	ast.location = token.location;
-	ast.token = std::move(token);
-	ast.arguments.push_back(std::move(lhs));
-	ast.arguments.push_back(std::move(rhs));
-	return ast;
-}
-
-Ast Ast::call(std::vector<Ast> call)
-{
-	ensure(!call.empty(), "Call must have at least pice of code that is beeing called");
-
-	Ast ast;
-	ast.type = Type::Call;
-	ast.location = call.front().location;
-	ast.arguments = std::move(call);
-	return ast;
-}
-
-Ast Ast::sequence(std::vector<Ast> expressions)
-{
-	Ast ast;
-	ast.type = Type::Sequence;
-	if (!expressions.empty()) {
-		ast.location = expressions.front().location;
-		ast.arguments = std::move(expressions);
-	}
-	return ast;
-}
-
-Ast Ast::block(Location location, Ast seq)
-{
-	Ast ast;
-	ast.type = Type::Block;
-	ast.location = location;
-	ast.arguments.push_back(std::move(seq));
-	return ast;
-}
-
-Ast Ast::lambda(Location location, Ast body, std::vector<Ast> parameters)
-{
-	Ast ast;
-	ast.type = Type::Lambda;
-	ast.location = location;
-	ast.arguments = std::move(parameters);
-	ast.arguments.push_back(std::move(body));
-	return ast;
-}
-
-Ast Ast::variable_declaration(Location loc, std::vector<Ast> lvalues, std::optional<Ast> rvalue)
-{
-	Ast ast;
-	ast.type = Type::Variable_Declaration;
-	ast.location = loc;
-	ast.arguments = std::move(lvalues);
-	if (rvalue) {
-		ast.arguments.push_back(*std::move(rvalue));
-	}
-	return ast;
 }
 
 Ast wrap_if_several(std::vector<Ast> &&ast, Ast(*wrapper)(std::vector<Ast>))

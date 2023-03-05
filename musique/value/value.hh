@@ -25,7 +25,7 @@ using Macro = Result<Value>(*)(Interpreter &i, std::span<Ast>);
 struct Value
 {
 	/// Creates value from literal contained in Token
-	static Result<Value> from(Token t);
+	static Result<Value> from(std::string_view filename, Token t);
 
 	/// Create value holding provided boolean
 	///

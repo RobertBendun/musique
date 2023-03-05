@@ -17,8 +17,11 @@ namespace unicode
 	/// is_digit returns true if `digit` is ASCII digit
 	bool is_digit(u32 digit);
 
-	/// is_space return true if `space` is ASCII blank character
+	/// is_space return true if `space` is ASCII blank character (EXCLUDING newline)
 	bool is_space(u32 space);
+
+	/// is_space_or_newline returns if `space` is ASCII blank character (including newline)
+	bool is_space_or_newline(u32 space);
 
 	/// is_letter returns true if `letter` is considered a letter by Unicode
 	bool is_letter(u32 letter);

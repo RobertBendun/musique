@@ -24,9 +24,9 @@ static auto visit(V &&visitor, std::variant<T...> const& variant)
 	}
 }
 
-Error Error::with(Location loc) &&
+Error Error::with(File_Range file) &&
 {
-	location = loc;
+	this->file = file;
 	return *this;
 }
 
@@ -69,6 +69,16 @@ static std::ostream& error_heading(
 	auto const line_length = heading.size();
 	std::fill_n(std::ostreambuf_iterator<char>(os), line_length, '-');
 	return os << '\n';
+}
+
+static std::ostream& error_heading(
+		std::ostream &os,
+		File_Range,
+		Error_Level,
+		std::string_view)
+{
+	// unimplemented();
+	return os;
 }
 
 /// Prints message that should encourage contact with developers
@@ -172,14 +182,17 @@ std::ostream& operator<<(std::ostream& os, Error const& err)
 		},
 	}, err.details);
 
-	error_heading(os, err.location, Error_Level::Error, short_description);
+	error_heading(os, err.file, Error_Level::Error, short_description);
 
-	auto const loc = err.location;
-	auto const print_error_line = [&] (std::optional<Location> loc) {
+	auto const loc = err.file;
+	auto const print_error_line = [&](File_Range) {
+		unimplemented();
+#if 0
 		if (loc) {
 			Lines::the.print(os, std::string(loc->filename), loc->line, loc->line);
 			os << '\n';
 		}
+#endif
 	};
 
 	visit(Overloaded {
