@@ -70,6 +70,28 @@ std::optional<std::string_view> find_documentation_for_builtin(std::string_view 
 	}
 	return std::nullopt;
 }
+
+std::vector<std::string_view> similar_names_to_builtin(std::string_view builtin_name)
+{
+    auto minimum_distance = std::numeric_limits<int>::max();
+
+    std::array<std::pair<std::string_view, std::string_view>, 4> closest;
+	std::partial_sort_copy(
+        names_to_documentation.begin(), names_to_documentation.end(),
+		closest.begin(), closest.end(),
+		[&minimum_distance, builtin_name](auto const& lhs, auto const& rhs) {
+			auto const lhs_score = edit_distance(builtin_name, lhs.first);
+			auto const rhs_score = edit_distance(builtin_name, rhs.first);
+			minimum_distance = std::min({ minimum_distance, lhs_score, rhs_score });
+			return lhs_score < rhs_score;
+		}
+	);
+
+    std::vector<std::string_view> result;
+    result.resize(4);
+    std::transform(closest.begin(), closest.end(), result.begin(), [](auto const& p) { return p.first; });
+    return result;
+}
 """
 
 def warning(*args, prefix: str | None = None):
@@ -238,8 +260,15 @@ def generate_cpp_documentation(builtins: typing.Iterable[Builtin], output_path: 
         return f"{builtin.implementation}_doc"
 
     with open(output_path, "w") as out:
-        print("#include <array>", file=out)
-        print("#include <musique/interpreter/builtin_function_documentation.hh>\n", file=out)
+        includes = [
+            "algorithm",
+            "array",
+            "edit_distance.hh",
+            "musique/interpreter/builtin_function_documentation.hh",
+            "vector",
+        ]
+        for include in includes:
+            print(f"#include <{include}>", file=out)
 
         # 1. Generate strings with documentation
         for builtin in builtins:

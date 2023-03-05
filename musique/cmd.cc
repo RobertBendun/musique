@@ -15,6 +15,8 @@
 #include <utility>
 #include <variant>
 
+// TODO: Command line parameters full documentation in other then man pages format. Maybe HTML generation?
+
 #ifdef _WIN32
 extern "C" {
 #include <io.h>
@@ -53,6 +55,11 @@ static Requires_Argument show_docs = [](std::string_view builtin) {
 	}
 	std::cerr << pretty::begin_error << "musique: error:" << pretty::end;
 	std::cerr << " cannot find documentation for given builtin" << std::endl;
+
+	std::cerr << "Similar ones are:" << std::endl;
+	for (auto similar : similar_names_to_builtin(builtin)) {
+		std::cerr << "  " << similar << '\n';
+	}
 	std::exit(1);
 };
 
@@ -347,11 +354,12 @@ void cmd::print_close_matches(std::string_view arg)
 	std::cout << "\nInvoke 'musique help' to read more about available commands\n";
 }
 
-void cmd::usage()
+static inline void iterate_over_documentation(
+	std::ostream& out,
+	std::string_view Documentation_For_Handler_Entry::* handler,
+	std::string_view prefix,
+	std::ostream&(*first)(std::ostream&, std::string_view name))
 {
-	std::cerr << "usage: " << pretty::begin_bold << "musique" << pretty::end << " [subcommand]...\n";
-	std::cerr << "  where available subcommands are:\n";
-
 	decltype(std::optional(all_parameters.begin())) previous = std::nullopt;
 
 	for (auto it = all_parameters.begin();; ++it) {
@@ -361,14 +369,12 @@ void cmd::usage()
 		if (it == all_parameters.end() || (previous && it->handler_ptr() != (*previous)->handler_ptr())) {
 			auto &e = **previous;
 			switch (e.arguments()) {
-			break; case 0: std::cerr << '\n';
-			break; case 1: std::cerr << " ARG\n";
+			break; case 0: out << '\n';
+			break; case 1: out << " ARG\n";
 			break; default: unreachable();
 			}
 
-			std::cerr << "      "
-				<< find_documentation_for_handler(e.handler_ptr()).short_documentation
-				<< "\n\n";
+			out << prefix << find_documentation_for_handler(e.handler_ptr()).*handler << "\n\n";
 		}
 
 		if (it == all_parameters.end()) {
@@ -376,12 +382,24 @@ void cmd::usage()
 		}
 
 		if (previous && (**previous).handler_ptr() == it->handler_ptr()) {
-			std::cerr << ", " << it->name;
+			out << ", " << it->name;
 		} else {
-			std::cerr << "    " << pretty::begin_bold << it->name << pretty::end;
+			first(out, it->name);
 		}
 		previous = it;
 	}
+}
+
+void cmd::usage()
+{
+	std::cerr << "usage: " << pretty::begin_bold << "musique" << pretty::end << " [subcommand]...\n";
+	std::cerr << "  where available subcommands are:\n";
+
+	iterate_over_documentation(std::cerr, &Documentation_For_Handler_Entry::short_documentation, "      ",
+		[](std::ostream& out, std::string_view name) -> std::ostream&
+		{
+			return out << "    " << pretty::begin_bold << name << pretty::end;
+		});
 
 	std::exit(2);
 }
@@ -411,11 +429,28 @@ SUBCOMMANDS
 Musique is an interpreted, interactive, musical domain specific programming language
 that allows for algorythmic music composition, live-coding and orchestra performing.
 .SH SUBCOMMANDS
-TODO
-.SH ENVIROMENT
-TODO: NO_COLORS env
+All subcommands can be expressed in three styles: -i arg -j -k
+.I or
+--i=arg --j --k
+.I or
+i arg j k
+)troff";
+
+	iterate_over_documentation(std::cout, &Documentation_For_Handler_Entry::long_documentation, {},
+		[](std::ostream& out, std::string_view name) -> std::ostream&
+		{
+			return out << ".TP\n" << name;
+		});
+
+	std::cout << R"troff(.SH ENVIROMENT
+.TP
+NO_COLOR
+This enviroment variable overrides standard Musique color behaviour.
+When it's defined, it disables colors and ensures they are not enabled.
 .SH FILES
-TODO: History file
+.TP
+History file
+History file for interactive mode is kept in XDG_DATA_HOME (or similar on other operating systems).
 .SH EXAMPLES
 .TP
 musique \-c "play (c5 + up 12)"
@@ -424,7 +459,6 @@ Plays all semitones in 5th octave
 musique run examples/ode-to-joy.mq
 Play Ode to Joy written as Musique source code in examples/ode-to-joy.mq
 )troff";
-
 
 	std::exit(0);
 }

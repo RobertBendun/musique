@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Builtin documentation for builtin functions display from repl and command line.
+- Builtin documentation for builtin functions display from repl and command line (`musique doc <builtin>`)
+- Man documentation for commandline interface builtin (`musique man`)
 - Suggestions which command line parameters user may wanted to use
 
 ### Changed
