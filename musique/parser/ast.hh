@@ -9,30 +9,30 @@
 struct Ast
 {
 	/// Constructs binary operator
-	static Ast binary(Token, Ast lhs, Ast rhs);
+	static Ast binary(std::string_view filepath, Token, Ast lhs, Ast rhs);
 
 	/// Constructs block
-	static Ast block(Location location, Ast seq = sequence({}));
+	static Ast block(File_Range file, Ast seq = sequence({}));
 
 	/// Constructs call expression
 	static Ast call(std::vector<Ast> call);
 
 	/// Constructs block with parameters
-	static Ast lambda(Location location, Ast seq = sequence({}), std::vector<Ast> parameters = {});
+	static Ast lambda(File_Range file, Ast seq = sequence({}), std::vector<Ast> parameters = {});
 
 	/// Constructs constants, literals and variable identifiers
-	static Ast literal(Token);
+	static Ast literal(std::string_view filepath, Token);
 
 	/// Constructs sequence of operations
 	static Ast sequence(std::vector<Ast> call);
 
 	/// Constructs variable declaration
-	static Ast variable_declaration(Location loc, std::vector<Ast> lvalues, std::optional<Ast> rvalue);
+	static Ast variable_declaration(File_Range loc, std::vector<Ast> lvalues, std::optional<Ast> rvalue);
 
 	/// Available ASt types
 	enum class Type
 	{
-		Binary,               ///< Binary operator application like `1` + `2`
+		Binary,               ///< Binary operator application like `1 + 2`
 		Block,                ///< Block expressions like `[42; hello]`
 		Lambda,               ///< Block expression beeing functions like `[i|i+1]`
 		Call,                 ///< Function call application like `print 42`
@@ -44,8 +44,8 @@ struct Ast
 	/// Type of AST node
 	Type type;
 
-	/// Location that introduced this node
-	Location location;
+	/// Location where node was created
+	File_Range file;
 
 	/// Associated token
 	Token token;

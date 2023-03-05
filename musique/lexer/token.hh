@@ -8,7 +8,7 @@
 struct Token
 {
 	/// Type of Token
-	enum class Type
+	enum class Type : u16
 	{
 		Symbol,               ///< like repeat or choose or chord
 		Keyword,              ///< like true, false, nil
@@ -17,6 +17,7 @@ struct Token
 		Numeric,              ///< numeric literal (floating point or integer)
 		Parameter_Separator,  ///< "|" separaters arguments from block body
 		Comma,                ///< "," separates expressions. Used mainly to separate calls, like `foo 1 2; bar 3 4`
+		Nl,										///< "\n" seperates expressions similar to Comma
 		Bra,                  ///< "(" starts anonymous block of code (potentially a function)
 		Ket,                  ///< ")" ends anonymous block of code (potentially a function)
 		Open_Index,           ///< "[" starts index section of index expression
@@ -26,11 +27,20 @@ struct Token
 	/// Type of token
 	Type type;
 
+	/// Offset in source file where token starts
+	unsigned start;
+
 	/// Matched source code to the token type
 	std::string_view source;
 
-	/// Location of encountered token
-	Location location;
+	constexpr File_Range location(std::string_view filename) const
+	{
+		return {
+			.filename = filename,
+			.start = start,
+			.stop = start + unsigned(source.size())
+		};
+	}
 };
 
 static constexpr usize Keywords_Count  =  5;

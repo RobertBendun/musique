@@ -33,7 +33,7 @@ namespace errors
 	struct Unexpected_Empty_Source
 	{
 		enum { Block_Without_Closing_Bracket } reason;
-		std::optional<Location> start;
+		File_Range start;
 	};
 
 	/// When user passed numeric literal too big for numeric type
@@ -197,10 +197,10 @@ struct Error
 	errors::Details details;
 
 	/// Location that coused all this trouble
-	std::optional<Location> location = std::nullopt;
+	File_Range file = {};
 
 	/// Return self with new location
-	Error with(Location) &&;
+	Error with(File_Range) &&;
 };
 
 /// Error pretty printing

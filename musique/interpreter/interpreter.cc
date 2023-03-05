@@ -76,7 +76,7 @@ Result<Value> Interpreter::eval(Ast &&ast)
 				if (!value) {
 					return Error {
 						.details  = errors::Missing_Variable { .name = std::move(name) },
-						.location = ast.location
+						.file = ast.file
 					};
 				}
 				return *value;
@@ -84,7 +84,7 @@ Result<Value> Interpreter::eval(Ast &&ast)
 			return Value{};
 
 		default:
-			return Value::from(ast.token);
+			return Value::from(ast.file.filename, ast.token);
 		}
 
 	case Ast::Type::Binary:
@@ -102,7 +102,7 @@ Result<Value> Interpreter::eval(Ast &&ast)
 							.name = "=",
 							.possibilities = {},
 						},
-						.location = ast.token.location,
+						.file = ast.token.location(ast.file.filename)
 					};
 				}
 
@@ -112,23 +112,23 @@ Result<Value> Interpreter::eval(Ast &&ast)
 						.details = errors::Missing_Variable {
 							.name = std::string(lhs.token.source)
 						},
-						.location = lhs.location,
+						.file = lhs.file,
 					};
 				}
-				return *v = Try(eval(std::move(rhs)).with_location(ast.token.location));
+				return *v = Try(eval(std::move(rhs)).with(ast.file));
 			}
 
 			if (ast.token.source == "and" || ast.token.source == "or") {
 				auto lhs = std::move(ast.arguments.front());
 				auto rhs = std::move(ast.arguments.back());
 
-				auto lhs_loc = lhs.location, rhs_loc = rhs.location;
+				auto lhs_loc = lhs.file, rhs_loc = rhs.file;
 
-				auto result = Try(eval(std::move(lhs)).with_location(std::move(lhs_loc)));
+				auto result = Try(eval(std::move(lhs)).with(std::move(lhs_loc)));
 				if (ast.token.source == "or" ? result.truthy() : result.falsy()) {
 					return result;
 				} else {
-					return eval(std::move(rhs)).with_location(rhs_loc);
+					return eval(std::move(rhs)).with(rhs_loc);
 				}
 			}
 
@@ -139,37 +139,37 @@ Result<Value> Interpreter::eval(Ast &&ast)
 					if (op == operators.end()) {
 						return Error {
 							.details = errors::Undefined_Operator { .op = std::string(ast.token.source) },
-							.location = ast.token.location
+							.file = ast.token.location(ast.file.filename)
 						};
 					}
 
 					auto lhs = std::move(ast.arguments.front());
 					auto rhs = std::move(ast.arguments.back());
-					auto const rhs_loc = rhs.location;
+					auto const rhs_loc = rhs.file;
 					ensure(lhs.type == Ast::Type::Literal && lhs.token.type == Token::Type::Symbol,
 						"Currently LHS of assigment must be an identifier"); // TODO(assert)
 
 					Value *v = env->find(std::string(lhs.token.source));
 					ensure(v, "Cannot resolve variable: "s + std::string(lhs.token.source)); // TODO(assert)
 					return *v = Try(op->second(*this, {
-						*v, Try(eval(std::move(rhs)).with_location(rhs_loc))
-					}).with_location(ast.token.location));
+						*v, Try(eval(std::move(rhs)).with(rhs_loc))
+					}).with(ast.token.location(ast.file.filename)));
 				}
 
 				return Error {
 					.details = errors::Undefined_Operator { .op = std::string(ast.token.source) },
-					.location = ast.token.location
+					.file = ast.token.location(ast.file.filename)
 				};
 			}
 
 			std::vector<Value> values;
 			values.reserve(ast.arguments.size());
 			for (auto& a : ast.arguments) {
-				auto const a_loc = a.location;
-				values.push_back(Try(eval(std::move(a)).with_location(a_loc)));
+				auto const a_loc = a.file;
+				values.push_back(Try(eval(std::move(a)).with(a_loc)));
 			}
 
-			return op->second(*this, std::move(values)).with_location(ast.token.location);
+			return op->second(*this, std::move(values)).with(ast.token.location(ast.file.filename));
 		}
 		break;
 
@@ -187,7 +187,7 @@ Result<Value> Interpreter::eval(Ast &&ast)
 
 	case Ast::Type::Call:
 		{
-			auto call_location = ast.arguments.front().location;
+			auto call_location = ast.arguments.front().file;
 			Value func = Try(eval(std::move(ast.arguments.front())));
 
 			if (auto macro = std::get_if<Macro>(&func.data)) {
@@ -200,7 +200,7 @@ Result<Value> Interpreter::eval(Ast &&ast)
 				values.push_back(Try(eval(std::move(a))));
 			}
 			return std::move(func)(*this, std::move(values))
-				.with_location(std::move(call_location));
+				.with(std::move(call_location));
 		}
 
 	case Ast::Type::Variable_Declaration:
@@ -314,7 +314,7 @@ std::optional<Error> ensure_midi_connection_available(Interpreter &interpreter, 
 				.is_input = false,
 				.name = std::string(operation_name),
 			},
-			.location = {}
+			.file = {}
 		};
 	}
 	return {};

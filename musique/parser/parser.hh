@@ -15,6 +15,8 @@ struct Parser
 	/// Current token id (offset in tokens array)
 	unsigned token_id = 0;
 
+	std::string_view filename;
+
 	/// Parses whole source code producing Ast or Error
 	/// using Parser structure internally
 	static Result<Ast> parse(std::string_view source, std::string_view filename, unsigned line_number = 0, bool print_tokens = false);
@@ -25,25 +27,34 @@ struct Parser
 	/// Parse either infix expression or variable declaration
 	Result<Ast> parse_expression();
 
+	/// Parse either comma or newline
+	Result<Ast> parse_separator();
+
+	/// Parse assigment expression
+	Result<Ast> parse_assigment();
+
 	/// Parse infix expression
-	Result<Ast> parse_infix_expression();
+	Result<Ast> parse_infix();
 
-	/// Parse right hand size of infix expression
-	Result<Ast> parse_rhs_of_infix_expression(Ast lhs);
+	/// Parse rhs of infix expression
+	Result<Ast> parse_rhs_of_infix(Ast &&lhs);
 
-	/// Parse either index expression or atomic expression
-	Result<Ast> parse_index_expression();
+	/// Parse arithmetic prefix expression
+	Result<Ast> parse_arithmetic_prefix();
 
-	/// Parse function call, literal etc
-	Result<Ast> parse_atomic_expression();
+	/// Parse index expression
+	Result<Ast> parse_index();
 
-	/// Parse variable declaration
-	Result<Ast> parse_variable_declaration();
+	/// Parse index expression
+	Result<Ast> parse_atomic();
 
-	/// Utility function for identifier parsing
-	Result<Ast> parse_identifier_with_trailing_separators();
+	/// Parse function call
+	Result<Ast> parse_function_call();
 
-	/// Utility function for identifier parsing
+	/// Parse block
+	Result<Ast> parse_block();
+
+	/// Parse identifier
 	Result<Ast> parse_identifier();
 
 	/// Peek current token

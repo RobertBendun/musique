@@ -17,7 +17,7 @@ struct Block : Collection, Function
 	~Block() override = default;
 
 	/// Location of definition / creation
-	Location location;
+	File_Range file;
 
 	/// Names of expected parameters
 	std::vector<std::string> parameters;

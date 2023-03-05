@@ -1,9 +1,8 @@
 #ifndef MUSIQUE_LEXER_HH
 #define MUSIQUE_LEXER_HH
 
-#include <musique/location.hh>
-#include <musique/result.hh>
 #include <musique/lexer/token.hh>
+#include <musique/result.hh>
 #include <variant>
 
 /// Explicit marker of the end of file
@@ -22,24 +21,24 @@ struct Lexer
 	/// Location in source of the last rune
 	///
 	/// Used only for rewinding
-	u32 last_rune_length = 0;
+	std::uint32_t last_rune_length = 0;
 
 	/// Start of the token that is currently beeing matched
 	char const* token_start = nullptr;
 
 	/// Bytes matched so far
-	usize token_length = 0;
+	unsigned token_length = 0;
 
 	/// Location of the start of a token that is currently beeing matched
-	Location token_location{};
+	unsigned token_location{};
 
 	/// Current location of Lexer in source
-	Location location{};
+	unsigned location{};
 
 	/// Previous location of Lexer in source
 	///
 	/// Used only for rewinding
-	Location prev_location{};
+	unsigned prev_location{};
 
 	/// Try to tokenize next token.
 	auto next_token() -> Result<std::variant<Token, End_Of_File>>;

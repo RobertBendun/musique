@@ -51,7 +51,7 @@ struct Number
 	Result<Number> pow(Number n) const; ///< Return number raised to power `n`.
 
 	/// Parses source contained by token into a Number instance
-	static Result<Number> from(Token token);
+	static Result<Number> from(std::string_view filename, Token token);
 };
 
 std::ostream& operator<<(std::ostream& os, Number const& num);

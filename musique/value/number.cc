@@ -207,7 +207,7 @@ static Number::value_type pow10(usize n)
 	return Powers[n];
 }
 
-Result<Number> Number::from(Token token)
+Result<Number> Number::from(std::string_view filename, Token token)
 {
 	Number result;
 
@@ -224,7 +224,11 @@ Result<Number> Number::from(Token token)
 		}
 		return Error {
 			.details = errors::Failed_Numeric_Parsing { .reason = ec },
-			.location = std::move(token.location)
+			.file = {
+				.filename = filename,
+				.start    = token.start,
+				.stop     = token.start + unsigned(token.source.size()),
+			}
 		};
 	}
 	parsed_numerator = true;
@@ -239,7 +243,11 @@ parse_fractional:
 				return result;
 			return Error {
 				.details = errors::Failed_Numeric_Parsing { .reason = ec },
-				.location = std::move(token.location)
+				.file = {
+					.filename = filename,
+					.start    = token.start,
+					.stop     = token.start + unsigned(token.source.size()),
+				}
 			};
 		}
 		result += Number{ (result.num < 0 ? -1 : 1) * frac, pow10(frac_end - num_end) };
