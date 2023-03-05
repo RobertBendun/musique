@@ -15,7 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Moved from `bestline` to `replxx` Readline implementation due to lack of Windows support from bestline
 - New parameter passing convention for command line invocation. `musique help` to learn how it changed
+- `CTRL-C` handler that turns notes that are playing off
 
 ## [0.4.0]
 

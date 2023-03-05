@@ -62,4 +62,11 @@ concept Three_Way_Comparable = requires (T const& lhs, T const& rhs) {
 	{ lhs <=> rhs };
 };
 
+template<typename Needle, typename ...Heystack>
+requires (std::equality_comparable_with<Needle const&, Heystack const&> && ...)
+constexpr bool one_of(Needle const& needle, Heystack const& ...heystack)
+{
+	return ((needle == heystack) || ...);
+}
+
 #endif

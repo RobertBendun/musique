@@ -430,7 +430,9 @@ static Result<Value> builtin_par(Interpreter &interpreter, std::vector<Value> ar
 
 	for (auto const& note : chord->notes) {
 		if (note.base) {
-			interpreter.current_context->port->send_note_on(0, *note.into_midi_note(), 127);
+			auto const n = *note.into_midi_note();
+			interpreter.current_context->port->send_note_on(0, n, 127);
+			interpreter.active_notes.insert({ 0, n });
 		}
 	}
 
@@ -438,7 +440,9 @@ static Result<Value> builtin_par(Interpreter &interpreter, std::vector<Value> ar
 
 	for (auto const& note : chord->notes) {
 		if (note.base) {
-			interpreter.current_context->port->send_note_off(0, *note.into_midi_note(), 127);
+			auto const n = *note.into_midi_note();
+			interpreter.current_context->port->send_note_off(0, n, 127);
+			interpreter.active_notes.erase({ 0, n });
 		}
 	}
 	return result;
@@ -548,12 +552,16 @@ static Result<Value> builtin_sim(Interpreter &interpreter, std::vector<Value> ar
 	for (auto const& instruction : schedule) {
 		auto const dur = ctx.length_to_duration({instruction.when});
 		if (start_time < dur) {
-			std::this_thread::sleep_for(dur - start_time);
+			interpreter.sleep(dur - start_time);
 			start_time = dur;
 		}
 		switch (instruction.action) {
-		break; case Instruction::On:  interpreter.current_context->port->send_note_on(0, instruction.note, 127);
-		break; case Instruction::Off: interpreter.current_context->port->send_note_off(0, instruction.note, 127);
+		break; case Instruction::On:
+			interpreter.current_context->port->send_note_on(0, instruction.note, 127);
+			interpreter.active_notes.insert({ 0, instruction.note });
+		break; case Instruction::Off:
+			interpreter.current_context->port->send_note_off(0, instruction.note, 127);
+			interpreter.active_notes.erase({ 0, instruction.note });
 		}
 	}
 

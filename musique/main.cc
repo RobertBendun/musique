@@ -1,4 +1,5 @@
 #include <charconv>
+#include <csignal>
 #include <cstdio>
 #include <cstring>
 #include <edit_distance.hh>
@@ -13,18 +14,24 @@
 #include <musique/lexer/lines.hh>
 #include <musique/midi/midi.hh>
 #include <musique/parser/parser.hh>
+#include <musique/platform.hh>
 #include <musique/pretty.hh>
 #include <musique/try.hh>
 #include <musique/unicode.hh>
+#include <musique/user_directory.hh>
 #include <musique/value/block.hh>
 #include <span>
 #include <thread>
 #include <unordered_set>
 
-#ifndef _WIN32
+#include <replxx.hxx>
+
+#ifdef _WIN32
 extern "C" {
-#include <bestline.h>
+#include <io.h>
 }
+#else
+#include <unistd.h>
 #endif
 
 namespace fs = std::filesystem;
@@ -163,8 +170,14 @@ struct Runner
 			dump(ast);
 			return {};
 		}
-		if (auto result = Try(interpreter.eval(std::move(ast))); output && not holds_alternative<Nil>(result)) {
-			std::cout << Try(format(interpreter, result)) << std::endl;
+		try {
+			if (auto result = Try(interpreter.eval(std::move(ast))); output && not holds_alternative<Nil>(result)) {
+				std::cout << Try(format(interpreter, result)) << std::endl;
+			}
+		} catch (KeyboardInterrupt const&) {
+			interpreter.turn_off_all_active_notes();
+			interpreter.starter.stop();
+			std::cout << std::endl;
 		}
 		return {};
 	}
@@ -174,7 +187,7 @@ struct Runner
 /// some of the strings are only views into source
 std::vector<std::string> eternal_sources;
 
-#ifndef _WIN32
+#if 0
 void completion(char const* buf, bestlineCompletions *lc)
 {
 	std::string_view in{buf};
@@ -287,6 +300,15 @@ static Result<bool> handle_repl_session_commands(std::string_view input, Runner 
 	return false;
 }
 
+static Runner *runner;
+
+void sigint_handler(int sig)
+{
+	if (sig == SIGINT) {
+		runner->interpreter.issue_interrupt();
+	}
+	std::signal(SIGINT, sigint_handler);
+}
 
 /// Fancy main that supports Result forwarding on error (Try macro)
 static std::optional<Error> Main(std::span<char const*> args)
@@ -308,6 +330,8 @@ static std::optional<Error> Main(std::span<char const*> args)
 	}
 
 	Runner runner;
+	::runner = &runner;
+	std::signal(SIGINT, sigint_handler);
 
 	for (auto const& [type, argument] : runnables) {
 		if (type == cmd::Run::Argument) {
@@ -342,43 +366,37 @@ static std::optional<Error> Main(std::span<char const*> args)
 
 	if (enable_repl) {
 		repl_line_number = 1;
-#ifndef _WIN32
-		bestlineSetCompletionCallback(completion);
-#else
-		std::vector<std::string> repl_source_lines;
-#endif
+
+
+		replxx::Replxx repl;
+
+		auto const history_path = (user_directory::data_home() / "history").string();
+
+		repl.set_max_history_size(2048);
+		repl.set_max_hint_rows(3);
+		repl.history_load(history_path);
+
 		for (;;) {
-#ifndef _WIN32
-			char const* input_buffer = bestlineWithHistory("> ", "musique");
-			if (input_buffer == nullptr) {
+			char const* input = nullptr;
+			do input = repl.input("> "); while((input == nullptr) && (errno == EAGAIN));
+
+			if (input == nullptr) {
 				break;
 			}
-#else
-			std::cout << "> " << std::flush;
-			char const* input_buffer;
-			if (std::string s{}; std::getline(std::cin, s)) {
-				repl_source_lines.push_back(std::move(s));
-				input_buffer = repl_source_lines.back().c_str();
-			} else {
-				break;
-			}
-#endif
+
 			// Raw input line used for execution in language
-			std::string_view raw = input_buffer;
+			std::string_view raw = input;
 
 			// Used to recognize REPL commands
 			std::string_view command = raw;
 			trim(command);
 
 			if (command.empty()) {
-				// Line is empty so there is no need to execute it or parse it
-#ifndef _WIN32
-				free(const_cast<char*>(input_buffer));
-#else
-				repl_source_lines.pop_back();
-#endif
 				continue;
 			}
+
+			repl.history_add(std::string(command));
+			repl.history_save(history_path);
 
 			if (command.starts_with(':')) {
 				command.remove_prefix(1);

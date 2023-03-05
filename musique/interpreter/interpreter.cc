@@ -6,6 +6,8 @@
 #include <iostream>
 #include <random>
 #include <thread>
+#include <condition_variable>
+#include <mutex>
 
 std::unordered_map<std::string, Intrinsic> Interpreter::operators {};
 
@@ -53,6 +55,8 @@ Interpreter::~Interpreter()
 
 Result<Value> Interpreter::eval(Ast &&ast)
 {
+	handle_potential_interrupt();
+
 	switch (ast.type) {
 	case Ast::Type::Literal:
 		switch (ast.token.type) {
@@ -248,8 +252,10 @@ std::optional<Error> Interpreter::play(Chord chord)
 	Try(ensure_midi_connection_available(*this, "play"));
 	auto &ctx = *current_context;
 
+	handle_potential_interrupt();
+
 	if (chord.notes.size() == 0) {
-		std::this_thread::sleep_for(ctx.length_to_duration(ctx.length));
+		sleep(ctx.length_to_duration(ctx.length));
 		return {};
 	}
 
@@ -265,6 +271,7 @@ std::optional<Error> Interpreter::play(Chord chord)
 	for (auto const& note : chord.notes) {
 		if (note.base) {
 			current_context->port->send_note_on(0, *note.into_midi_note(), 127);
+			active_notes.emplace(0, *note.into_midi_note());
 		}
 	}
 
@@ -272,15 +279,32 @@ std::optional<Error> Interpreter::play(Chord chord)
 	for (auto const& note : chord.notes) {
 		if (max_time != Number(0)) {
 			max_time -= *note.length;
-			std::this_thread::sleep_for(ctx.length_to_duration(*note.length));
+			sleep(ctx.length_to_duration(*note.length));
 		}
 		if (note.base) {
 			current_context->port->send_note_off(0, *note.into_midi_note(), 127);
+			active_notes.erase(active_notes.lower_bound(std::pair<unsigned, unsigned>{0, *note.into_midi_note()}));
 		}
 	}
 
 	return {};
 }
+
+void Interpreter::turn_off_all_active_notes()
+{
+	auto status = ensure_midi_connection_available(*this, "turn_off_all_active_notes");
+	if (!Try_Traits<decltype(status)>::is_ok(status)) {
+		return;
+	}
+
+	// TODO send to port that send_note_on was called on
+	for (auto [chan, note] : active_notes) {
+		current_context->port->send_note_off(chan, note, 0);
+	}
+
+	active_notes.clear();
+}
+
 
 std::optional<Error> ensure_midi_connection_available(Interpreter &interpreter, std::string_view operation_name)
 {
@@ -423,4 +447,32 @@ void Interpreter::snapshot(std::ostream& out)
 		}
 	}
 	out << std::flush;
+}
+
+// TODO This only supports single-threaded interpreter execution
+static std::atomic<bool> interrupted = false;
+static std::condition_variable condvar;
+static std::mutex mu;
+
+void Interpreter::handle_potential_interrupt()
+{
+	if (interrupted) {
+		interrupted = false;
+		throw KeyboardInterrupt{};
+	}
+}
+
+void Interpreter::issue_interrupt()
+{
+	interrupted = true;
+	condvar.notify_all();
+}
+
+void Interpreter::sleep(std::chrono::duration<float> time)
+{
+	if (std::unique_lock lock(mu); condvar.wait_for(lock, time) == std::cv_status::no_timeout) {
+		ensure(interrupted, "Only interruption can result in quiting conditional variable without timeout");
+		interrupted = false;
+		throw KeyboardInterrupt{};
+	}
 }
