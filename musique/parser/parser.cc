@@ -68,7 +68,7 @@ Result<Ast> Parser::parse(std::string_view source, std::string_view filename, un
 	auto const result = parser.parse_sequence();
 
 	if (result.has_value() && parser.token_id < parser.tokens.size()) {
-		if (parser.expect(Token::Type::Close_Block)) {
+		if (parser.expect(Token::Type::Ket)) {
 			auto const tok = parser.consume();
 			return Error {
 				.details = errors::Closing_Token_Without_Opening {
@@ -86,7 +86,7 @@ Result<Ast> Parser::parse(std::string_view source, std::string_view filename, un
 
 Result<Ast> Parser::parse_sequence()
 {
-	auto seq = Try(parse_many(*this, &Parser::parse_expression, Token::Type::Expression_Separator, At_Least::Zero));
+	auto seq = Try(parse_many(*this, &Parser::parse_expression, Token::Type::Comma, At_Least::Zero));
 	return Ast::sequence(std::move(seq));
 }
 
@@ -273,10 +273,10 @@ Result<Ast> Parser::parse_atomic_expression()
 	case Token::Type::Symbol:
 		return Ast::literal(consume());
 
-	case Token::Type::Open_Block:
+	case Token::Type::Bra:
 		{
 			auto opening = consume();
-			if (expect(Token::Type::Close_Block)) {
+			if (expect(Token::Type::Ket)) {
 				consume();
 				return Ast::block(std::move(opening).location);
 			}
@@ -301,7 +301,7 @@ Result<Ast> Parser::parse_atomic_expression()
 
 			return parse_sequence_inside(
 				*this,
-				Token::Type::Close_Block,
+				Token::Type::Ket,
 				opening.location,
 				is_lambda,
 				std::move(parameters),
@@ -378,7 +378,7 @@ Result<Ast> Parser::parse_identifier_with_trailing_separators()
 		};
 	}
 	auto lit = Ast::literal(consume());
-	while (expect(Token::Type::Expression_Separator)) { consume(); }
+	while (expect(Token::Type::Comma)) { consume(); }
 	return lit;
 }
 
