@@ -48,7 +48,7 @@ static Result<std::vector<Ast>> parse_many(
 	std::optional<Token::Type> separator,
 	At_Least at_least);
 
-Result<Ast> Parser::parse(std::string_view source, std::string_view filename, unsigned line_number)
+Result<Ast> Parser::parse(std::string_view source, std::string_view filename, unsigned line_number, bool print_tokens)
 {
 	Lexer lexer{source};
 	lexer.location.filename = filename;
@@ -58,6 +58,9 @@ Result<Ast> Parser::parse(std::string_view source, std::string_view filename, un
 	for (;;) {
 		auto token_or_eof = Try(lexer.next_token());
 		if (auto maybe_token = std::get_if<Token>(&token_or_eof); maybe_token) {
+			if (print_tokens) {
+				std::cout << *maybe_token << std::endl;
+			}
 			parser.tokens.emplace_back(std::move(*maybe_token));
 		} else {
 			// We encountered end of file so no more tokens, break the loop

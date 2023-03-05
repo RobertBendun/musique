@@ -17,7 +17,7 @@ struct Parser
 
 	/// Parses whole source code producing Ast or Error
 	/// using Parser structure internally
-	static Result<Ast> parse(std::string_view source, std::string_view filename, unsigned line_number = 0);
+	static Result<Ast> parse(std::string_view source, std::string_view filename, unsigned line_number = 0, bool print_tokens = false);
 
 	/// Parse sequence, collection of expressions
 	Result<Ast> parse_sequence();
