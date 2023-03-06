@@ -41,6 +41,8 @@ struct Token
 			.stop = start + unsigned(source.size())
 		};
 	}
+
+	bool operator==(Token::Type type) const;
 };
 
 static constexpr usize Keywords_Count  =  5;
