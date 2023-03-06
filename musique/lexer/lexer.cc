@@ -318,3 +318,7 @@ std::size_t std::hash<Token>::operator()(Token const& token) const
 	return hash_combine(std::hash<std::string_view>{}(token.source), size_t(token.type));
 }
 
+bool Token::operator==(Token::Type type) const
+{
+	return this->type == type;
+}

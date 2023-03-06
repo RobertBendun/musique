@@ -42,14 +42,17 @@ struct Parser
 	/// Parse arithmetic prefix expression
 	Result<Ast> parse_arithmetic_prefix();
 
+	// Parse multiple index or function call expressions
+	Result<Ast> parse_index_or_function_call();
+
 	/// Parse index expression
-	Result<Ast> parse_index();
+	Result<Ast> parse_index(Ast &&ast);
+
+	/// Parse function call
+	Result<Ast> parse_function_call(Ast &&ast);
 
 	/// Parse index expression
 	Result<Ast> parse_atomic();
-
-	/// Parse function call
-	Result<Ast> parse_function_call();
 
 	/// Parse block
 	Result<Ast> parse_block();

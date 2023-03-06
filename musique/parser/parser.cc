@@ -75,6 +75,7 @@ Result<Ast> Parser::parse(std::string_view source, std::string_view filename, un
 
 	auto const result = parser.parse_sequence();
 
+#if 0
 	if (result.has_value() && parser.token_id < parser.tokens.size()) {
 		if (parser.expect(Token::Type::Ket)) {
 			auto const tok = parser.consume();
@@ -88,15 +89,24 @@ Result<Ast> Parser::parse(std::string_view source, std::string_view filename, un
 
 		errors::all_tokens_were_not_parsed(std::span(parser.tokens).subspan(parser.token_id));
 	}
+#endif
 
 	return result;
 }
 
 Result<Ast> Parser::parse_sequence()
 {
-	auto seq = Try(parse_many(*this, &Parser::parse_expression, At_Least::Zero, +[](Parser &p) {
-		return p.expect(Token::Type::Comma) || p.expect(Token::Type::Nl);
-	}));
+	std::vector<Ast> seq;
+	for (;;) {
+		while (expect(Token::Type::Nl) || expect(Token::Type::Comma)) {
+			consume();
+		}
+		if (token_id < tokens.size()) {
+			seq.push_back(Try(parse_expression()));
+		} else {
+			break;
+		}
+	}
 	return Ast::sequence(std::move(seq));
 }
 
@@ -130,6 +140,16 @@ Result<Ast> Parser::parse_infix()
 	return lhs;
 }
 
+// TODO Move from
+// >   *        <
+// >   | \      <
+// >   1  *     <
+// >     / \    <
+// >    2   3   <
+// to
+// >     *      <
+// >    /|\     <
+// >   1 2 3    <
 Result<Ast> Parser::parse_rhs_of_infix(Ast &&lhs)
 {
 	auto rhs = Try(parse_arithmetic_prefix());
@@ -186,7 +206,7 @@ Result<Ast> Parser::parse_arithmetic_prefix()
 		unimplemented();
 	}
 
-	return parse_function_call();
+	return parse_index_or_function_call();
 }
 
 Result<Ast> parse_sequence_inside(
@@ -223,55 +243,57 @@ Result<Ast> parse_sequence_inside(
 	return Ast::block(start_location, std::move(ast));
 }
 
-Result<Ast> Parser::parse_function_call()
+Result<Ast> Parser::parse_index_or_function_call()
 {
-	auto result = Try(parse_index());
-
-	while (expect(Token::Type::Bra)) {
-		auto op = consume();
-		auto start_location = op.location(filename);
-		auto sequence = Try(parse_sequence_inside(
-			*this,
-			Token::Type::Ket,
-			start_location,
-			false,
-			{},
-			[]() -> std::optional<Error> { return std::nullopt; }
-		));
-		if (sequence.type == Ast::Type::Sequence) {
-			sequence.arguments.insert(sequence.arguments.begin(), std::move(result));
-			result = Ast::call(std::move(sequence.arguments));
-		} else {
-			result = Ast::call({ std::move(result), std::move(sequence) });
+	auto result = Try(parse_atomic());
+	while (token_id < tokens.size()) {
+		auto const& token = tokens[token_id];
+		switch (token.type) {
+		break; case Token::Type::Bra:        result = Try(parse_function_call(std::move(result)));
+		break; case Token::Type::Open_Index: result = Try(parse_index(std::move(result)));
+		break; default: return result;
 		}
 	}
-
 	return result;
 }
 
-Result<Ast> Parser::parse_index()
+Result<Ast> Parser::parse_function_call(Ast &&callee)
 {
-	auto result = Try(parse_atomic());
+	auto open = consume();
+	ensure(open.type == Token::Type::Bra, "parse_function_call must be called only when it can parse function call");
 
-	while (expect(Token::Type::Open_Index)) {
-		auto op = consume();
-		auto start_location = op.location(filename);
-		result = Ast::binary(
-			filename,
-			std::move(op),
-			std::move(result),
-			Try(parse_sequence_inside(
-				*this,
-				Token::Type::Close_Index,
-				start_location,
-				false,
-				{},
-				[]() -> std::optional<Error> { return std::nullopt; }
-			))
-		);
+	Ast call;
+	call.type = Ast::Type::Call;
+	call.file = callee.file + open.location(filename);
+	call.arguments.push_back(std::move(callee));
+
+	for (;;) {
+		ensure(token_id < tokens.size(), "Missing closing )"); // TODO(assert)
+
+		switch (tokens[token_id].type) {
+		break; case Token::Type::Ket:
+			call.file += consume().location(filename);
+			goto endloop;
+
+		// FIXME We implicitly require to be comma here, this may strike us later
+		break; case Token::Type::Comma: case Token::Type::Nl:
+			while (expect(Token::Type::Comma) || expect(Token::Type::Nl)) {
+				call.file += consume().location(filename);
+			}
+
+		break; default:
+			call.arguments.push_back(Try(parse_expression()));
+		}
 	}
+endloop:
 
-	return result;
+	return call;
+}
+
+Result<Ast> Parser::parse_index(Ast &&ast)
+{
+	(void)ast;
+	unimplemented();
 }
 
 Result<Ast> Parser::parse_assigment()
@@ -320,10 +342,29 @@ Result<Ast> Parser::parse_atomic()
 	case Token::Type::Symbol:
 		return Ast::literal(filename, consume());
 
+	case Token::Type::Bra:
+		return parse_block();
+
 	break; default:
-		std::cout << token_id << Try(peek());
+		std::cout << token_id << *peek();
 		unimplemented();
 	}
+}
+
+Result<Ast> Parser::parse_block()
+{
+	auto open = consume();
+	ensure(open.type == Token::Type::Bra, "parse_block expects that it can parse");
+
+	if (expect(Token::Type::Ket)) {
+		return Ast::block(open.location(filename) + consume().location(filename), {});
+	}
+
+	auto separator = std::find(tokens.begin() + token_id, tokens.end(), Token::Type::Parameter_Separator);
+	if (separator != tokens.end()) {
+	}
+
+	unimplemented();
 }
 
 #if 0
