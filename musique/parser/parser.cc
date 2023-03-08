@@ -245,10 +245,44 @@ endloop:
 	return call;
 }
 
-Result<Ast> Parser::parse_index(Ast &&ast)
+Result<Ast> Parser::parse_index(Ast &&indexable)
 {
-	(void)ast;
-	unimplemented();
+	auto open = consume();
+	ensure(open.type == Token::Type::Open_Index, "parse_function_call must be called only when it can parse function call");
+
+	Ast index;
+	index.type = Ast::Type::Binary;
+	index.token = open;
+	index.file = indexable.file + open.location(filename);
+	index.arguments.push_back(std::move(indexable));
+
+	auto& sequence = index.arguments.emplace_back();
+	sequence.type = Ast::Type::Sequence;
+	sequence.file = index.file;
+
+	for (;;) {
+		ensure(token_id < tokens.size(), "Missing closing ]"); // TODO(assert)
+
+		switch (tokens[token_id].type) {
+		break; case Token::Type::Close_Index:
+			sequence.file += consume().location(filename);
+			index.file += sequence.file;
+			goto endloop;
+
+		// FIXME We implicitly require to be comma here, this may strike us later
+		break; case Token::Type::Comma: case Token::Type::Nl:
+			while (expect(Token::Type::Comma) || expect(Token::Type::Nl)) {
+				sequence.file += consume().location(filename);
+			}
+
+		break; default:
+			sequence.arguments.push_back(Try(parse_expression()));
+		}
+	}
+endloop:
+
+	index.file += sequence.file;
+	return index;
 }
 
 Result<Ast> Parser::parse_assigment()
