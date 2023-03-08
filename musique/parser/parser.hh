@@ -60,6 +60,9 @@ struct Parser
 	/// Parse identifier
 	Result<Ast> parse_identifier();
 
+	/// Parse note
+	Result<Ast> parse_note();
+
 	/// Peek current token
 	Result<Token> peek() const;
 
@@ -69,14 +72,21 @@ struct Parser
 	/// Consume current token
 	Token consume(Location const& location = Location::caller());
 
-	/// Tests if current token has given type
-	bool expect(Token::Type type) const;
-
-	/// Tests if current token has given type and source
-	bool expect(Token::Type type, std::string_view lexeme) const;
-
-	// Tests if current token has given type and the next token has given type and source
-	bool expect(Token::Type t1, Token::Type t2, std::string_view lexeme_for_t2) const;
+	template<typename ...Pattern>
+	requires ((std::is_same_v<Pattern, Token::Type> || std::is_same_v<Pattern, std::pair<Token::Type, std::string_view>>) || ...)
+	inline bool expect(Pattern const& ...pattern)
+	{
+		auto offset = 0u;
+		auto const body = Overloaded {
+			[&](Token::Type type) { return tokens[token_id + offset++].type == type; },
+			[&](std::pair<Token::Type, std::string_view> pair) {
+				auto [type, lexeme] = pair;
+				auto &token = tokens[token_id + offset++];
+				return token.type == type && token.source == lexeme;
+			}
+		};
+		return token_id + sizeof...(Pattern) <= tokens.size() && (body(pattern) && ...);
+	}
 };
 
 #endif
