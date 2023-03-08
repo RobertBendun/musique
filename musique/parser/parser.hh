@@ -67,7 +67,7 @@ struct Parser
 	Result<Token::Type> peek_type() const;
 
 	/// Consume current token
-	Token consume();
+	Token consume(Location const& location = Location::caller());
 
 	/// Tests if current token has given type
 	bool expect(Token::Type type) const;
