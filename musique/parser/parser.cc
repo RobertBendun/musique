@@ -40,12 +40,6 @@ enum class At_Least : bool
 	One
 };
 
-static Result<std::vector<Ast>> parse_many(
-	Parser &p,
-	Result<Ast> (Parser::*parser)(),
-	At_Least,
-	bool(*separator)(Parser &));
-
 Result<Ast> Parser::parse(std::string_view source, std::string_view filename, unsigned line_number, bool print_tokens)
 {
 	// TODO Fix line number calculation
@@ -209,40 +203,6 @@ Result<Ast> Parser::parse_arithmetic_prefix()
 	return parse_index_or_function_call();
 }
 
-Result<Ast> parse_sequence_inside(
-	Parser &parser,
-	Token::Type closing_token,
-	File_Range start_location,
-	bool is_lambda,
-	std::vector<Ast> &&parameters,
-	auto &&dont_arrived_at_closing_token
-)
-{
-	auto ast = Try(parser.parse_sequence());
-	if (not parser.expect(closing_token)) {
-		Try(dont_arrived_at_closing_token());
-		return Error {
-			.details = errors::Unexpected_Empty_Source {
-				.reason = errors::Unexpected_Empty_Source::Block_Without_Closing_Bracket,
-				.start = start_location
-			},
-			.file = parser.tokens.back().location(parser.filename)
-		};
-	}
-
-	parser.consume();
-
-	if (is_lambda) {
-		return Ast::lambda(start_location, std::move(ast), std::move(parameters));
-	}
-
-	ensure(ast.type == Ast::Type::Sequence, "I dunno if this is a valid assumption tbh");
-	if (ast.arguments.size() == 1) {
-		return std::move(ast.arguments.front());
-	}
-	return Ast::block(start_location, std::move(ast));
-}
-
 Result<Ast> Parser::parse_index_or_function_call()
 {
 	auto result = Try(parse_atomic());
@@ -346,7 +306,7 @@ Result<Ast> Parser::parse_atomic()
 		return parse_block();
 
 	break; default:
-		std::cout << token_id << *peek();
+		std::cout << "Token at position: " << token_id << " with value: " << *peek() << std::endl;
 		unimplemented();
 	}
 }
@@ -357,14 +317,38 @@ Result<Ast> Parser::parse_block()
 	ensure(open.type == Token::Type::Bra, "parse_block expects that it can parse");
 
 	if (expect(Token::Type::Ket)) {
-		return Ast::block(open.location(filename) + consume().location(filename), {});
+		return Ast::block(open.location(filename) + consume().location(filename), Ast::sequence({}));
 	}
 
-	auto separator = std::find(tokens.begin() + token_id, tokens.end(), Token::Type::Parameter_Separator);
-	if (separator != tokens.end()) {
-	}
+	Ast sequence;
+	sequence.type = Ast::Type::Sequence;
+	sequence.file = open.location(filename);
 
-	unimplemented();
+	while (token_id < tokens.size()) {
+		auto const& current_token = tokens[token_id];
+		switch (current_token.type) {
+		break; case Token::Type::Ket:
+			sequence.file += consume().location(filename);
+			goto endloop;
+
+		break; case Token::Type::Parameter_Separator:
+			unimplemented();
+
+		break; case Token::Type::Comma: case Token::Type::Nl:
+			sequence.file += consume().location(filename);
+
+		break; default:
+			sequence.arguments.push_back(Try(parse_expression()));
+		}
+	}
+endloop:
+
+	// TODO This double nesting is unnesesary, remove it
+	Ast block;
+	block.type = Ast::Type::Block;
+	block.file = sequence.file;
+	block.arguments.push_back(std::move(sequence));
+	return block;
 }
 
 #if 0
@@ -499,42 +483,6 @@ Result<Ast> Parser::parse_identifier_with_trailing_separators()
 
 #endif
 
-static Result<std::vector<Ast>> parse_many(
-	Parser &p,
-	Result<Ast> (Parser::*parser)(),
-	At_Least at_least,
-	bool (*separator)(Parser &))
-{
-	std::vector<Ast> trees;
-	Result<Ast> expr;
-
-	// Consume random separators laying before sequence. This was added to prevent
-	// an error when input is only expression separator ";"
-	while (separator && at_least == At_Least::Zero && separator(p)) {
-		p.consume();
-	}
-
-	if (at_least == At_Least::Zero && p.token_id >= p.tokens.size()) {
-		return {};
-	}
-
-	while ((expr = (p.*parser)()).has_value()) {
-		trees.push_back(std::move(expr).value());
-		if (separator) {
-			if (not separator(p)) {
-				break;
-			}
-			do p.consume(); while (separator(p));
-		}
-	}
-
-	if (trees.empty()) {
-		return expr.error();
-	}
-
-	return trees;
-}
-
 Result<Token> Parser::peek() const
 {
 	return token_id >= tokens.size()
@@ -550,8 +498,10 @@ Result<Token::Type> Parser::peek_type() const
 	return peek().map([](Token const& token) { return token.type; });
 }
 
-Token Parser::consume()
+Token Parser::consume([[maybe_unused]] Location const& location)
 {
+	ensure(token_id < tokens.size(), "Cannot consume token when no tokens are available");
+	// std::cout << "-- Token " << tokens[token_id] << " consumed at " << location << std::endl;
 	return std::move(tokens[token_id++]);
 }
 
