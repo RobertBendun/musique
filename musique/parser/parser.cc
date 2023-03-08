@@ -45,13 +45,8 @@ Result<Ast> Parser::parse(std::string_view source, std::string_view filename, un
 	// TODO Fix line number calculation
 	(void)line_number;
 
-	// TODO Fix filename marking on ast nodes
-	(void)filename;
-
 	Lexer lexer{source};
-	lexer.location = line_number;
 	Parser parser;
-
 	parser.filename = filename;
 
 	for (;;) {
@@ -106,7 +101,7 @@ Result<Ast> Parser::parse_sequence()
 
 Result<Ast> Parser::parse_expression()
 {
-	if (expect(Token::Type::Symbol, Token::Type::Operator, "=")) {
+	if (expect(Token::Type::Symbol, std::pair{Token::Type::Operator, "="sv})) {
 		return parse_assigment();
 	}
 	return parse_infix();
@@ -117,8 +112,8 @@ Result<Ast> Parser::parse_infix()
 	auto lhs = Try(parse_arithmetic_prefix());
 
 	bool const next_is_operator = expect(Token::Type::Operator)
-		|| expect(Token::Type::Keyword, "and")
-		|| expect(Token::Type::Keyword, "or");
+		|| expect(std::pair{Token::Type::Keyword, "and"sv})
+		|| expect(std::pair{Token::Type::Keyword, "or"sv});
 
 	if (next_is_operator) {
 		auto op = consume();
@@ -149,8 +144,8 @@ Result<Ast> Parser::parse_rhs_of_infix(Ast &&lhs)
 	auto rhs = Try(parse_arithmetic_prefix());
 
 	bool const next_is_operator = expect(Token::Type::Operator)
-		|| expect(Token::Type::Keyword, "and")
-		|| expect(Token::Type::Keyword, "or");
+		|| expect(std::pair{Token::Type::Keyword, "and"sv})
+		|| expect(std::pair{Token::Type::Keyword, "or"sv});
 
 	if (!next_is_operator) {
 		lhs.arguments.emplace_back(std::move(rhs));
@@ -195,7 +190,7 @@ Result<Ast> Parser::parse_rhs_of_infix(Ast &&lhs)
 
 Result<Ast> Parser::parse_arithmetic_prefix()
 {
-	if (expect(Token::Type::Operator, "-") || expect(Token::Type::Operator, "+")) {
+	if (expect(std::pair{Token::Type::Operator, "-"sv}) || expect(std::pair{Token::Type::Operator, "+"sv})) {
 		// TODO Add unary operator AST node type
 		unimplemented();
 	}
@@ -274,7 +269,7 @@ Result<Ast> Parser::parse_assigment()
 		return std::move(lvalue).error();
 	}
 
-	ensure(expect(Token::Type::Operator, "="), "This function should always be called with valid sequence");
+	ensure(expect(std::pair{Token::Type::Operator, "="sv}), "This function should always be called with valid sequence");
 	consume();
 	return Ast::variable_declaration(lvalue->file, { *std::move(lvalue) }, Try(parse_expression()));
 }
@@ -298,17 +293,61 @@ Result<Ast> Parser::parse_identifier()
 Result<Ast> Parser::parse_atomic()
 {
 	switch (Try(peek_type())) {
-	case Token::Type::Numeric:
-	case Token::Type::Symbol:
+	break; case Token::Type::Numeric: case Token::Type::Symbol:
 		return Ast::literal(filename, consume());
 
-	case Token::Type::Bra:
+	break; case Token::Type::Chord:
+		return parse_note();
+	{
+	}
+
+	break; case Token::Type::Bra:
 		return parse_block();
 
 	break; default:
 		std::cout << "Token at position: " << token_id << " with value: " << *peek() << std::endl;
 		unimplemented();
 	}
+}
+
+Result<Ast> Parser::parse_note()
+{
+	auto note = Ast::literal(filename, consume());
+	std::optional<Ast> arg;
+
+	bool const followed_by_fraction = token_id+1 < tokens.size()
+		&& one_of(tokens[token_id+0].type, Token::Type::Symbol, Token::Type::Numeric)
+		&&        tokens[token_id+1].type == Token::Type::Operator && tokens[token_id+1].source == "/"
+		&& one_of(tokens[token_id+2].type, Token::Type::Symbol, Token::Type::Numeric);
+
+	bool const followed_by_scalar = token_id < tokens.size()
+		&& one_of(tokens[token_id].type, Token::Type::Symbol, Token::Type::Numeric);
+
+	if (!(followed_by_fraction || followed_by_scalar)) {
+		return note;
+	}
+
+	Ast call;
+	call.type = Ast::Type::Call;
+	call.file = note.file;
+	call.arguments.push_back(std::move(note));
+
+	if (followed_by_fraction) {
+		auto lhs = Ast::literal(filename, consume());
+
+		auto op = consume();
+		ensure(op.type == Token::Type::Operator && op.source == "/", "Condition that allows entry to this block must be wrong");
+
+		auto rhs = Ast::literal(filename, consume());
+
+		call.arguments.push_back(Ast::binary(filename, std::move(op), std::move(lhs), std::move(rhs)));
+	} else if (followed_by_scalar) {
+		call.arguments.push_back(Ast::literal(filename, consume()));
+	} else {
+		unreachable();
+	}
+
+	return call;
 }
 
 Result<Ast> Parser::parse_block()
@@ -503,31 +542,6 @@ Token Parser::consume([[maybe_unused]] Location const& location)
 	ensure(token_id < tokens.size(), "Cannot consume token when no tokens are available");
 	// std::cout << "-- Token " << tokens[token_id] << " consumed at " << location << std::endl;
 	return std::move(tokens[token_id++]);
-}
-
-bool Parser::expect(Token::Type type) const
-{
-	return token_id < tokens.size() && tokens[token_id].type == type;
-}
-
-bool Parser::expect(Token::Type type, std::string_view lexeme) const
-{
-	return token_id < tokens.size() && tokens[token_id].type == type && tokens[token_id].source == lexeme;
-}
-
-bool Parser::expect(Token::Type t1, Token::Type t2, std::string_view lexeme_for_t2) const
-{
-	return token_id+1 < tokens.size()
-		&& tokens[token_id].type == t1
-		&& tokens[token_id+1].type == t2
-		&& tokens[token_id+1].source == lexeme_for_t2;
-}
-
-Ast wrap_if_several(std::vector<Ast> &&ast, Ast(*wrapper)(std::vector<Ast>))
-{
-	if (ast.size() == 1)
-		return std::move(ast)[0];
-	return wrapper(std::move(ast));
 }
 
 constexpr bool one_of(std::string_view id, auto const& ...args)
