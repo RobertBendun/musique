@@ -7,18 +7,6 @@
 
 static std::optional<usize> precedense(std::string_view op);
 
-static inline bool is_identifier_looking(Token::Type type)
-{
-	switch (type) {
-	case Token::Type::Symbol:
-	case Token::Type::Keyword:
-	case Token::Type::Chord:
-		return true;
-	default:
-		return false;
-	}
-}
-
 constexpr auto Literal_Keywords = std::array {
 	"false"sv,
 	"nil"sv,
@@ -256,7 +244,11 @@ Result<Ast> Parser::parse_index(Ast &&indexable)
 	index.file = indexable.file + open.location(filename);
 	index.arguments.push_back(std::move(indexable));
 
-	auto& sequence = index.arguments.emplace_back();
+	// This indirection is killing me, fixme pls
+	auto &block = index.arguments.emplace_back();
+	block.type = Ast::Type::Block;
+
+	auto &sequence = block.arguments.emplace_back();
 	sequence.type = Ast::Type::Sequence;
 	sequence.file = index.file;
 
@@ -324,26 +316,6 @@ Result<Ast> Parser::parse_identifier()
 	return Ast::literal(filename, consume());
 }
 
-Result<Ast> Parser::parse_atomic()
-{
-	switch (Try(peek_type())) {
-	break; case Token::Type::Numeric: case Token::Type::Symbol:
-		return Ast::literal(filename, consume());
-
-	break; case Token::Type::Chord:
-		return parse_note();
-	{
-	}
-
-	break; case Token::Type::Bra:
-		return parse_block();
-
-	break; default:
-		std::cout << "Token at position: " << token_id << " with value: " << *peek() << std::endl;
-		unimplemented();
-	}
-}
-
 Result<Ast> Parser::parse_note()
 {
 	auto note = Ast::literal(filename, consume());
@@ -384,6 +356,8 @@ Result<Ast> Parser::parse_note()
 	return call;
 }
 
+// Block parsing algorithm has awful performance, branch predictions and all this stuff
+// The real culprit is a syntax probably, but this function needs to be investigated
 Result<Ast> Parser::parse_block()
 {
 	auto open = consume();
@@ -397,6 +371,11 @@ Result<Ast> Parser::parse_block()
 	sequence.type = Ast::Type::Sequence;
 	sequence.file = open.location(filename);
 
+	auto start_token_offset = token_id;
+
+	bool is_lambda = false;
+	std::vector<Ast> parameters;
+
 	while (token_id < tokens.size()) {
 		auto const& current_token = tokens[token_id];
 		switch (current_token.type) {
@@ -405,7 +384,42 @@ Result<Ast> Parser::parse_block()
 			goto endloop;
 
 		break; case Token::Type::Parameter_Separator:
-			unimplemented();
+		{
+			ensure(not is_lambda, "Only one parameter separator is allowed inside a block"); // TODO(assert)
+			std::vector<unsigned> identifier_looking;
+
+			for (auto i = start_token_offset; i < token_id; ++i) {
+				switch (tokens[i].type) {
+				case Token::Type::Chord:
+				case Token::Type::Keyword:
+					identifier_looking.push_back(i);
+					break;
+
+				case Token::Type::Symbol:
+					continue;
+
+				// TODO Weird things before parameter separator error
+				default:
+					unimplemented();
+				}
+			}
+
+			// TODO Report all instances of identifier looking parameters
+			if (identifier_looking.size()) {
+				auto const& token = tokens[identifier_looking.front()];
+				return Error {
+					.details = errors::Literal_As_Identifier {
+						.type_name = std::string(type_name(token.type)),
+						.source    = std::string(token.source),
+						.context   = "block parameter list"
+					},
+				};
+			}
+
+			consume();
+			is_lambda = true;
+			std::swap(sequence.arguments, parameters);
+		}
 
 		break; case Token::Type::Comma: case Token::Type::Nl:
 			sequence.file += consume().location(filename);
@@ -416,6 +430,10 @@ Result<Ast> Parser::parse_block()
 	}
 endloop:
 
+	if (is_lambda) {
+		return Ast::lambda(sequence.file, std::move(sequence), std::move(parameters));
+	}
+
 	// TODO This double nesting is unnesesary, remove it
 	Ast block;
 	block.type = Ast::Type::Block;
@@ -424,137 +442,36 @@ endloop:
 	return block;
 }
 
-#if 0
-
-Result<Ast> Parser::parse_atomic_expression()
+Result<Ast> Parser::parse_atomic()
 {
-	switch (Try(peek_type())) {
+	auto token = Try(peek());
+	switch (token.type) {
 	case Token::Type::Keyword:
 		// Not all keywords are literals. Keywords like `true` can be part of atomic expression (essentialy single value like)
 		// but keywords like `var` announce variable declaration which is higher up in expression parsing.
 		// So we need to explicitly allow only keywords that are also literals
-		if (std::find(Literal_Keywords.begin(), Literal_Keywords.end(), peek()->source) == Literal_Keywords.end()) {
+		if (std::find(Literal_Keywords.begin(), Literal_Keywords.end(), token.source) == Literal_Keywords.end()) {
 			return Error {
 				.details = errors::Unexpected_Keyword { .keyword = std::string(peek()->source) },
-				.location = peek()->location
+				.file = token.location(filename)
 			};
 		}
 		[[fallthrough]];
-	case Token::Type::Chord:
 	case Token::Type::Numeric:
 	case Token::Type::Symbol:
-		return Ast::literal(consume());
+		return Ast::literal(filename, consume());
 
-	case Token::Type::Bra:
-		{
-			auto opening = consume();
-			if (expect(Token::Type::Ket)) {
-				consume();
-				return Ast::block(std::move(opening).location);
-			}
+	break; case Token::Type::Chord:
+		return parse_note();
 
-			auto start = token_id;
-			std::vector<Ast> parameters;
-			bool is_lambda = false;
+	break; case Token::Type::Bra:
+		return parse_block();
 
-			if (expect(Token::Type::Parameter_Separator)) {
-				consume();
-				is_lambda = true;
-			} else {
-				auto p = parse_many(*this, &Parser::parse_identifier_with_trailing_separators, std::nullopt, At_Least::One);
-				if (p && expect(Token::Type::Parameter_Separator)) {
-					consume();
-					parameters = std::move(p).value();
-					is_lambda = true;
-				} else {
-					token_id = start;
-				}
-			}
-
-			return parse_sequence_inside(
-				*this,
-				Token::Type::Ket,
-				opening.location,
-				is_lambda,
-				std::move(parameters),
-				[&]() -> std::optional<Error> {
-					if (!expect(Token::Type::Parameter_Separator)) {
-						return std::nullopt;
-					}
-					if (is_lambda) {
-						ensure(false, "There should be error message that you cannot put multiple parameter separators in one block");
-					}
-
-					// This may be a result of user trying to specify parameters from things that cannot be parameters (like chord literals)
-					// or accidential hit of "|" on the keyboard. We can detect first case by ensuring that all tokens between this place
-					// and beggining of a block are identifier looking: keywords, symbols, literal chord declarations, boolean literals etc
-					std::optional<Token> invalid_token = std::nullopt;
-					auto const success = std::all_of(tokens.begin() + start, tokens.begin() + (token_id - start + 1), [&](Token const& token) {
-						if (!invalid_token && token.type != Token::Type::Symbol) {
-							// TODO Maybe gather all tokens to provide all the help needed in the one iteration
-							invalid_token = token;
-						}
-						return is_identifier_looking(token.type);
-					});
-
-					if (success && invalid_token) {
-						return Error {
-							.details = errors::Literal_As_Identifier {
-								.type_name = std::string(type_name(invalid_token->type)),
-								.source = std::string(invalid_token->source),
-								.context = "block parameter list"
-							},
-							.location = invalid_token->location
-						};
-					}
-					return std::nullopt;
-				}
-			);
-		}
-
-	break; case Token::Type::Operator:
-		return Error {
-			.details = errors::Wrong_Arity_Of {
-				.type = errors::Wrong_Arity_Of::Operator,
-				.name = std::string(peek()->source),
-				.expected_arity = 2, // TODO This should be resolved based on operator
-				.actual_arity = 0,
-			},
-			.location = peek()->location,
-		};
-
-
-	default:
-		return Error {
-			.details = errors::internal::Unexpected_Token {
-				.type = std::string(type_name(peek()->type)),
-				.source = std::string(peek()->source),
-				.when = "atomic expression parsing"
-			},
-			.location = peek()->location
-		};
+	break; default:
+		std::cout << "Token at position: " << token_id << " with value: " << *peek() << std::endl;
+		unimplemented();
 	}
 }
-
-Result<Ast> Parser::parse_identifier_with_trailing_separators()
-{
-	if (not expect(Token::Type::Symbol)) {
-		// TODO Specific error message
-		return Error {
-			.details = errors::internal::Unexpected_Token {
-				.type = std::string(type_name(peek()->type)),
-				.source = std::string(peek()->source),
-				.when = "identifier parsing"
-			},
-			.location = peek()->location
-		};
-	}
-	auto lit = Ast::literal(consume());
-	while (expect(Token::Type::Comma)) { consume(); }
-	return lit;
-}
-
-#endif
 
 Result<Token> Parser::peek() const
 {
@@ -576,11 +493,6 @@ Token Parser::consume([[maybe_unused]] Location const& location)
 	ensure(token_id < tokens.size(), "Cannot consume token when no tokens are available");
 	// std::cout << "-- Token " << tokens[token_id] << " consumed at " << location << std::endl;
 	return std::move(tokens[token_id++]);
-}
-
-constexpr bool one_of(std::string_view id, auto const& ...args)
-{
-	return ((id == args) || ...);
 }
 
 static std::optional<usize> precedense(std::string_view op)
