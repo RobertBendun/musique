@@ -32,6 +32,7 @@ struct Ast
 	/// Available ASt types
 	enum class Type
 	{
+		Unary,                ///< Unary operator like -foo or +xd
 		Binary,               ///< Binary operator application like `1 + 2`
 		Block,                ///< Block expressions like `[42; hello]`
 		Lambda,               ///< Block expression beeing functions like `[i|i+1]`

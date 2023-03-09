@@ -180,7 +180,11 @@ Result<Ast> Parser::parse_arithmetic_prefix()
 {
 	if (expect(std::pair{Token::Type::Operator, "-"sv}) || expect(std::pair{Token::Type::Operator, "+"sv})) {
 		// TODO Add unary operator AST node type
-		unimplemented();
+		Ast unary;
+		unary.token = consume();
+		unary.file = unary.token.location(filename);
+		unary.arguments.push_back(Try(parse_index_or_function_call()));
+		return unary;
 	}
 
 	return parse_index_or_function_call();
@@ -526,6 +530,7 @@ bool operator==(Ast const& lhs, Ast const& rhs)
 	case Ast::Type::Literal:
 		return lhs.token.type == rhs.token.type && lhs.token.source == rhs.token.source;
 
+	case Ast::Type::Unary:
 	case Ast::Type::Binary:
 		return lhs.token.type == rhs.token.type
 			&& lhs.token.source == rhs.token.source
@@ -547,6 +552,7 @@ bool operator==(Ast const& lhs, Ast const& rhs)
 std::ostream& operator<<(std::ostream& os, Ast::Type type)
 {
 	switch (type) {
+	case Ast::Type::Unary:                return os << "UNARY";
 	case Ast::Type::Binary:               return os << "BINARY";
 	case Ast::Type::Block:                return os << "BLOCK";
 	case Ast::Type::Call:                 return os << "CALL";

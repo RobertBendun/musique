@@ -339,3 +339,37 @@ void Interpreter::register_builtin_operators()
 	// Set all predefined operators into operators array
 	for (auto &[name, fptr] : Operators) { operators[name] = fptr; }
 }
+
+Result<Value> builtin_prefix_operator_plus(Interpreter &interpreter, std::vector<Value> args)
+{
+	(void)interpreter;
+	(void)args;
+	unimplemented();
+}
+
+Result<Value> builtin_prefix_operator_minus(Interpreter &interpreter, std::vector<Value> args)
+{
+	ensure(args.size() == 1, "Unary operation only allows for one argument");
+
+	if (auto a = match<Number>(args)) {
+		auto const& [number] = *a;
+		return -number;
+	}
+
+	if (auto a = match<Collection>(args)) {
+		auto const& [collection] = *a;
+		std::vector<Value> result;
+
+		for (auto i = 0u; i < collection.size(); ++i) {
+			auto value = Try(collection.index(interpreter, i));
+			if (auto a = match<Number>(value)) {
+				auto const& [number] = *a;
+				result.push_back(-number);
+			}
+		}
+
+		return result;
+	}
+
+	unimplemented();
+}

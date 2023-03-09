@@ -9,6 +9,9 @@
 #include <condition_variable>
 #include <mutex>
 
+extern Result<Value> builtin_prefix_operator_minus(Interpreter&, std::vector<Value>);
+extern Result<Value> builtin_prefix_operator_plus(Interpreter&, std::vector<Value>);
+
 std::unordered_map<std::string, Intrinsic> Interpreter::operators {};
 
 /// Registers constants like `fn = full note = 1/1`
@@ -87,7 +90,32 @@ Result<Value> Interpreter::eval(Ast &&ast)
 			return Value::from(ast.file.filename, ast.token);
 		}
 
-	case Ast::Type::Binary:
+	break; case Ast::Type::Unary:
+	{
+		ensure(ast.arguments.size() == 1, "Expected arguments of unary operation to be 1 long");
+
+		std::vector<Value> values;
+		values.reserve(ast.arguments.size());
+		for (auto& a : ast.arguments) {
+			auto const a_loc = a.file;
+			values.push_back(Try(eval(std::move(a)).with(a_loc)));
+		}
+		ensure(ast.token.type == Token::Type::Operator, "Unary operation expects its token to be an operator");
+
+		Result<Value> result;
+		if (ast.token.source == "+") {
+			result = builtin_prefix_operator_plus(*this, std::move(values));
+		} else if (ast.token.source == "-") {
+			result = builtin_prefix_operator_minus(*this, std::move(values));
+		} else {
+			unreachable();
+		}
+
+		// TODO Is this good range assigment
+		return std::move(result).with(ast.token.location(ast.file.filename));
+	}
+
+	break; case Ast::Type::Binary:
 		{
 			ensure(ast.arguments.size() == 2, "Expected arguments of binary operation to be 2 long");
 
@@ -330,6 +358,9 @@ static void snapshot(std::ostream& out, Note const& note) {
 
 static void snapshot(std::ostream &out, Ast const& ast) {
 	switch (ast.type) {
+	break; case Ast::Type::Unary:
+		unimplemented();
+
 	break; case Ast::Type::Sequence:
 	{
 		for (auto const& a : ast.arguments) {
