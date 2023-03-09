@@ -43,6 +43,8 @@ struct Number
 	Result<Number> operator/(Number const& rhs) const;
 	Result<Number> operator%(Number const& rhs) const;
 
+	Number operator-() const;
+
 	Number floor() const; ///< Return number rounded down to nearest integer
 	Number ceil()  const; ///< Return number rounded up to nearest integer
 	Number round() const; ///< Return number rounded to nearest integer
@@ -52,6 +54,7 @@ struct Number
 
 	/// Parses source contained by token into a Number instance
 	static Result<Number> from(std::string_view filename, Token token);
+
 };
 
 std::ostream& operator<<(std::ostream& os, Number const& num);

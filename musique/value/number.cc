@@ -317,6 +317,13 @@ Result<Number> Number::inverse() const
 	return { den, num };
 }
 
+Number Number::operator-() const
+{
+	auto [num,den] = simplify();
+	// FIXME Integer overflow
+	return Number { -num, den };
+}
+
 namespace impl
 {
 	// Raise Number to integer power helper

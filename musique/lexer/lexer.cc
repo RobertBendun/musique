@@ -106,7 +106,7 @@ auto Lexer::next_token() -> Result<std::variant<Token, End_Of_File>>
 
 	// Lex numeric literals
 	// They may have following forms: 0, 0.1
-	if (consume_if(unicode::is_digit) || consume_if('-', unicode::is_digit)) {
+	if (consume_if(unicode::is_digit)) {
 		while (consume_if(unicode::is_digit)) {}
 		if (peek() == '.') {
 			consume();
