@@ -1,7 +1,7 @@
 MAKEFLAGS="-j $(grep -c ^processor /proc/cpuinfo)"
 
-MAJOR := 5
-MINOR := 0
+MAJOR := 0
+MINOR := 5
 PATCH := 0
 COMMIT := gc$(shell git rev-parse --short HEAD 2>/dev/null)
 
