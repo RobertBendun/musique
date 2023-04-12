@@ -1,0 +1,178 @@
+--------------------------------------------
+Tytuł: Y
+Autor: Wojciech Kaszuba
+Przekład: Robert Bendun
+--------------------------------------------
+bpm 120,
+
+sekcja_a1 := (
+	9 * e5 wn,
+	e5 2,
+	8 * e5 wn,
+	p wn,
+	2 * e5 2
+),
+
+sekcja_b1 := (
+	4 * (g6 wn, p wn),
+	p wn,
+	e5 2,
+	4 * (g6 wn, p wn),
+	p 1,
+	2 * e5 2
+),
+
+sekcja_c1 := (
+	c7 wn, 3 * (c7 wn, p wn),
+	2 * p wn,
+	e5 2,
+	c7 wn, 3 * (c7 wn, p wn),
+	p 2,
+	2 * e5 2,
+),
+
+sekcja_d1 := (
+	b6 wn, 7 * p wn, e5 wn,
+	e5 2,
+	b6 wn, 7 * p wn, e5 wn,
+	2 * e5 2,
+),
+
+sekcja_a2 := (
+	takt := (b1 dqn, 3 * b1 en, b1 qn),
+	(takt, p wn)[0,1,0,1,0,1,0,0,1,0,1,0,1,0,1]
+),
+
+sekcja_b2 := (
+	takt := (b1 hn, b1 qn, b1 qn),
+	(takt, p wn)[0,0,1,0,1,0,1,0,0,1,0,1,0,1,0]
+),
+
+sekcja_c2 := (b1 wn, p wn)[0,1,1,0,0,1,0,0,1,1,0,0,1,0,1],
+
+sekcja_d2 := (
+	takt := (b1 qn, p qn, b1 en, p en, b1 en, p en),
+	(takt, p wn)[0,1,0,1,1,0,0,0,1,0,1,1,0,0,1]
+),
+
+sekcja_a7 := (len wn,
+	a6,
+	c7,
+	f6,
+	e6,
+	f6,
+	c7,
+	d#6,
+	d#6,
+	e6,
+	a6,
+	c7,
+	f6,
+	e6,
+	f6,
+	c7,
+	d#6,
+	d#6,
+	e6,
+	3 * p
+),
+
+sekcja_b7 := (len wn,
+	g6 hn, p hn,
+	g6,
+	p,
+	f6,
+	p,
+	g6,
+	b6,
+	b6,
+	p,
+	p,
+	g6,
+	p,
+	f6,
+	p,
+	g6,
+	b6,
+	b6,
+	4 * p
+),
+
+sekcja_c7 := (len wn,
+	g6 hn, p hn,
+	c6,
+	g6,
+	c7,
+	b6,
+	p,
+	g6,
+	c6,
+	c6,
+	p,
+	c6,
+	g6,
+	c7,
+	b6,
+	p,
+	g6,
+	c6,
+	c6,
+	3 * p,
+),
+
+sekcja_d7 := (len wn,
+	e5,
+	e5,
+	e5,
+	p,
+	b5,
+	e5,
+	a5,
+	b5,
+	c6,
+	e5,
+	e5,
+	e5,
+	p,
+	b5,
+	e5,
+	a5,
+	b5,
+	c6,
+),
+
+sekcja_a8 := (
+	8 * (c6 qn, e6 qn, g6 qn, b6 qn),
+	c7 qn, c6 qn, e6 qn, g6 qn,
+ 	2 * g6 hn,
+	e6 wn,
+	2 * (c6 qn, e6 qn, g6 qn, b6 qn),
+	3 * e5 wn
+),
+
+sekcja_b8 := (
+	takt := (len sn, c6, e6, g6, b6, c7, e7, g7, c7, g6, b6, e7, b6, g6, b6, e7, b6),
+	8 * takt,
+	e7 qn, p qn, g7 hn,
+	g7 hn, p hn,
+	g7 hn, p hn,
+	2 * takt,
+	3 * e5 wn
+),
+
+sekcja_c8 := (
+	9 * e6 wn,
+	g6 wn,
+	3 * e6 wn,
+	3 * g6 wn
+),
+
+sekcja_d8 := (
+	9 * bb6 wn,
+	e6 wn,
+	b5 wn,
+	e5 wn,
+	2 * bb6 wn,
+	3 * b5 wn
+),
+
