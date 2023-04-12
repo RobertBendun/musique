@@ -94,7 +94,7 @@ std::vector<std::string_view> similar_names_to_builtin(std::string_view builtin_
 }
 """
 
-def warning(*args, prefix: str | None = None):
+def warning(*args, prefix: typing.Union[str, None] = None):
     if prefix is None:
         prefix = PROGRAM_NAME
     message = ": ".join(itertools.chain([prefix, "warning"], args))
@@ -112,12 +112,12 @@ def error(*args, prefix=None):
 @dataclasses.dataclass
 class Builtin:
     implementation: str
-    definition_location: tuple[str, int]  # Filename and line number
-    names: list[str]
+    definition_location: typing.Tuple[str, int]  # Filename and line number
+    names: typing.List[str]
     documentation: str
 
 
-def builtins_from_file(source_path: str) -> typing.Generator[Builtin, None, None]:
+def builtins_from_file(source_path):
     with open(source_path) as f:
         source = f.readlines()
 
@@ -150,7 +150,7 @@ def builtins_from_file(source_path: str) -> typing.Generator[Builtin, None, None
         # Check if line contains special documentation comment.
         # We assume that only documentation comments are in given line (modulo whitespace)
         if line.startswith("//:"):
-            line = line.removeprefix("//:").strip()
+            line = line[len("//:"):].strip()
             current_documentation.append(line)
             continue
 
@@ -184,9 +184,7 @@ def builtins_from_file(source_path: str) -> typing.Generator[Builtin, None, None
         yield builtin
 
 
-def filter_builtins(
-    builtins: typing.Iterable[Builtin],
-) -> typing.Generator[Builtin, None, None]:
+def filter_builtins(builtins):
     for builtin in builtins:
         if not builtin.documentation:
             warning(f"builtin '{builtin.implementation}' doesn't have documentation")
@@ -199,9 +197,7 @@ def filter_builtins(
         yield builtin
 
 
-def each_musique_name_occurs_once(
-    builtins: typing.Iterable[Builtin],
-) -> typing.Generator[Builtin, None, None]:
+def each_musique_name_occurs_once(builtins):
     names: dict[str, str] = {}
     for builtin in builtins:
         for name in builtin.names:
@@ -213,7 +209,7 @@ def each_musique_name_occurs_once(
         yield builtin
 
 
-def generate_html_document(builtins: typing.Iterable[Builtin], output_path: str):
+def generate_html_document(builtins, output_path):
     with open(output_path, "w") as out:
         out.write(HTML_PREFIX)
 
@@ -253,7 +249,7 @@ def generate_html_document(builtins: typing.Iterable[Builtin], output_path: str)
         out.write(HTML_SUFFIX)
 
 
-def generate_cpp_documentation(builtins: typing.Iterable[Builtin], output_path: str):
+def generate_cpp_documentation(builtins, output_path):
     # TODO Support markdown rendering and colors using `pretty` sublibrary
 
     def documentation_str_var(builtin: Builtin):
@@ -293,7 +289,7 @@ def generate_cpp_documentation(builtins: typing.Iterable[Builtin], output_path: 
 
 
 
-def main(source_path: str, output_path: str, format: typing.Literal["html", "cpp"]):
+def main(source_path, output_path, format):
     "Generates documentaiton from file source_path and saves in output_path"
 
     builtins = builtins_from_file(source_path)
