@@ -57,7 +57,7 @@ void Starter::start()
 		while (!state->stop) {
 			auto const time = state->link->clock().micros();
 			auto sessionState = state->link->captureAppSessionState();
-			if (counter == 10) {
+			if (counter == 2) {
 				sessionState.setIsPlaying(true, time);
 				state->link->commitAppSessionState(sessionState);
 				state->condition.notify_all();
@@ -70,6 +70,7 @@ void Starter::start()
 	});
 	starter.detach();
 
+	// TODO Rejection via CTRL-C while waiting
 	std::unique_lock lock(state->mutex);
 	state->condition.wait(lock);
 }
