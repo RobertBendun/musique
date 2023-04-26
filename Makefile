@@ -40,7 +40,7 @@ doc/wprowadzenie.html: doc/wprowadzenie.md
 	pandoc -o $@ $< -s --toc
 
 doc/functions.html: musique/interpreter/builtin_functions.cc scripts/document-builtin.py
-	scripts/document-builtin.py -o $@ $<
+	scripts/document-builtin.py -o $@ -f html $<
 
 musique.zip:
 	docker build -t musique-builder --build-arg "VERSION=$(VERSION)" .
