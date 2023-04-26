@@ -4,12 +4,12 @@
 #include <musique/interpreter/interpreter.hh>
 #include <musique/try.hh>
 
-#include <random>
-#include <memory>
-#include <iostream>
-#include <unordered_set>
 #include <chrono>
+#include <iostream>
+#include <memory>
+#include <random>
 #include <thread>
+#include <unordered_set>
 
 /// This macro implements functions that are only implemented as forwarding
 /// all arguments to another function
@@ -1659,6 +1659,52 @@ static Result<Value> builtin_peers(Interpreter &interpreter, std::vector<Value>)
 	return Number(interpreter.starter.peers());
 }
 
+//: Przenieś wartość z jednego zbioru w drugi
+static Result<Value> builtin_remap(Interpreter &interpreter, std::vector<Value> args)
+{
+	static constexpr auto guard = Guard<4> {
+		.name = "remap",
+		.possibilities = {
+			"(value, from, to)",
+			"(value, from_start, from_end, to_start, to_end)",
+			// This two signatures require presence of named parameters
+			// "(value, from_start, from_end, to)",
+			// "(value, from, to_start, to_end)",
+		},
+	};
+
+	if (auto a = match<Value, Collection, Collection>(args)) {
+		auto const& [value, from, to] = *a;
+		std::size_t i = 0;
+		for (; i < from.size(); ++i) {
+			auto const& element = from.index(interpreter, i);
+			if (element == value) {
+				return to.index(interpreter, i % to.size());
+			}
+		}
+		unimplemented("report an error that we couldn't find value in from collection");
+	}
+
+	if (auto a = match<Number, Number, Number, Number, Number>(args)) {
+		auto [value, start1, stop1, start2, stop2] = *a;
+		return Try((value - start1) / (stop1 - start1)) * (stop2 - start2) + start2;
+	}
+
+	if (auto a = match<Number, Number, Number, Chord, Chord>(args)) {
+		unimplemented("waits for rework of type system");
+	}
+
+	if (auto a = match<Chord, Chord, Chord, Chord, Chord>(args)) {
+		unimplemented("waits for rework of type system");
+	}
+
+	if (auto a = match<Chord, Chord, Chord, Number, Number>(args)) {
+		unimplemented("waits for rework of type system");
+	}
+
+	return guard.yield_error();
+}
+
 //: Ustaw wyjście MIDI w danym kontekście na dany port
 //:
 //: Dostępne opcje to numer portu oraz symbol `'virtual` tworzacy port wirtualny MIDI
@@ -1745,6 +1791,7 @@ void Interpreter::register_builtin_functions()
 	global.force_define("port",           builtin_port);
 	global.force_define("program_change", builtin_program_change);
 	global.force_define("range",          builtin_range);
+	global.force_define("remap",          builtin_remap);
 	global.force_define("reverse",        builtin_reverse);
 	global.force_define("rotate",         builtin_rotate);
 	global.force_define("round",          builtin_round);
