@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Builtin `seed` to provide seed for all functions using random number generation
+
 ## [0.5.0] - 2023-03-05
 
 ### Added

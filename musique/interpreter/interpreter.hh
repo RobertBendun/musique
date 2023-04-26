@@ -7,6 +7,7 @@
 #include <musique/value/value.hh>
 #include <unordered_map>
 #include <set>
+#include <random>
 
 struct KeyboardInterrupt : std::exception
 {
@@ -32,6 +33,8 @@ struct Interpreter
 	std::multiset<std::pair<unsigned, unsigned>> active_notes;
 
 	Starter starter;
+
+	std::mt19937 random_number_engine;
 
 	Interpreter();
 	~Interpreter();

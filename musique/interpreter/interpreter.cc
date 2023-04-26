@@ -46,6 +46,9 @@ Interpreter::Interpreter()
 	register_note_length_constants();
 	register_builtin_operators();
 	register_builtin_functions();
+
+	// Initialize global interpreter state
+	random_number_engine.seed(std::random_device{}());
 }
 
 Interpreter::~Interpreter()

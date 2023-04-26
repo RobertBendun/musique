@@ -1103,6 +1103,44 @@ static Result<Value> builtin_flat(Interpreter &i, std::vector<Value> args)
 	return Try(into_flat_array(i, std::move(args)));
 }
 
+//: Funkcja `seed` ustawia wartość początkową dla losowanych liczb.
+//:
+//: W przypadku braku podanych argumentów seed samo ustala nowe źródło liczb losowych.
+//:
+//: Domyślnie wartość inicjalizująca losowanie liczb jest wybierana losowo w czasie startu Musique.
+//: Jeśli chcesz by każde uruchomienie utworu brzmiało w podobny sposób użyj tej funkcji ze stałą wartością.
+static Result<Value> builtin_seed(Interpreter &interpreter, std::vector<Value> args)
+{
+	auto const guard = Guard<2> {
+		.name = "seed",
+		.possibilities = { "() -> number", "(number) -> number" }
+	};
+
+	std::optional<decltype(interpreter.random_number_engine)::result_type> seed = std::nullopt;
+
+	switch (args.size()) {
+	break; case 0:
+		seed = std::random_device{}();
+
+	break; case 1:
+		if (auto a = match<Number>(args)) {
+			auto [s] = *a;
+			if (s.den == 1) {
+				seed = s.num;
+			} else {
+				s.num = s.num ^ s.den;
+			}
+		}
+	}
+
+	if (!seed) {
+		return guard.yield_error();
+	}
+
+	interpreter.random_number_engine.seed(*seed);
+	return Number(std::int64_t(*seed));
+}
+
 //: Funkcja `pick` zwraca pseudo-losowo element z listy argumentów.
 //:
 //: # Przykład
@@ -1113,15 +1151,14 @@ static Result<Value> builtin_flat(Interpreter &i, std::vector<Value> args)
 //: b
 //: ```
 /// Pick random value from arugments
-static Result<Value> builtin_pick(Interpreter &i, std::vector<Value> args)
+static Result<Value> builtin_pick(Interpreter &interpreter, std::vector<Value> args)
 {
-	static std::mt19937 rnd{std::random_device{}()};
-	auto array = Try(flatten(i, std::move(args)));
+	auto array = Try(flatten(interpreter, std::move(args)));
 	if (array.empty()) {
 		return array;
 	}
 	std::uniform_int_distribution<std::size_t> dist(0, array.size()-1);
-	return array[dist(rnd)];
+	return array[dist(interpreter.random_number_engine)];
 }
 
 //: Funkcja `shuffle` pseudo-losowo tasuje elementy z listy argumentów.
@@ -1132,11 +1169,10 @@ static Result<Value> builtin_pick(Interpreter &i, std::vector<Value> args)
 //: (b, a, c)
 //: ```
 /// Shuffle arguments
-static Result<Value> builtin_shuffle(Interpreter &i, std::vector<Value> args)
+static Result<Value> builtin_shuffle(Interpreter &interpreter, std::vector<Value> args)
 {
-	static std::mt19937 rnd{std::random_device{}()};
-	auto array = Try(flatten(i, std::move(args)));
-	std::shuffle(array.begin(), array.end(), rnd);
+	auto array = Try(flatten(interpreter, std::move(args)));
+	std::shuffle(array.begin(), array.end(), interpreter.random_number_engine);
 	return array;
 }
 
@@ -1713,6 +1749,7 @@ void Interpreter::register_builtin_functions()
 	global.force_define("rotate",         builtin_rotate);
 	global.force_define("round",          builtin_round);
 	global.force_define("scan",           builtin_scan);
+	global.force_define("seed",           builtin_seed);
 	global.force_define("set_len",        builtin_set_len);
 	global.force_define("set_oct",        builtin_set_oct);
 	global.force_define("shuffle",        builtin_shuffle);
