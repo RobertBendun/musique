@@ -15,6 +15,9 @@ include scripts/$(os).mk
 include scripts/build.mk
 include scripts/test.mk
 
+full: all debug doc/musique-vs-languages-cheatsheet.html doc/wprowadzenie.html doc/functions.html
+
+
 bin/$(Target): bin/$(os)/$(Target)
 	ln -f $< $@
 
@@ -48,7 +51,7 @@ musique.zip:
 	docker cp musique:/musique.zip musique.zip
 	docker rm -f musique
 
-.PHONY: clean doc doc-open all test unit-tests release install musique.zip
+.PHONY: clean doc doc-open all test unit-tests release install musique.zip full
 
 $(shell mkdir -p $(subst musique/,bin/$(os)/,$(shell find musique/* -type d)))
 $(shell mkdir -p bin/$(os)/replxx/)
