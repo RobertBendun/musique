@@ -8,11 +8,11 @@
 #include <fstream>
 #include <iostream>
 #include <musique/bit_field.hh>
-#include <musique/cmd.hh>
 #include <musique/lexer/lines.hh>
 #include <musique/pretty.hh>
 #include <musique/runner.hh>
 #include <musique/try.hh>
+#include <musique/ui/program_arguments.hh>
 #include <musique/unicode.hh>
 #include <musique/user_directory.hh>
 #include <span>
@@ -28,8 +28,6 @@ extern "C" {
 #else
 #include <unistd.h>
 #endif
-
-namespace fs = std::filesystem;
 
 bool ast_only_mode = false;
 bool enable_repl = false;
@@ -217,16 +215,17 @@ static std::optional<Error> Main(std::span<char const*> args)
 {
 	enable_repl = args.empty();
 
-	if (cmd::is_tty() && getenv("NO_COLOR") == nullptr) {
+	// TODO: is_tty should be in ui namespace
+	if (ui::program_arguments::is_tty() && getenv("NO_COLOR") == nullptr) {
 		pretty::terminal_mode();
 	}
 
-	std::vector<cmd::Run> runnables;
+	std::vector<ui::program_arguments::Run> runnables;
 
-	while (args.size()) if (auto failed = cmd::accept_commandline_argument(runnables, args)) {
+	while (args.size()) if (auto failed = ui::program_arguments::accept_commandline_argument(runnables, args)) {
 		std::cerr << pretty::begin_error << "musique: error:" << pretty::end;
 		std::cerr << " Failed to recognize parameter " << std::quoted(*failed) << std::endl;
-		cmd::print_close_matches(args.front());
+		ui::program_arguments::print_close_matches(args.front());
 		std::exit(1);
 	}
 
@@ -235,7 +234,7 @@ static std::optional<Error> Main(std::span<char const*> args)
 	std::signal(SIGINT, sigint_handler);
 
 	for (auto const& [type, argument] : runnables) {
-		if (type == cmd::Run::Argument) {
+		if (type == ui::program_arguments::Run::Argument) {
 			Lines::the.add_line("<arguments>", argument, repl_line_number);
 			Try(runner.run(argument, "<arguments>"));
 			repl_line_number++;
@@ -245,17 +244,17 @@ static std::optional<Error> Main(std::span<char const*> args)
 		if (path == "-") {
 			eternal_sources.emplace_back(std::istreambuf_iterator<char>(std::cin), std::istreambuf_iterator<char>());
 		} else {
-			if (not fs::exists(path)) {
+			if (not std::filesystem::exists(path)) {
 				std::cerr << pretty::begin_error << "musique: error:" << pretty::end;
 				std::cerr << " couldn't open file: " << path << std::endl;
 				std::exit(1);
 			}
-			std::ifstream source_file{fs::path(path)};
+			std::ifstream source_file{std::filesystem::path(path)};
 			eternal_sources.emplace_back(std::istreambuf_iterator<char>(source_file), std::istreambuf_iterator<char>());
 		}
 
 		Lines::the.add_file(std::string(path), eternal_sources.back());
-		if (type == cmd::Run::File) {
+		if (type == ui::program_arguments::Run::File) {
 			Try(runner.run(eternal_sources.back(), path));
 		} else {
 			Try(runner.deffered_file(eternal_sources.back(), argument));
@@ -263,7 +262,7 @@ static std::optional<Error> Main(std::span<char const*> args)
 	}
 
 	enable_repl = enable_repl || (!runnables.empty() && std::all_of(runnables.begin(), runnables.end(),
-		[](cmd::Run const& run) { return run.type == cmd::Run::Deffered_File; }));
+		[](ui::program_arguments::Run const& run) { return run.type == ui::program_arguments::Run::Deffered_File; }));
 
 	if (enable_repl) {
 		repl_line_number = 1;

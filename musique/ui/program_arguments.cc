@@ -5,7 +5,7 @@
 #include <iomanip>
 #include <iostream>
 #include <limits>
-#include <musique/cmd.hh>
+#include <musique/ui/program_arguments.hh>
 #include <musique/common.hh>
 #include <musique/errors.hh>
 #include <musique/interpreter/builtin_function_documentation.hh>
@@ -25,26 +25,27 @@ extern "C" {
 #include <unistd.h>
 #endif
 
+using namespace ui::program_arguments;
+
 using Empty_Argument    = void(*)();
 using Requires_Argument = void(*)(std::string_view);
-using Defines_Code      = cmd::Run(*)(std::string_view);
+using Defines_Code      = Run(*)(std::string_view);
 using Parameter         = std::variant<Empty_Argument, Requires_Argument, Defines_Code>;
 
-using namespace cmd;
 
 // from musique/main.cc:
 extern bool enable_repl;
 extern bool ast_only_mode;
 
-static Defines_Code provide_function = [](std::string_view fname) -> cmd::Run {
+static Defines_Code provide_function = [](std::string_view fname) -> Run {
 	return { .type = Run::Deffered_File, .argument = fname };
 };
 
-static Defines_Code provide_inline_code = [](std::string_view code) -> cmd::Run {
+static Defines_Code provide_inline_code = [](std::string_view code) -> Run {
 	return { .type = Run::Argument, .argument = code };
 };
 
-static Defines_Code provide_file = [](std::string_view fname) -> cmd::Run {
+static Defines_Code provide_file = [](std::string_view fname) -> Run {
 	return { .type = Run::File, .argument = fname };
 };
 
@@ -210,7 +211,7 @@ static auto documentation_for_handler = std::array {
 // With arity = 1
 //   -i 1 -j 2 ≡ --i 1 --j 2 ≡ i 1 j 2 ≡ --i=1 --j=2
 // Arity ≥ 2 is not supported
-std::optional<std::string_view> cmd::accept_commandline_argument(std::vector<cmd::Run> &runnables, std::span<char const*> &args)
+std::optional<std::string_view> ui::program_arguments::accept_commandline_argument(std::vector<Run> &runnables, std::span<char const*> &args)
 {
 	if (args.empty()) {
 		return std::nullopt;
@@ -308,7 +309,7 @@ Documentation_For_Handler_Entry find_documentation_for_parameter(std::string_vie
 	return find_documentation_for_handler(entry->handler_ptr());
 }
 
-void cmd::print_close_matches(std::string_view arg)
+void ui::program_arguments::print_close_matches(std::string_view arg)
 {
 	auto minimum_distance = std::numeric_limits<int>::max();
 
@@ -390,7 +391,7 @@ static inline void iterate_over_documentation(
 	}
 }
 
-void cmd::usage()
+void ui::program_arguments::usage()
 {
 	std::cerr << "usage: " << pretty::begin_bold << "musique" << pretty::end << " [subcommand]...\n";
 	std::cerr << "  where available subcommands are:\n";
@@ -404,7 +405,7 @@ void cmd::usage()
 	std::exit(2);
 }
 
-void print_manpage()
+static void print_manpage()
 {
 	auto const ymd = std::chrono::year_month_day(
 		std::chrono::floor<std::chrono::days>(
@@ -463,7 +464,7 @@ Play Ode to Joy written as Musique source code in examples/ode-to-joy.mq
 	std::exit(0);
 }
 
-bool cmd::is_tty()
+bool ui::program_arguments::is_tty()
 {
 #ifdef _WIN32
 	return _isatty(STDOUT_FILENO);

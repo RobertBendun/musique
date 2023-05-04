@@ -1,5 +1,5 @@
-#ifndef MUSIQUE_CMD_HH
-#define MUSIQUE_CMD_HH
+#ifndef MUSIQUE_PROGRAM_ARGUMENTS_HH
+#define MUSIQUE_PROGRAM_ARGUMENTS_HH
 
 #include <optional>
 #include <span>
@@ -7,7 +7,7 @@
 #include <variant>
 #include <vector>
 
-namespace cmd
+namespace ui::program_arguments
 {
 	/// Describes all arguments that will be run
 	struct Run
@@ -23,7 +23,7 @@ namespace cmd
 	};
 
 	/// Accept and execute next command line argument with its parameters if it has any
-	std::optional<std::string_view> accept_commandline_argument(std::vector<cmd::Run> &runnables, std::span<char const*> &args);
+	std::optional<std::string_view> accept_commandline_argument(std::vector<ui::program_arguments::Run> &runnables, std::span<char const*> &args);
 
 	/// Print all arguments that are similar to one provided
 	void print_close_matches(std::string_view arg);
@@ -35,5 +35,4 @@ namespace cmd
 	void usage();
 }
 
-#endif // MUSIQUE_CMD_HH
-
+#endif // MUSIQUE_PROGRAM_ARGUMENTS_HH
