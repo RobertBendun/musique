@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <musique/bit_field.hh>
 #include <musique/cmd.hh>
 #include <musique/format.hh>
 #include <musique/interpreter/builtin_function_documentation.hh>
@@ -106,6 +107,18 @@ static std::string filename_to_function_name(std::string_view filename)
 	return name;
 }
 
+/// Execution_Options is set of flags controlling how Runner executes provided code
+enum class Execution_Options : std::uint32_t
+{
+	Print_Ast_Only = 1 << 0,
+	Print_Result   = 1 << 1,
+};
+
+template<>
+struct Enable_Bit_Field_Operations<Execution_Options> : std::true_type
+{
+};
+
 /// Runs interpreter on given source code
 struct Runner
 {
@@ -145,11 +158,6 @@ struct Runner
 	std::optional<Error> deffered_file(std::string_view source, std::string_view filename)
 	{
 		auto ast = Try(Parser::parse(source, filename, repl_line_number));
-		if (ast_only_mode) {
-			dump(ast);
-			return {};
-		}
-
 		auto name = filename_to_function_name(filename);
 
 		Block block;
@@ -162,16 +170,16 @@ struct Runner
 	}
 
 	/// Run given source
-	std::optional<Error> run(std::string_view source, std::string_view filename, bool output = false)
+	std::optional<Error> run(std::string_view source, std::string_view filename, Execution_Options flags = static_cast<Execution_Options>(0))
 	{
 		auto ast = Try(Parser::parse(source, filename, repl_line_number));
 
-		if (ast_only_mode) {
+		if (holds_alternative<Execution_Options::Print_Ast_Only>(flags)) {
 			dump(ast);
 			return {};
 		}
 		try {
-			if (auto result = Try(interpreter.eval(std::move(ast))); output && not holds_alternative<Nil>(result)) {
+			if (auto result = Try(interpreter.eval(std::move(ast))); holds_alternative<Execution_Options::Print_Result>(flags) && not holds_alternative<Nil>(result)) {
 				std::cout << Try(format(interpreter, result)) << std::endl;
 			}
 		} catch (KeyboardInterrupt const&) {
@@ -186,21 +194,6 @@ struct Runner
 /// All source code through life of the program should stay allocated, since
 /// some of the strings are only views into source
 std::vector<std::string> eternal_sources;
-
-#if 0
-void completion(char const* buf, bestlineCompletions *lc)
-{
-	std::string_view in{buf};
-
-	for (auto scope = Runner::the->interpreter.env.get(); scope != nullptr; scope = scope->parent.get()) {
-		for (auto const& [name, _] : scope->variables) {
-			if (name.starts_with(in)) {
-				bestlineAddCompletion(lc, name.c_str());
-			}
-		}
-	}
-}
-#endif
 
 /// Handles commands inside REPL session (those starting with ':')
 ///
@@ -408,7 +401,7 @@ static std::optional<Error> Main(std::span<char const*> args)
 			}
 
 			Lines::the.add_line("<repl>", raw, repl_line_number);
-			auto result = runner.run(raw, "<repl>", true);
+			auto result = runner.run(raw, "<repl>", Execution_Options::Print_Result);
 			using Traits = Try_Traits<std::decay_t<decltype(result)>>;
 			if (not Traits::is_ok(result)) {
 				std::cout << std::flush;
