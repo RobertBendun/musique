@@ -12,15 +12,33 @@ template<typename Enum>
 concept Bit_Field = std::is_enum_v<Enum> and Enable_Bit_Field_Operations<Enum>::value;
 
 template<Bit_Field T>
+constexpr T operator~(T val) noexcept
+{
+	return static_cast<T>(~static_cast<std::underlying_type_t<T>>(val));
+}
+
+template<Bit_Field T>
 constexpr T operator|(T lhs, T rhs) noexcept
 {
 	return static_cast<T>(static_cast<std::underlying_type_t<T>>(lhs) | static_cast<std::underlying_type_t<T>>(rhs));
 }
 
 template<Bit_Field T>
+constexpr T& operator|=(T& lhs, T rhs) noexcept
+{
+	return lhs = static_cast<T>(static_cast<std::underlying_type_t<T>>(lhs) | static_cast<std::underlying_type_t<T>>(rhs));
+}
+
+template<Bit_Field T>
 constexpr T operator&(T lhs, T rhs) noexcept
 {
 	return static_cast<T>(static_cast<std::underlying_type_t<T>>(lhs) & static_cast<std::underlying_type_t<T>>(rhs));
+}
+
+template<Bit_Field T>
+constexpr T& operator&=(T& lhs, T rhs) noexcept
+{
+	return lhs = static_cast<T>(static_cast<std::underlying_type_t<T>>(lhs) & static_cast<std::underlying_type_t<T>>(rhs));
 }
 
 template<Bit_Field auto V>

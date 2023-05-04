@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Builtin `seed` to provide seed for all functions using random number generation
 - New `make` target: `full` - make everything that can be made for local developement
+- `time` REPL command for measurement of execution time
 
 ### Fixed
 

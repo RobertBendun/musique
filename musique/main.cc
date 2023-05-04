@@ -1,4 +1,5 @@
 #include <charconv>
+#include <chrono>
 #include <csignal>
 #include <cstdio>
 #include <cstring>
@@ -112,6 +113,7 @@ enum class Execution_Options : std::uint32_t
 {
 	Print_Ast_Only = 1 << 0,
 	Print_Result   = 1 << 1,
+	Time_Execution = 1 << 2,
 };
 
 template<>
@@ -125,6 +127,7 @@ struct Runner
 	static inline Runner *the;
 
 	Interpreter interpreter;
+	Execution_Options default_options = static_cast<Execution_Options>(0);
 
 	/// Setup interpreter and midi connection with given port
 	explicit Runner()
@@ -172,13 +175,21 @@ struct Runner
 	/// Run given source
 	std::optional<Error> run(std::string_view source, std::string_view filename, Execution_Options flags = static_cast<Execution_Options>(0))
 	{
+		flags |= default_options;
+
 		auto ast = Try(Parser::parse(source, filename, repl_line_number));
 
 		if (holds_alternative<Execution_Options::Print_Ast_Only>(flags)) {
 			dump(ast);
 			return {};
 		}
+
+		std::chrono::steady_clock::time_point now;
 		try {
+			if (holds_alternative<Execution_Options::Time_Execution>(flags)) {
+				now = std::chrono::steady_clock::now();
+			}
+
 			if (auto result = Try(interpreter.eval(std::move(ast))); holds_alternative<Execution_Options::Print_Result>(flags) && not holds_alternative<Nil>(result)) {
 				std::cout << Try(format(interpreter, result)) << std::endl;
 			}
@@ -187,6 +198,12 @@ struct Runner
 			interpreter.starter.stop();
 			std::cout << std::endl;
 		}
+
+		if (holds_alternative<Execution_Options::Time_Execution>(flags)) {
+			auto const end = std::chrono::steady_clock::now();
+			std::cout << "(" << std::fixed << std::setprecision(3) << std::chrono::duration_cast<std::chrono::duration<float>>(end - now).count() << " secs)" << std::endl;
+		}
+
 		return {};
 	}
 };
@@ -268,6 +285,33 @@ static Result<bool> handle_repl_session_commands(std::string_view input, Runner 
 				return {};
 			},
 		},
+
+		Command {
+			"time",
+			+[](Runner& runner, std::optional<std::string_view> command) -> std::optional<Error> {
+				std::optional<bool> enable = std::nullopt;
+				if (command) {
+					if (command == "enable") {
+						enable = true;
+					} else if (command == "disable") {
+						enable = false;
+					}
+				}
+
+				if (!enable.has_value()) {
+					enable = !holds_alternative<Execution_Options::Time_Execution>(runner.default_options);
+				}
+
+				if (*enable) {
+					std::cout << "Timing execution is on" << std::endl;
+					runner.default_options |= Execution_Options::Time_Execution;
+				} else {
+					std::cout << "Timing execution is off" << std::endl;
+					runner.default_options &= ~Execution_Options::Time_Execution;
+				}
+				return {};
+			},
+		},
 	};
 
 	if (input.starts_with('!')) {
@@ -313,7 +357,6 @@ static std::optional<Error> Main(std::span<char const*> args)
 	}
 
 	std::vector<cmd::Run> runnables;
-
 
 	while (args.size()) if (auto failed = cmd::accept_commandline_argument(runnables, args)) {
 		std::cerr << pretty::begin_error << "musique: error:" << pretty::end;
