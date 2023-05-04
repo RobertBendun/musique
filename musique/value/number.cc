@@ -348,3 +348,52 @@ std::size_t std::hash<Number>::operator()(Number const& value) const
 	std::hash<Number::value_type> h;
 	return hash_combine(h(value.num), h(value.den));
 }
+
+#ifdef MUSIQUE_UNIT_TESTING
+
+#include <catch_amalgamated.hpp>
+
+TEST_CASE("Number arithmetic operators", "[number]")
+{
+	REQUIRE(Number{1, 8} + Number{3, 4} == Number{ 7,  8});
+	REQUIRE(Number{1, 8} - Number{3, 4} == Number{-5,  8});
+	REQUIRE(Number{1, 8} * Number{3, 4} == Number{ 3, 32});
+	REQUIRE(Number{1, 8} / Number{3, 4} == Number{ 1,  6});
+}
+
+
+TEST_CASE("Number::floor()", "[number]")
+{
+	REQUIRE(Number(0)  == Number(1, 2).floor());
+	REQUIRE(Number(1)  == Number(3, 2).floor());
+	REQUIRE(Number(-1) == Number(-1, 2).floor());
+	REQUIRE(Number(0)  == Number(0).floor());
+	REQUIRE(Number(1)  == Number(1).floor());
+	REQUIRE(Number(-1) == Number(-1).floor());
+}
+
+TEST_CASE("Number::ceil()", "[number]")
+{
+	REQUIRE(Number(1)  == Number(1, 2).ceil());
+	REQUIRE(Number(2)  == Number(3, 2).ceil());
+	REQUIRE(Number(0)  == Number(-1, 2).ceil());
+	REQUIRE(Number(-1) == Number(-3, 2).ceil());
+	REQUIRE(Number(0)  == Number(0).ceil());
+	REQUIRE(Number(1)  == Number(1).ceil());
+	REQUIRE(Number(-1) == Number(-1).ceil());
+}
+
+TEST_CASE("Number::round()", "[number]")
+{
+	REQUIRE(Number(1) == Number(3, 4).round());
+	REQUIRE(Number(0) == Number(1, 4).round());
+	REQUIRE(Number(1) == Number(5, 4).round());
+	REQUIRE(Number(2) == Number(7, 4).round());
+
+	REQUIRE(Number(-1) == Number(-3, 4).round());
+	REQUIRE(Number(0)  == Number(-1, 4).round());
+	REQUIRE(Number(-1) == Number(-5, 4).round());
+	REQUIRE(Number(-2) == Number(-7, 4).round());
+};
+
+#endif

@@ -3,20 +3,15 @@ include config.mk
 Sources := $(shell find musique/ -name '*.cc')
 Obj := $(subst musique/,,$(Sources:%.cc=%.o))
 
-ifeq ($(os),windows)
-release: bin/musique.exe
-debug: bin/windows/debug/musique.exe
-else
-release: bin/musique
-debug: bin/$(os)/debug/musique
-endif
-
 include scripts/$(os).mk
 include scripts/build.mk
+
+all: $(PREFIX)/$(Target)
 
 full: doc/musique-vs-languages-cheatsheet.html doc/wprowadzenie.html doc/functions.html
 	make all os=$(os)
 	make all os=$(os) mode=debug
+	make all os=$(os) mode=unit-test
 
 bin/$(Target): bin/$(os)/$(Target)
 	ln -f $< $@
@@ -53,6 +48,5 @@ test:
 
 .PHONY: clean doc doc-open all test unit-tests release install musique.zip full release
 
-$(shell mkdir -p $(subst musique/,bin/$(os)/,$(shell find musique/* -type d)))
 $(shell mkdir -p bin/$(os)/replxx/)
-$(shell mkdir -p $(subst musique/,bin/$(os)/debug/,$(shell find musique/* -type d)))
+$(shell mkdir -p $(subst musique/,$(PREFIX)/,$(shell find musique/* -type d)))

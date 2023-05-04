@@ -32,5 +32,6 @@ Copy [editor/vscode-musique](editor/vscode-musique) directory to `<user home>/.v
 - Creator of [bestline](https://github.com/jart/bestline) - [Justine Tunney](https://justinetunney.com/)
 - Creator of [rtmidi](https://github.com/thestk/rtmidi/) - [Gary P. Scavone](http://www.music.mcgill.ca/~gary/)
 - Creators of [link](https://github.com/Ableton/link)
+- Creators of [Catch2](https://github.com/catchorg/Catch2/)
 
 and all contributors that created libraries above.

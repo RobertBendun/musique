@@ -4,7 +4,7 @@ $(PREFIX)/%.o: musique/%.cc
 	@echo "CXX $@"
 	@$(CXX) $(CXXFLAGS) $(CPPFLAGS) -o $@ $< -c
 
-$(PREFIX)/$(Target): $(TARGET_OBJ) $(PREFIX)/main.o $(PREFIX)/rtmidi.o
+$(PREFIX)/$(Target): $(TARGET_OBJ) $(MAIN) $(PREFIX)/rtmidi.o
 	@echo "CXX $@"
 	@$(CXX) $(CXXFLAGS) $(CPPFLAGS) -o $@ $(shell CXX=$(CXX) os=$(os) scripts/build_replxx.sh) $^ $(LDFLAGS) $(LDLIBS)
 

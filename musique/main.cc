@@ -211,6 +211,7 @@ void sigint_handler(int sig)
 }
 
 /// Fancy main that supports Result forwarding on error (Try macro)
+[[maybe_unused]]
 static std::optional<Error> Main(std::span<char const*> args)
 {
 	enable_repl = args.empty();
@@ -322,6 +323,8 @@ static std::optional<Error> Main(std::span<char const*> args)
 	return {};
 }
 
+#ifndef MUSIQUE_UNIT_TESTING
+
 int main(int argc, char const** argv)
 {
 	auto const args = std::span(argv, argc).subspan(1);
@@ -332,3 +335,5 @@ int main(int argc, char const** argv)
 	}
 	return 0;
 }
+
+#endif // MUSIQUE_UNIT_TESTING
