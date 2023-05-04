@@ -4,19 +4,19 @@ Sources := $(shell find musique/ -name '*.cc')
 Obj := $(subst musique/,,$(Sources:%.cc=%.o))
 
 ifeq ($(os),windows)
-all: bin/musique.exe
+release: bin/musique.exe
 debug: bin/windows/debug/musique.exe
 else
-all: bin/musique
+release: bin/musique
 debug: bin/$(os)/debug/musique
 endif
 
 include scripts/$(os).mk
 include scripts/build.mk
-include scripts/test.mk
 
-full: all debug doc/musique-vs-languages-cheatsheet.html doc/wprowadzenie.html doc/functions.html
-
+full: doc/musique-vs-languages-cheatsheet.html doc/wprowadzenie.html doc/functions.html
+	make all os=$(os)
+	make all os=$(os) mode=debug
 
 bin/$(Target): bin/$(os)/$(Target)
 	ln -f $< $@
@@ -29,9 +29,6 @@ doc-open: doc
 
 clean:
 	rm -rf bin coverage
-
-release: bin/musique
-	scripts/release
 
 install: bin/musique
 	scripts/install
@@ -51,7 +48,10 @@ musique.zip:
 	docker cp musique:/musique.zip musique.zip
 	docker rm -f musique
 
-.PHONY: clean doc doc-open all test unit-tests release install musique.zip full
+test:
+	python3 scripts/test.py
+
+.PHONY: clean doc doc-open all test unit-tests release install musique.zip full release
 
 $(shell mkdir -p $(subst musique/,bin/$(os)/,$(shell find musique/* -type d)))
 $(shell mkdir -p bin/$(os)/replxx/)
