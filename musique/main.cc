@@ -9,19 +9,12 @@
 #include <iostream>
 #include <musique/bit_field.hh>
 #include <musique/cmd.hh>
-#include <musique/format.hh>
-#include <musique/interpreter/builtin_function_documentation.hh>
-#include <musique/interpreter/env.hh>
-#include <musique/interpreter/interpreter.hh>
 #include <musique/lexer/lines.hh>
-#include <musique/midi/midi.hh>
-#include <musique/parser/parser.hh>
-#include <musique/platform.hh>
 #include <musique/pretty.hh>
+#include <musique/runner.hh>
 #include <musique/try.hh>
 #include <musique/unicode.hh>
 #include <musique/user_directory.hh>
-#include <musique/value/block.hh>
 #include <span>
 #include <thread>
 #include <unordered_set>
@@ -40,7 +33,9 @@ namespace fs = std::filesystem;
 
 bool ast_only_mode = false;
 bool enable_repl = false;
-static unsigned repl_line_number = 1;
+
+// TODO: This variable is sus. It is used in a care-free manner and it usage should be reviewed
+unsigned repl_line_number = 1;
 
 #define Ignore(Call) do { auto const ignore_ ## __LINE__ = (Call); (void) ignore_ ## __LINE__; } while(0)
 
@@ -77,137 +72,6 @@ static void trim(std::string_view &s)
 	}
 }
 
-static std::string filename_to_function_name(std::string_view filename)
-{
-	if (filename == "-") {
-		return "stdin";
-	}
-
-	auto stem = fs::path(filename).stem().string();
-	auto stem_view = std::string_view(stem);
-
-	std::string name;
-
-	auto is_first = unicode::First_Character::Yes;
-	while (!stem_view.empty()) {
-		auto [rune, next_stem] = utf8::decode(stem_view);
-		if (!unicode::is_identifier(rune, is_first)) {
-			if (rune != ' ' && rune != '-') {
-				// TODO Nicer error
-				std::cerr << "[ERROR] Failed to construct function name from filename " << stem
-					        << "\n       due to presence of invalid character: " << utf8::Print{rune} << "(U+" << std::hex << rune << ")\n"
-									<< std::flush;
-				std::exit(1);
-			}
-			name += '_';
-		} else {
-			name += stem_view.substr(0, stem_view.size() - next_stem.size());
-		}
-		stem_view = next_stem;
-	}
-	return name;
-}
-
-/// Execution_Options is set of flags controlling how Runner executes provided code
-enum class Execution_Options : std::uint32_t
-{
-	Print_Ast_Only = 1 << 0,
-	Print_Result   = 1 << 1,
-	Time_Execution = 1 << 2,
-};
-
-template<>
-struct Enable_Bit_Field_Operations<Execution_Options> : std::true_type
-{
-};
-
-/// Runs interpreter on given source code
-struct Runner
-{
-	static inline Runner *the;
-
-	Interpreter interpreter;
-	Execution_Options default_options = static_cast<Execution_Options>(0);
-
-	/// Setup interpreter and midi connection with given port
-	explicit Runner()
-		: interpreter{}
-	{
-		ensure(the == nullptr, "Only one instance of runner is supported");
-		the = this;
-
-		interpreter.current_context->connect(std::nullopt);
-
-		Env::global->force_define("say", +[](Interpreter &interpreter, std::vector<Value> args) -> Result<Value> {
-			for (auto it = args.begin(); it != args.end(); ++it) {
-				std::cout << Try(format(interpreter, *it));
-				if (std::next(it) != args.end())
-					std::cout << ' ';
-			}
-			std::cout << std::endl;
-			return {};
-		});
-	}
-
-	Runner(Runner const&) = delete;
-	Runner(Runner &&) = delete;
-	Runner& operator=(Runner const&) = delete;
-	Runner& operator=(Runner &&) = delete;
-
-	/// Consider given input file as new definition of parametless function
-	///
-	/// Useful for deffering execution of files to the point when all configuration of midi devices
-	/// is beeing known as working.
-	std::optional<Error> deffered_file(std::string_view source, std::string_view filename)
-	{
-		auto ast = Try(Parser::parse(source, filename, repl_line_number));
-		auto name = filename_to_function_name(filename);
-
-		Block block;
-		block.location = ast.location;
-		block.body = std::move(ast);
-		block.context = Env::global;
-		std::cout << "Defined function " << name << " as file " << filename << std::endl;
-		Env::global->force_define(std::move(name), Value(std::move(block)));
-		return {};
-	}
-
-	/// Run given source
-	std::optional<Error> run(std::string_view source, std::string_view filename, Execution_Options flags = static_cast<Execution_Options>(0))
-	{
-		flags |= default_options;
-
-		auto ast = Try(Parser::parse(source, filename, repl_line_number));
-
-		if (holds_alternative<Execution_Options::Print_Ast_Only>(flags)) {
-			dump(ast);
-			return {};
-		}
-
-		std::chrono::steady_clock::time_point now;
-		try {
-			if (holds_alternative<Execution_Options::Time_Execution>(flags)) {
-				now = std::chrono::steady_clock::now();
-			}
-
-			if (auto result = Try(interpreter.eval(std::move(ast))); holds_alternative<Execution_Options::Print_Result>(flags) && not holds_alternative<Nil>(result)) {
-				std::cout << Try(format(interpreter, result)) << std::endl;
-			}
-		} catch (KeyboardInterrupt const&) {
-			interpreter.turn_off_all_active_notes();
-			interpreter.starter.stop();
-			std::cout << std::endl;
-		}
-
-		if (holds_alternative<Execution_Options::Time_Execution>(flags)) {
-			auto const end = std::chrono::steady_clock::now();
-			std::cout << "(" << std::fixed << std::setprecision(3) << std::chrono::duration_cast<std::chrono::duration<float>>(end - now).count() << " secs)" << std::endl;
-		}
-
-		return {};
-	}
-};
-
 /// All source code through life of the program should stay allocated, since
 /// some of the strings are only views into source
 std::vector<std::string> eternal_sources;
@@ -219,6 +83,7 @@ static Result<bool> handle_repl_session_commands(std::string_view input, Runner 
 {
 	using Handler = std::optional<Error>(*)(Runner &runner, std::optional<std::string_view> arg);
 	using Command = std::pair<std::string_view, Handler>;
+
 	static constexpr auto Commands = std::array {
 		Command { "exit",
 			+[](Runner&, std::optional<std::string_view>) -> std::optional<Error> {
