@@ -181,6 +181,7 @@ def test():
             total += 1
 
     print(f"Passed {successful} out of {total} ({100 * successful // total}%)")
+    exit(1 if successful != total else 0)
 
 if __name__ == "__main__":
     if not os.path.exists(INTERPRETER):

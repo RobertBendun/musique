@@ -44,6 +44,7 @@ musique.zip:
 	docker rm -f musique
 
 test:
+	make mode=debug CC=$(CC) CXX=$(CXX)
 	python3 scripts/test.py
 
 .PHONY: clean doc doc-open all test unit-tests release install musique.zip full release
