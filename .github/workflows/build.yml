@@ -14,4 +14,4 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Build
-        run: "make"
+        run: "make CC=gcc-11 CXX=g++-11"
