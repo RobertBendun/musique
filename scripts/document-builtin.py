@@ -94,7 +94,7 @@ std::vector<std::string_view> similar_names_to_builtin(std::string_view builtin_
 }
 """
 
-def warning(*args, prefix: str | None = None):
+def warning(*args, prefix: typing.Union[str,None] = None):
     if prefix is None:
         prefix = PROGRAM_NAME
     message = ": ".join(itertools.chain([prefix, "warning"], args))
