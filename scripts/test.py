@@ -82,8 +82,10 @@ class TestCase:
                 print(f"       Got: {actual[diff_line]}")
             elif len(expected) > len(actual):
                 print(f"Expected {name} is {len(expected) - len(actual)} lines longer then actual")
+                print(f"  Extra lines: ", expected[len(actual):])
             else:
                 print(f"Actual {name} is {len(actual) - len(expected)} lines longer then expected")
+                print(f"  Extra lines: ", actual[len(expected):])
 
         return False
 

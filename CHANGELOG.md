@@ -23,6 +23,7 @@ Types of changes
 - New `make` target: `full` - make everything that can be made for local developement
 - `time` REPL command for measurement of execution time
 - Unit testing strikes again! `make mode=unit-test`
+- Continuous Integration with Github Actions
 
 ### Changed
 
