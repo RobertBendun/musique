@@ -28,4 +28,4 @@ jobs:
         run: "bin/linux/unit-test/musique"
 
       - name: Execute regression tests
-        run: "make test"
+        run: "make test CC=gcc-11 CXX=g++-11"
