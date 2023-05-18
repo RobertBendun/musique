@@ -36,6 +36,7 @@ using Parameter         = std::variant<Empty_Argument, Requires_Argument, Define
 // from musique/main.cc:
 extern bool enable_repl;
 extern bool ast_only_mode;
+extern bool dont_automatically_connect;
 
 static Defines_Code provide_function = [](std::string_view fname) -> Run {
 	return { .type = Run::Deffered_File, .argument = fname };
@@ -66,6 +67,8 @@ static Requires_Argument show_docs = [](std::string_view builtin) {
 
 static Empty_Argument set_interactive_mode = [] { enable_repl = true; };
 static Empty_Argument set_ast_only_mode = [] { ast_only_mode = true; };
+static Empty_Argument set_dont_automatically_connect_mode = [] { dont_automatically_connect = true; };
+
 
 static Empty_Argument print_version = [] { std::cout << Musique_Version << std::endl; };
 static Empty_Argument print_help = usage;
@@ -128,6 +131,12 @@ static auto all_parameters = std::array {
 	Entry {
 		.name     = "ast",
 		.handler  = set_ast_only_mode,
+		.internal = true,
+	},
+
+	Entry {
+		.name = "dont-automatically-connect",
+		.handler = set_dont_automatically_connect_mode,
 		.internal = true,
 	},
 };
@@ -195,6 +204,12 @@ static auto documentation_for_handler = std::array {
 		.long_documentation =
 			"Parameter made for internal usage. Instead of executing provided code,\n"
 			"prints program syntax tree."
+	},
+	Documentation_For_Handler_Entry {
+		.handler = reinterpret_cast<void*>(set_dont_automatically_connect_mode),
+		.short_documentation = "don't connect to midi port automatically",
+		.long_documentation =
+			"Prevents automatic connection to MIDI ports. Useful only for enviroments without audio"
 	},
 	Documentation_For_Handler_Entry {
 		.handler = reinterpret_cast<void*>(print_manpage),

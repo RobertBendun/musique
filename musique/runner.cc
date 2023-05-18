@@ -7,6 +7,8 @@
 #include <musique/try.hh>
 #include <musique/unicode.hh>
 
+bool dont_automatically_connect = false;
+
 static std::string filename_to_function_name(std::string_view filename);
 
 Runner::Runner()
@@ -15,7 +17,9 @@ Runner::Runner()
 	ensure(the == nullptr, "Only one instance of runner is supported");
 	the = this;
 
-	interpreter.current_context->connect(std::nullopt);
+	if (!dont_automatically_connect) {
+		interpreter.current_context->connect(std::nullopt);
+	}
 
 	Env::global->force_define("say", +[](Interpreter &interpreter, std::vector<Value> args) -> Result<Value> {
 		for (auto it = args.begin(); it != args.end(); ++it) {

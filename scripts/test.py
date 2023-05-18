@@ -26,7 +26,7 @@ class TestCase:
 
     def run(self, interpreter: str, source: str, cwd: str):
         result = subprocess.run(
-            args=[interpreter, "run", source],
+            args=[interpreter, "run", source, "--dont-automatically-connect"],
             capture_output=True,
             cwd=cwd,
             text=True
