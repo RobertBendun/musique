@@ -187,7 +187,7 @@ def test():
 
 if __name__ == "__main__":
     if not os.path.exists(INTERPRETER):
-        subprocess.run("make debug", shell=True, check=True)
+        subprocess.run("make mode=debug", shell=True, check=True)
 
     parser = argparse.ArgumentParser(description="Regression test runner for Musique programming language")
     parser.add_argument("-d", "--discover", action="store_true", help="Discover all tests that are not in testing database")
