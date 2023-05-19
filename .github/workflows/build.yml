@@ -29,3 +29,21 @@ jobs:
 
       - name: Execute regression tests
         run: "make test CC=gcc-11 CXX=g++-11"
+
+  build-macos:
+    run-on: macos-13
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Build
+        run: "make"
+
+      - name: Build unit tests executable
+        run: "make mode=unit-test"
+
+      - name: Execute unit tests
+        run: "bin/linux/unit-test/musique"
+
+      - name: Execute regression tests
+        run: "make test"
