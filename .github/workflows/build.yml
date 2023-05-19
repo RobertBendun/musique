@@ -31,7 +31,7 @@ jobs:
         run: "make test CC=gcc-11 CXX=g++-11"
 
   build-macos:
-    run-on: macos-13
+    runs-on: macos-13
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
