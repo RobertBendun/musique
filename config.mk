@@ -30,7 +30,6 @@ ifeq ($(mode),debug)
 
 PREFIX = bin/$(os)/debug
 CXXFLAGS += $(DEBUG_FLAGS)
-MAIN = $(PREFIX)/main.o
 
 else ifeq ($(mode),unit-test)
 
@@ -43,7 +42,6 @@ else
 
 PREFIX = bin/$(os)
 CXXFLAGS += $(RELEASE_FLAGS)
-MAIN = $(PREFIX)/main.o
 
 endif
 
