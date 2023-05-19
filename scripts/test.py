@@ -3,11 +3,23 @@ import argparse
 import dataclasses
 import json
 import os
+import platform
 import subprocess
 
 TEST_DIR = "regression-tests"
 TEST_DB = "test_db.json"
-INTERPRETER = "bin/linux/debug/musique"
+
+
+SYSTEM_TO_DIRECTORY = {
+    "Darwin": "macos",
+    "Linux": "linux",
+}
+
+system = platform.system()
+assert system in SYSTEM_TO_DIRECTORY.keys(), "platform is not supported yet"
+INTERPRETER = "bin/{system}/debug/musique".format(**{
+    "system": SYSTEM_TO_DIRECTORY[system]
+})
 
 @dataclasses.dataclass
 class Result:
