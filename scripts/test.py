@@ -241,4 +241,4 @@ if __name__ == "__main__":
     if to_record:
         with open(test_db_path, "w") as f:
             json_suites = [dataclasses.asdict(suite) for suite in suites]
-            json.dump(json_suites, f, indent=2)
+            json.dump(json_suites, f, separators=(',', ':'))

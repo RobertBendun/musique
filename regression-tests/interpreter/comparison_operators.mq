@@ -1,0 +1,18 @@
+say (0 == 0),
+say (0 != 1),
+say (c != 1),
+
+say (up 10 == up 10),
+say (up 10 != down 10),
+say (up 10 < down 10),
+say (down 10 > up 10),
+
+say (up 10 != up 10),
+say (up 10 == down 10),
+say (up 10 > down 10),
+say (down 10 < up 10),
+
+say (up 10 % 3 == 0),
+say (up 10 % 3 != 0),
+say (up 10 < 5),
+say (up 10 > 5),

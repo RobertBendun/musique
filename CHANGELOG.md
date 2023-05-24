@@ -28,6 +28,7 @@ Types of changes
 ### Changed
 
 - Simplified `make` definition, `make mode=debug` for debug builds
+- More regression tests
 
 ### Fixed
 
