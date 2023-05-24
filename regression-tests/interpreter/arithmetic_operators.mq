@@ -25,3 +25,7 @@ say (up 10 ** 2),
 
 say (up 3 & down 3),
 say (c & e),
+
+-- Order of operations
+say (3 * 4 + 2),
+say (3 + 2 * 4),
