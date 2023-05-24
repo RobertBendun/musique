@@ -600,10 +600,12 @@ static Result<Value> builtin_primes(Interpreter&, std::vector<Value> args)
 {
 	if (auto a = match<Number>(args)) {
 		auto [n_frac] = *a;
+		n_frac = n_frac.floor();
 		// Better sieve could be Sieve of Atkin, but it's more complicated
 		// so for now we would use Eratosthenes one.
-		if (n_frac.simplify_inplace(); n_frac.num <= 1) {
-			return Array{};
+		switch (n_frac.num) {
+		case 0: return Array{};
+		case 1: return std::vector<Value>{{Number{2}}};
 		}
 		size_t n = n_frac.floor().as_int();
 
