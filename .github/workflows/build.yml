@@ -38,8 +38,7 @@ jobs:
       - name: Coveralls GitHub Action
         uses: coverallsapp/github-action@v1
         with:
-          format: lcov
-          file: coverage.info
+          path-to-lcov: coverage.info
 
 
   build-macos:
