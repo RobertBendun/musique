@@ -15,3 +15,4 @@ release_*
 *.html
 link_hut
 *.exe
+coverage.info

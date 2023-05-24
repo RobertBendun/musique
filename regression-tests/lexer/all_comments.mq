@@ -1,0 +1,14 @@
+#!/usr/bin/env musique <- nice comment for unix systems
+
+-- single line comment
+
+---
+multiline
+comment
+---
+
+-----------------
+multiline comment
+nicely surrounded
+------------------
+

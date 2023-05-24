@@ -282,6 +282,27 @@
           "3/10"
         ],
         "stderr_lines": []
+      },
+      {
+        "name": "fold.mq",
+        "exit_code": 0,
+        "stdin_lines": [],
+        "stdout_lines": [
+          "120"
+        ],
+        "stderr_lines": []
+      }
+    ]
+  },
+  {
+    "name": "lexer",
+    "cases": [
+      {
+        "name": "all_comments.mq",
+        "exit_code": 0,
+        "stdin_lines": [],
+        "stdout_lines": [],
+        "stderr_lines": []
       }
     ]
   }
