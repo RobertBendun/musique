@@ -1,7 +1,8 @@
-name: musique-build-and-test
+name: Build and test Musique
 on: [push]
 jobs:
   build-linux:
+    name: "Build and fully test on Linux"
     runs-on: ubuntu-20.04
     steps:
       - name: Install initial dependencies
@@ -31,6 +32,7 @@ jobs:
         run: "make test CC=gcc-11 CXX=g++-11"
 
   build-macos:
+    name: "Build and regression test on macOS"
     runs-on: macos-13
     steps:
       - name: Checkout repository
