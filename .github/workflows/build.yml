@@ -2,14 +2,14 @@ name: Build and test Musique
 on: [push]
 jobs:
   build-linux:
-    name: "Build and fully test on Linux"
+    name: "Fully test on Linux"
     runs-on: ubuntu-20.04
     steps:
       - name: Install initial dependencies
         run: "sudo apt update && sudo apt install -y make software-properties-common zip unzip git; sudo add-apt-repository ppa:ubuntu-toolchain-r/test"
 
       - name: Install build dependencies
-        run: "sudo apt install -y gcc-11 g++-11 libasound2-dev"
+        run: "sudo apt install -y gcc-11 g++-11 libasound2-dev lcov"
 
       - name: Setup Python 3.10
         uses: actions/setup-python@v4
@@ -19,17 +19,28 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
 
-      - name: Build
+      - name: Build release executable
         run: "make CC=gcc-11 CXX=g++-11"
 
       - name: Build unit tests executable
-        run: "make mode=unit-test CC=gcc-11 CXX=g++-11"
+        run: "CXXFLAGS=--coverage make mode=unit-test CC=gcc-11 CXX=g++-11"
 
       - name: Execute unit tests
         run: "bin/linux/unit-test/musique"
 
       - name: Execute regression tests
-        run: "make test CC=gcc-11 CXX=g++-11"
+        run: "CXXFLAGS=--coverage make test CC=gcc-11 CXX=g++-11"
+
+      - name: Generate coverage info
+        run: "scripts/coverage.sh ci"
+
+
+      - name: Coveralls GitHub Action
+        uses: coverallsapp/github-action@v1
+        with:
+          format: lcov
+          file: coverage.info
+
 
   build-macos:
     name: "Build and regression test on macOS"

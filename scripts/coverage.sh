@@ -1,9 +1,14 @@
 #!/bin/sh
 
-CXXFLAGS=--coverage make mode=debug
-make test
+if [ "$1" != "ci" ]; then
+	make test
+fi
+
 lcov --directory . --capture --output-file coverage.info
 lcov -r coverage.info '/usr/*'  -o coverage.info
 lcov -r coverage.info '*/lib/*' -o coverage.info
-genhtml --demangle-cpp -o coverage coverage.info
+
+if [ "$1" != "ci" ]; then
+	genhtml --demangle-cpp -o coverage coverage.info
+fi
 
