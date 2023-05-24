@@ -33,6 +33,7 @@ Types of changes
 ### Fixed
 
 - function documentation generator proper cmdline parameter handling
+- deterministic random number generation is now cross platform (setting the same seed on different platforms gives the same results)
 
 ## [0.5.0] - 2023-03-05
 

@@ -1,12 +1,12 @@
-#include <musique/algo.hh>
-#include <musique/interpreter/env.hh>
-#include <musique/guard.hh>
-#include <musique/interpreter/interpreter.hh>
-#include <musique/try.hh>
-
 #include <chrono>
 #include <iostream>
 #include <memory>
+#include <musique/algo.hh>
+#include <musique/guard.hh>
+#include <musique/interpreter/env.hh>
+#include <musique/interpreter/interpreter.hh>
+#include <musique/random.hh>
+#include <musique/try.hh>
 #include <random>
 #include <thread>
 #include <unordered_set>
@@ -1157,8 +1157,7 @@ static Result<Value> builtin_pick(Interpreter &interpreter, std::vector<Value> a
 	if (array.empty()) {
 		return array;
 	}
-	std::uniform_int_distribution<std::size_t> dist(0, array.size()-1);
-	return array[dist(interpreter.random_number_engine)];
+	return array[musique::random::uniform<std::size_t>(interpreter.random_number_engine, 0, array.size()-1)];
 }
 
 //: Funkcja `shuffle` pseudo-losowo tasuje elementy z listy argumentów.
@@ -1172,7 +1171,7 @@ static Result<Value> builtin_pick(Interpreter &interpreter, std::vector<Value> a
 static Result<Value> builtin_shuffle(Interpreter &interpreter, std::vector<Value> args)
 {
 	auto array = Try(flatten(interpreter, std::move(args)));
-	std::shuffle(array.begin(), array.end(), interpreter.random_number_engine);
+	musique::random::shuffle(array.begin(), array.end(), interpreter.random_number_engine);
 	return array;
 }
 
