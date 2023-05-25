@@ -1,8 +1,8 @@
 name: Build and test Musique
 on: [push]
 jobs:
-  build-linux:
-    name: "Fully test on Linux"
+  build-ubuntu-20.04:
+    name: "Builds on Ubuntu 20.04"
     runs-on: ubuntu-20.04
     steps:
       - name: Install initial dependencies
@@ -22,18 +22,31 @@ jobs:
       - name: Build release executable
         run: "make CC=gcc-11 CXX=g++-11"
 
+  build-ubuntu-22.04:
+    name: "Fully test Ubuntu 22.04"
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Install initial dependencies
+      - name: Install build dependencies
+        run: "sudo apt install -y libasound2-dev lcov"
+
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Build release executable
+        run: "make"
+
       - name: Build unit tests executable
-        run: "CXXFLAGS=--coverage make mode=unit-test CC=gcc-11 CXX=g++-11"
+        run: "CXXFLAGS=--coverage make mode=unit-test"
 
       - name: Execute unit tests
         run: "bin/linux/unit-test/musique"
 
       - name: Execute regression tests
-        run: "CXXFLAGS=--coverage make test CC=gcc-11 CXX=g++-11"
+        run: "CXXFLAGS=--coverage make test"
 
       - name: Generate coverage info
         run: "scripts/coverage.sh ci"
-
 
       - name: Coveralls GitHub Action
         uses: coverallsapp/github-action@v1
