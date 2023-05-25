@@ -26,7 +26,6 @@ jobs:
     name: "Fully test Ubuntu 22.04"
     runs-on: ubuntu-22.04
     steps:
-      - name: Install initial dependencies
       - name: Install build dependencies
         run: "sudo apt install -y libasound2-dev lcov"
 
