@@ -1,7 +1,7 @@
 name: Build and test Musique
 on: [push]
 jobs:
-  build-ubuntu-20.04:
+  build-ubuntu-legacy:
     name: "Builds on Ubuntu 20.04"
     runs-on: ubuntu-20.04
     steps:
@@ -22,7 +22,7 @@ jobs:
       - name: Build release executable
         run: "make CC=gcc-11 CXX=g++-11"
 
-  build-ubuntu-22.04:
+  build-ubuntu-latest:
     name: "Fully test Ubuntu 22.04"
     runs-on: ubuntu-22.04
     steps:
