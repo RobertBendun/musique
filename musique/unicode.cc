@@ -1,5 +1,6 @@
 #include <array>
 #include <musique/unicode.hh>
+#include <tuple>
 
 static constexpr std::array<u8, 4> payloads {
 	0b0111'1111, 0b0001'1111, 0b0000'1111, 0b0000'0111
