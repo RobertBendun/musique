@@ -1,6 +1,7 @@
 #include <musique/interpreter/env.hh>
 #include <musique/interpreter/interpreter.hh>
 #include <musique/try.hh>
+#include <musique/unicode.hh>
 
 #include <chrono>
 #include <iostream>
@@ -31,6 +32,24 @@ static inline void register_note_length_constants()
 	global.force_define("dsn",  Number(3, 32));
 	global.force_define("tn",   Number(1, 32));
 	global.force_define("dtn",  Number(3, 64));
+
+	// Define note duration symbols from Musical Symbols Unicode block
+	{
+		Number::value_type pow2 = 1;
+		for (u32 rune = 0x1d15d; rune <= 0x1d164; ++rune) {
+			global.force_define(utf8::encode(rune), Number(1, pow2));
+			pow2 *= 2;
+		}
+	}
+
+	// Define rests as symbols from Musical Symbols Unicode block
+	{
+		Number::value_type pow2 = 1;
+		for (u32 rune = 0x1d13b; rune <= 0x1d142; ++rune) {
+			global.force_define(utf8::encode(rune), Note { .base = std::nullopt, .length = Number(1, pow2) });
+			pow2 *= 2;
+		}
+	}
 }
 
 Interpreter::Interpreter()

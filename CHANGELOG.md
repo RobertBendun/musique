@@ -24,6 +24,8 @@ Types of changes
 - `time` REPL command for measurement of execution time
 - Unit testing strikes again! `make mode=unit-test`
 - Continuous Integration with Github Actions
+- [Musical Symbols Unicode block](https://en.wikipedia.org/wiki/Musical_Symbols_(Unicode_block)) can be used as an identifiers
+    - by default they are lengths of notes and rests appropiate for given symbol
 
 ### Changed
 

@@ -42,6 +42,9 @@ namespace utf8
 	/// Returns length of the first rune in the provided string
 	auto length(std::string_view s) -> usize;
 
+	/// Encodes rune and returns as string
+	auto encode(u32 rune) -> std::string;
+
 	struct Print { u32 rune; };
 }
 
