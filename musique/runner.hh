@@ -8,9 +8,10 @@
 /// Execution_Options is set of flags controlling how Runner executes provided code
 enum class Execution_Options : std::uint32_t
 {
-	Print_Ast_Only = 1 << 0,
-	Print_Result   = 1 << 1,
-	Time_Execution = 1 << 2,
+	Print_Ast_Only    = 1 << 0,
+	Print_Result      = 1 << 1,
+	Time_Execution    = 1 << 2,
+	Print_Tokens_Only = 1 << 3,
 };
 
 template<>

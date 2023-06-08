@@ -237,6 +237,14 @@ static std::optional<Error> Main(std::span<char const*> args)
 	::runner = &runner;
 	std::signal(SIGINT, sigint_handler);
 
+	if (tokens_only_mode) {
+		runner.default_options |= Execution_Options::Print_Tokens_Only;
+	}
+
+	if (ast_only_mode) {
+		runner.default_options |= Execution_Options::Print_Ast_Only;
+	}
+
 	for (auto const& [type, argument] : runnables) {
 		if (type == ui::program_arguments::Run::Argument) {
 			Lines::the.add_line("<arguments>", argument, repl_line_number);

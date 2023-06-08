@@ -21,7 +21,8 @@ Runner::Runner()
 		interpreter.current_context->connect(std::nullopt);
 	}
 
-	Env::global->force_define("say", +[](Interpreter &interpreter, std::vector<Value> args) -> Result<Value> {
+	// TODO: This should be moved to builtin_functions.cc
+	auto *print = +[](Interpreter &interpreter, std::vector<Value> args) -> Result<Value> {
 		for (auto it = args.begin(); it != args.end(); ++it) {
 			std::cout << Try(format(interpreter, *it));
 			if (std::next(it) != args.end())
@@ -29,7 +30,10 @@ Runner::Runner()
 		}
 		std::cout << std::endl;
 		return {};
-	});
+	};
+
+	Env::global->force_define("print", print);
+	Env::global->force_define("say", print);
 }
 
 extern unsigned repl_line_number;
@@ -54,10 +58,16 @@ std::optional<Error> Runner::run(std::string_view source, std::string_view filen
 {
 	flags |= default_options;
 
-	auto ast = Try(Parser::parse(source, filename, repl_line_number));
+	auto ast = Try(Parser::parse(source, filename, repl_line_number, holds_alternative<Execution_Options::Print_Tokens_Only>(flags)));
+
 
 	if (holds_alternative<Execution_Options::Print_Ast_Only>(flags)) {
 		dump(ast);
+		return {};
+	}
+
+	// This placement of Print_Tokens_Only if correct, since the most common usage is to print both ast and tokens and not executing
+	if (holds_alternative<Execution_Options::Print_Tokens_Only>(flags)) {
 		return {};
 	}
 
