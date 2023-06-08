@@ -17,6 +17,8 @@ Types of changes
 
 ## [Unreleased]
 
+## [0.6.0] - 2023-06-09
+
 ### Added
 
 - Builtin `seed` to provide seed for all functions using random number generation
