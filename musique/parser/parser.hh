@@ -27,6 +27,12 @@ struct Parser
 	/// Parse either infix expression or variable declaration
 	Result<Ast> parse_expression();
 
+	/// Parse either infix expression or variable declaration
+	Result<Ast> parse_if_else();
+
+	/// Parse either infix expression or variable declaration
+	Result<Ast> parse_for();
+
 	/// Parse either comma or newline
 	Result<Ast> parse_separator();
 

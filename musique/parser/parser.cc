@@ -1,5 +1,5 @@
-#include <musique/parser/parser.hh>
 #include <musique/lexer/lexer.hh>
+#include <musique/parser/parser.hh>
 #include <musique/try.hh>
 
 #include <iostream>
@@ -13,14 +13,14 @@ constexpr auto Literal_Keywords = std::array {
 	"true"sv,
 };
 
-static_assert(Keywords_Count == Literal_Keywords.size() + 2, "Ensure that all literal keywords are listed");
+static_assert(Keywords_Count == Literal_Keywords.size() + 6, "Ensure that all literal keywords are listed");
 
 constexpr auto Operator_Keywords = std::array {
 	"and"sv,
 	"or"sv
 };
 
-static_assert(Keywords_Count == Operator_Keywords.size() + 3, "Ensure that all keywords that are operators are listed here");
+static_assert(Keywords_Count == Operator_Keywords.size() + 7, "Ensure that all keywords that are operators are listed here");
 
 enum class At_Least : bool
 {
@@ -52,7 +52,6 @@ Result<Ast> Parser::parse(std::string_view source, std::string_view filename, un
 
 	auto const result = parser.parse_sequence();
 
-#if 0
 	if (result.has_value() && parser.token_id < parser.tokens.size()) {
 		if (parser.expect(Token::Type::Ket)) {
 			auto const tok = parser.consume();
@@ -66,35 +65,88 @@ Result<Ast> Parser::parse(std::string_view source, std::string_view filename, un
 
 		errors::all_tokens_were_not_parsed(std::span(parser.tokens).subspan(parser.token_id));
 	}
-#endif
 
 	return result;
 }
 
+/// Skip separators (newline and comma) and return how many ware skipped
+static unsigned skip_separators(Parser &parser)
+{
+	unsigned separators_skipped = 0;
+	while (parser.expect(Token::Type::Nl) || parser.expect(Token::Type::Comma)) {
+		parser.consume();
+		separators_skipped++;
+	}
+	return separators_skipped;
+}
+
+// sequence = {expression, {newline|comma}}
 Result<Ast> Parser::parse_sequence()
 {
 	std::vector<Ast> seq;
-	for (;;) {
-		while (expect(Token::Type::Nl) || expect(Token::Type::Comma)) {
-			consume();
-		}
-		if (token_id < tokens.size()) {
+
+	if (token_id < tokens.size()) {
+		seq.push_back(Try(parse_expression()));
+		while (token_id < tokens.size() && skip_separators(*this) >= 1) {
 			seq.push_back(Try(parse_expression()));
-		} else {
-			break;
 		}
 	}
 	return Ast::sequence(std::move(seq));
 }
 
+// expression = assigment | infix
 Result<Ast> Parser::parse_expression()
 {
+	if (expect(std::pair{Token::Type::Keyword, "if"sv})) {
+		return parse_if_else();
+	}
+
+	if (expect(std::pair{Token::Type::Keyword, "for"sv})) {
+		return parse_for();
+	}
+
+	if (expect(std::pair{Token::Type::Keyword, "while"sv})) {
+		unimplemented();
+	}
+
 	if (expect(Token::Type::Symbol, std::pair{Token::Type::Operator, "="sv})) {
 		return parse_assigment();
 	}
+
 	return parse_infix();
 }
 
+// TODO: Support if ... then ... (current implementation supports only if ... ...)
+Result<Ast> Parser::parse_if_else()
+{
+	auto if_token = consume();
+	ensure(if_token.type == Token::Type::Keyword && if_token.source == "if", "parse_if_else() called and first token was not if");
+
+	auto condition = Try(parse_expression());
+	auto then = Try(parse_expression());
+
+	Ast if_node{};
+	if_node.type = Ast::Type::If;
+	if_node.token = if_token;
+	if_node.arguments.push_back(std::move(condition));
+	if_node.arguments.push_back(std::move(then));
+
+	if (expect(std::pair{Token::Type::Keyword, "else"sv})) {
+		[[maybe_unused]] auto else_token = consume(); // TODO Use for location resolution
+		auto else_ = Try(parse_expression());
+		if_node.arguments.push_back(std::move(else_));
+	}
+
+	return if_node;
+}
+
+/// Parse either infix expression or variable declaration
+Result<Ast> Parser::parse_for()
+{
+	unimplemented();
+}
+
+// infix = arithmetic_prefix, [ operator, infix ]
 Result<Ast> Parser::parse_infix()
 {
 	auto lhs = Try(parse_arithmetic_prefix());
@@ -248,11 +300,7 @@ Result<Ast> Parser::parse_index(Ast &&indexable)
 	index.file = indexable.file + open.location(filename);
 	index.arguments.push_back(std::move(indexable));
 
-	// This indirection is killing me, fixme pls
-	auto &block = index.arguments.emplace_back();
-	block.type = Ast::Type::Block;
-
-	auto &sequence = block.arguments.emplace_back();
+	auto &sequence = index.arguments.emplace_back();
 	sequence.type = Ast::Type::Sequence;
 	sequence.file = index.file;
 
@@ -306,6 +354,7 @@ Result<Ast> Parser::parse_assigment()
 
 Result<Ast> Parser::parse_identifier()
 {
+
 	if (not expect(Token::Type::Symbol)) {
 		// TODO Specific error message
 		return Error {
@@ -438,12 +487,7 @@ endloop:
 		return Ast::lambda(sequence.file, std::move(sequence), std::move(parameters));
 	}
 
-	// TODO This double nesting is unnesesary, remove it
-	Ast block;
-	block.type = Ast::Type::Block;
-	block.file = sequence.file;
-	block.arguments.push_back(std::move(sequence));
-	return block;
+	return sequence;
 }
 
 Result<Ast> Parser::parse_atomic()
@@ -527,6 +571,9 @@ bool operator==(Ast const& lhs, Ast const& rhs)
 	}
 
 	switch (lhs.type) {
+	case Ast::Type::If:
+		return std::equal(lhs.arguments.begin(), lhs.arguments.end(), rhs.arguments.begin(), rhs.arguments.end());
+
 	case Ast::Type::Literal:
 		return lhs.token.type == rhs.token.type && lhs.token.source == rhs.token.source;
 
@@ -552,13 +599,14 @@ bool operator==(Ast const& lhs, Ast const& rhs)
 std::ostream& operator<<(std::ostream& os, Ast::Type type)
 {
 	switch (type) {
-	case Ast::Type::Unary:                return os << "UNARY";
 	case Ast::Type::Binary:               return os << "BINARY";
 	case Ast::Type::Block:                return os << "BLOCK";
 	case Ast::Type::Call:                 return os << "CALL";
+	case Ast::Type::If:                   return os << "IF";
 	case Ast::Type::Lambda:               return os << "LAMBDA";
 	case Ast::Type::Literal:              return os << "LITERAL";
 	case Ast::Type::Sequence:             return os << "SEQUENCE";
+	case Ast::Type::Unary:                return os << "UNARY";
 	case Ast::Type::Variable_Declaration: return os << "VAR";
 	}
 	unreachable();
@@ -594,17 +642,28 @@ std::ostream& operator<<(std::ostream& os, Indent n)
 void dump(Ast const& tree, unsigned indent)
 {
 	Indent i{indent};
-	std::cout << i << "Ast::" << tree.type << "(" << tree.token.source << ")";
-	if (!tree.arguments.empty()) {
+	std::cout << "Ast::" << tree.type << "(" << tree.token.source << ")";
+	switch (tree.type) {
+	break; case Ast::Type::If:
 		std::cout << " {\n";
-		for (auto const& arg : tree.arguments) {
-			dump(arg, +i);
+		if (tree.arguments.size() >= 1) { std::cout << +i << ".cond = "; dump(tree.arguments[0], +i); }
+		if (tree.arguments.size() >= 2) { std::cout << +i << ".then = "; dump(tree.arguments[1], +i); }
+		if (tree.arguments.size() >= 3) { std::cout << +i << ".else = "; dump(tree.arguments[2], +i); }
+
+
+
+	break; default:
+		if (!tree.arguments.empty()) {
+			std::cout << " {\n";
+			for (auto const& arg : tree.arguments) {
+				std::cout << +i; dump(arg, +i);
+			}
+			std::cout << i << '}';
 		}
-		std::cout << i << '}';
-	}
-	std::cout << '\n';
-	if (indent == 0) {
-		std::cout << std::flush;
+		std::cout << '\n';
+		if (indent == 0) {
+			std::cout << std::flush;
+		}
 	}
 }
 

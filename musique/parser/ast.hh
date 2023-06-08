@@ -40,6 +40,7 @@ struct Ast
 		Literal,              ///< Compile time known constant like `c` or `1`
 		Sequence,             ///< Several expressions sequences like `42`, `42; 32`
 		Variable_Declaration, ///< Declaration of a variable with optional value assigment like `var x = 10` or `var y`
+		If,                   ///< if_then_else expression
 	};
 
 	/// Type of AST node

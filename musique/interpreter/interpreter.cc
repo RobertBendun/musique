@@ -240,6 +240,18 @@ Result<Value> Interpreter::eval(Ast &&ast)
 			return Value{};
 		}
 
+	case Ast::Type::If:
+		{
+			auto const condition = Try(eval(std::move(ast.arguments.front())));
+			if (condition.truthy()) {
+				return eval(std::move(ast.arguments[1]));
+			} else if (ast.arguments.size() == 3) {
+				return eval(std::move(ast.arguments[2]));
+			} else {
+				return Value{};
+			}
+		}
+
 	case Ast::Type::Block:
 	case Ast::Type::Lambda:
 		{
@@ -358,7 +370,7 @@ static void snapshot(std::ostream& out, Note const& note) {
 
 static void snapshot(std::ostream &out, Ast const& ast) {
 	switch (ast.type) {
-	break; case Ast::Type::Unary:
+	break; case Ast::Type::Unary: case Ast::Type::If:
 		unimplemented();
 
 	break; case Ast::Type::Sequence:

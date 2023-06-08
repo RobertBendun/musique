@@ -17,7 +17,11 @@ constexpr auto Keywords = std::array {
 	"nil"sv,
 	"true"sv,
 	"and"sv,
-	"or"sv
+	"or"sv,
+	"for"sv,
+	"while"sv,
+	"if"sv,
+	"else"sv,
 };
 
 static_assert(Keywords.size() == Keywords_Count, "Table above should contain all the tokens for lexing");
