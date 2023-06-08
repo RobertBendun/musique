@@ -1,15 +1,15 @@
-#include <musique/algo.hh>
-#include <musique/interpreter/env.hh>
-#include <musique/guard.hh>
-#include <musique/interpreter/interpreter.hh>
-#include <musique/try.hh>
-
-#include <random>
-#include <memory>
-#include <iostream>
-#include <unordered_set>
 #include <chrono>
+#include <iostream>
+#include <memory>
+#include <musique/algo.hh>
+#include <musique/guard.hh>
+#include <musique/interpreter/env.hh>
+#include <musique/interpreter/interpreter.hh>
+#include <musique/random.hh>
+#include <musique/try.hh>
+#include <random>
 #include <thread>
+#include <unordered_set>
 
 /// This macro implements functions that are only implemented as forwarding
 /// all arguments to another function
@@ -597,10 +597,12 @@ static Result<Value> builtin_primes(Interpreter&, std::vector<Value> args)
 {
 	if (auto a = match<Number>(args)) {
 		auto [n_frac] = *a;
+		n_frac = n_frac.floor();
 		// Better sieve could be Sieve of Atkin, but it's more complicated
 		// so for now we would use Eratosthenes one.
-		if (n_frac.simplify_inplace(); n_frac.num <= 1) {
-			return Array{};
+		switch (n_frac.num) {
+		case 0: return Array{};
+		case 1: return std::vector<Value>{{Number{2}}};
 		}
 		size_t n = n_frac.floor().as_int();
 
@@ -1100,6 +1102,44 @@ static Result<Value> builtin_flat(Interpreter &i, std::vector<Value> args)
 	return Try(into_flat_array(i, std::move(args)));
 }
 
+//: Funkcja `seed` ustawia wartość początkową dla losowanych liczb.
+//:
+//: W przypadku braku podanych argumentów seed samo ustala nowe źródło liczb losowych.
+//:
+//: Domyślnie wartość inicjalizująca losowanie liczb jest wybierana losowo w czasie startu Musique.
+//: Jeśli chcesz by każde uruchomienie utworu brzmiało w podobny sposób użyj tej funkcji ze stałą wartością.
+static Result<Value> builtin_seed(Interpreter &interpreter, std::vector<Value> args)
+{
+	auto const guard = Guard<2> {
+		.name = "seed",
+		.possibilities = { "() -> number", "(number) -> number" }
+	};
+
+	std::optional<decltype(interpreter.random_number_engine)::result_type> seed = std::nullopt;
+
+	switch (args.size()) {
+	break; case 0:
+		seed = std::random_device{}();
+
+	break; case 1:
+		if (auto a = match<Number>(args)) {
+			auto [s] = *a;
+			if (s.den == 1) {
+				seed = s.num;
+			} else {
+				s.num = s.num ^ s.den;
+			}
+		}
+	}
+
+	if (!seed) {
+		return guard.yield_error();
+	}
+
+	interpreter.random_number_engine.seed(*seed);
+	return Number(std::int64_t(*seed));
+}
+
 //: Funkcja `pick` zwraca pseudo-losowo element z listy argumentów.
 //:
 //: # Przykład
@@ -1110,15 +1150,13 @@ static Result<Value> builtin_flat(Interpreter &i, std::vector<Value> args)
 //: b
 //: ```
 /// Pick random value from arugments
-static Result<Value> builtin_pick(Interpreter &i, std::vector<Value> args)
+static Result<Value> builtin_pick(Interpreter &interpreter, std::vector<Value> args)
 {
-	static std::mt19937 rnd{std::random_device{}()};
-	auto array = Try(flatten(i, std::move(args)));
+	auto array = Try(flatten(interpreter, std::move(args)));
 	if (array.empty()) {
 		return array;
 	}
-	std::uniform_int_distribution<std::size_t> dist(0, array.size()-1);
-	return array[dist(rnd)];
+	return array[musique::random::uniform<std::size_t>(interpreter.random_number_engine, 0, array.size()-1)];
 }
 
 //: Funkcja `shuffle` pseudo-losowo tasuje elementy z listy argumentów.
@@ -1129,11 +1167,10 @@ static Result<Value> builtin_pick(Interpreter &i, std::vector<Value> args)
 //: (b, a, c)
 //: ```
 /// Shuffle arguments
-static Result<Value> builtin_shuffle(Interpreter &i, std::vector<Value> args)
+static Result<Value> builtin_shuffle(Interpreter &interpreter, std::vector<Value> args)
 {
-	static std::mt19937 rnd{std::random_device{}()};
-	auto array = Try(flatten(i, std::move(args)));
-	std::shuffle(array.begin(), array.end(), rnd);
+	auto array = Try(flatten(interpreter, std::move(args)));
+	musique::random::shuffle(array.begin(), array.end(), interpreter.random_number_engine);
 	return array;
 }
 
@@ -1614,6 +1651,52 @@ static Result<Value> builtin_peers(Interpreter &interpreter, std::vector<Value>)
 	return Number(interpreter.starter.peers());
 }
 
+//: Przenieś wartość z jednego zbioru w drugi
+static Result<Value> builtin_remap(Interpreter &interpreter, std::vector<Value> args)
+{
+	static constexpr auto guard = Guard<4> {
+		.name = "remap",
+		.possibilities = {
+			"(value, from, to)",
+			"(value, from_start, from_end, to_start, to_end)",
+			// This two signatures require presence of named parameters
+			// "(value, from_start, from_end, to)",
+			// "(value, from, to_start, to_end)",
+		},
+	};
+
+	if (auto a = match<Value, Collection, Collection>(args)) {
+		auto const& [value, from, to] = *a;
+		std::size_t i = 0;
+		for (; i < from.size(); ++i) {
+			auto const& element = from.index(interpreter, i);
+			if (element == value) {
+				return to.index(interpreter, i % to.size());
+			}
+		}
+		unimplemented("report an error that we couldn't find value in from collection");
+	}
+
+	if (auto a = match<Number, Number, Number, Number, Number>(args)) {
+		auto [value, start1, stop1, start2, stop2] = *a;
+		return Try((value - start1) / (stop1 - start1)) * (stop2 - start2) + start2;
+	}
+
+	if (auto a = match<Number, Number, Number, Chord, Chord>(args)) {
+		unimplemented("waits for rework of type system");
+	}
+
+	if (auto a = match<Chord, Chord, Chord, Chord, Chord>(args)) {
+		unimplemented("waits for rework of type system");
+	}
+
+	if (auto a = match<Chord, Chord, Chord, Number, Number>(args)) {
+		unimplemented("waits for rework of type system");
+	}
+
+	return guard.yield_error();
+}
+
 //: Ustaw wyjście MIDI w danym kontekście na dany port
 //:
 //: Dostępne opcje to numer portu oraz symbol `'virtual` tworzacy port wirtualny MIDI
@@ -1700,10 +1783,12 @@ void Interpreter::register_builtin_functions()
 	global.force_define("port",           builtin_port);
 	global.force_define("program_change", builtin_program_change);
 	global.force_define("range",          builtin_range);
+	global.force_define("remap",          builtin_remap);
 	global.force_define("reverse",        builtin_reverse);
 	global.force_define("rotate",         builtin_rotate);
 	global.force_define("round",          builtin_round);
 	global.force_define("scan",           builtin_scan);
+	global.force_define("seed",           builtin_seed);
 	global.force_define("set_len",        builtin_set_len);
 	global.force_define("set_oct",        builtin_set_oct);
 	global.force_define("shuffle",        builtin_shuffle);

@@ -1,0 +1,5 @@
+seed 42,
+say (shuffle (up 5)),
+say (shuffle (up 5) (up 5)),
+say (shuffle 1 2 3 4),
+say (shuffle ((up 10), (down 10))),

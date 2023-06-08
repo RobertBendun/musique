@@ -301,7 +301,7 @@ def main(source_path: str, output_path: str, format: typing.Literal["html", "cpp
     builtins = each_musique_name_occurs_once(builtins)
     builtins = sorted(list(builtins), key=lambda builtin: builtin.names[0])
 
-    if format == "md":
+    if format == "html":
         generate_html_document(builtins, output_path)
     else:
         generate_cpp_documentation(builtins, output_path)

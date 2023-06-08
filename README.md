@@ -1,10 +1,14 @@
-# Musique interpreter
+# Musique
+
+[![Build and test Musique](https://github.com/RobertBendun/musique/actions/workflows/build.yml/badge.svg)](https://github.com/RobertBendun/musique/actions/workflows/build.yml)
+[![Coverage Status](https://coveralls.io/repos/github/RobertBendun/musique/badge.svg?branch=main)](https://coveralls.io/github/RobertBendun/musique?branch=main)
 
 Reference implementation of Musique programming language.
 
 ## Building
 
 Reference [`build_instructions.md`](./build_instructions.md).
+You can find prebuild releases [here](https://musique.students.wmi.amu.edu.pl/).
 
 ## Syntax highlighting
 
@@ -29,8 +33,8 @@ Copy [editor/vscode-musique](editor/vscode-musique) directory to `<user home>/.v
 # Thanks to
 
 - Creator of [tl::expected](https://github.com/TartanLlama/expected) - [Sy Brand](https://sybrand.ink/)
-- Creator of [bestline](https://github.com/jart/bestline) - [Justine Tunney](https://justinetunney.com/)
 - Creator of [rtmidi](https://github.com/thestk/rtmidi/) - [Gary P. Scavone](http://www.music.mcgill.ca/~gary/)
 - Creators of [link](https://github.com/Ableton/link)
+- Creators of [Catch2](https://github.com/catchorg/Catch2/)
 
 and all contributors that created libraries above.

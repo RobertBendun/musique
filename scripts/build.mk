@@ -1,40 +1,21 @@
-Release_Obj=$(addprefix bin/$(os)/,$(Obj)) bin/$(os)/builtin_function_documentation.o
+TARGET_OBJ = $(addprefix $(PREFIX)/,$(Obj)) $(PREFIX)/builtin_function_documentation.o
 
-# bin/$(os)/libreplxx.a:
-# 	@CXX=$(CXX) os=$(os) scripts/build_replxx.sh
-
-bin/$(os)/%.o: musique/%.cc
+$(PREFIX)/%.o: musique/%.cc
 	@echo "CXX $@"
-	@$(CXX) $(CXXFLAGS) $(RELEASE_FLAGS) $(CPPFLAGS) -o $@ $< -c
+	@$(CXX) $(CXXFLAGS) $(CPPFLAGS) -o $@ $< -c
 
-bin/$(os)/$(Target): $(Release_Obj) bin/$(os)/main.o bin/$(os)/rtmidi.o
+$(PREFIX)/$(Target): $(TARGET_OBJ) $(MAIN) $(PREFIX)/rtmidi.o
 	@echo "CXX $@"
-	@$(CXX) $(CXXFLAGS) $(RELEASE_FLAGS) $(CPPFLAGS) -o $@ $(shell CXX=$(CXX) os=$(os) scripts/build_replxx.sh)  $(Release_Obj) bin/$(os)/rtmidi.o $(LDFLAGS) $(LDLIBS)
+	@$(CXX) $(CXXFLAGS) $(CPPFLAGS) -o $@ $(shell CXX=$(CXX) os=$(os) scripts/build_replxx.sh) $^ $(LDFLAGS) $(LDLIBS)
 
-bin/$(os)/builtin_function_documentation.o: bin/$(os)/builtin_function_documentation.cc
+$(PREFIX)/builtin_function_documentation.o: $(PREFIX)/builtin_function_documentation.cc
 	@echo "CXX $@"
-	@$(CXX) $(CXXFLAGS) $(RELEASE_FLAGS) $(CPPFLAGS) -o $@ $< -c
+	@$(CXX) $(CXXFLAGS) $(CPPFLAGS) -o $@ $< -c
 
-bin/$(os)/builtin_function_documentation.cc: musique/interpreter/builtin_functions.cc scripts/document-builtin.py
+$(PREFIX)/builtin_function_documentation.cc: musique/interpreter/builtin_functions.cc scripts/document-builtin.py
 	scripts/document-builtin.py -f cpp -o $@ musique/interpreter/builtin_functions.cc
 
-Debug_Obj=$(addprefix bin/$(os)/debug/,$(Obj)) bin/$(os)/debug/builtin_function_documentation.o
-
-bin/$(os)/debug/$(Target): $(Debug_Obj) bin/$(os)/debug/main.o bin/$(os)/rtmidi.o
-	@echo "CXX $@"
-	@$(CXX) $(CXXFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) -o $@ $(Debug_Obj) bin/$(os)/rtmidi.o $(shell CXX=$(CXX) os=$(os) scripts/build_replxx.sh) $(LDFLAGS) $(LDLIBS)
-
-bin/$(os)/debug/%.o: musique/%.cc
-	@echo "CXX $@"
-	@$(CXX) $(CXXFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) -o $@ $< -c
-
-
-bin/$(os)/debug/builtin_function_documentation.o: bin/$(os)/builtin_function_documentation.cc
-	@echo "CXX $@"
-	@$(CXX) $(CXXFLAGS) $(DEBUG_FLAGS) $(CPPFLAGS) -o $@ $< -c
-
 # http://www.music.mcgill.ca/~gary/rtmidi/#compiling
-bin/$(os)/rtmidi.o: lib/rtmidi/RtMidi.cpp lib/rtmidi/RtMidi.h
+$(PREFIX)/rtmidi.o: lib/rtmidi/RtMidi.cpp lib/rtmidi/RtMidi.h
 	@echo "CXX $@"
 	@$(CXX) $< -c -O2 -o $@ $(CPPFLAGS) -std=c++20
-

@@ -1,0 +1,4 @@
+say (rotate 3 (up 10)),
+say (rotate -3 (up 10)),
+say (rotate 0 (up 10)),
+say (rotate 3),

@@ -1,0 +1,13 @@
+-- Simple assigments
+x := 10,
+say x,
+x = 20,
+say x,
+
+-- Compound assigments
+x += 30, say x,
+x /= 10, say x,
+
+-- Redeclaration doesn't raise an error
+x := 10,
+say x,

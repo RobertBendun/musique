@@ -1,0 +1,67 @@
+name: Build and test Musique
+on: [push]
+jobs:
+  build-ubuntu-legacy:
+    name: "Builds on Ubuntu 20.04"
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Install initial dependencies
+        run: "sudo apt update && sudo apt install -y make software-properties-common zip unzip git; sudo add-apt-repository ppa:ubuntu-toolchain-r/test"
+
+      - name: Install build dependencies
+        run: "sudo apt install -y gcc-11 g++-11 libasound2-dev lcov"
+
+      - name: Setup Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Build release executable
+        run: "make CC=gcc-11 CXX=g++-11"
+
+  build-ubuntu-latest:
+    name: "Fully test Ubuntu 22.04"
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Install build dependencies
+        run: "sudo apt install -y libasound2-dev lcov"
+
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Build release executable
+        run: "make"
+
+      - name: Build unit tests executable
+        run: "CXXFLAGS=--coverage make mode=unit-test"
+
+      - name: Execute unit tests
+        run: "bin/linux/unit-test/musique"
+
+      - name: Execute regression tests
+        run: "CXXFLAGS=--coverage make test"
+
+      - name: Generate coverage info
+        run: "scripts/coverage.sh ci"
+
+      - name: Coveralls GitHub Action
+        uses: coverallsapp/github-action@v1
+        with:
+          path-to-lcov: coverage.info
+
+
+  build-macos:
+    name: "Build and regression test on macOS"
+    runs-on: macos-13
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Build
+        run: "make"
+
+      - name: Execute regression tests
+        run: "make test"

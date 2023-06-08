@@ -1,0 +1,2 @@
+say (remap 4 (up 10) (range 0 100 10)),
+say (remap 4 1 10 10 100),

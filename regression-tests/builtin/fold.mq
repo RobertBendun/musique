@@ -1,0 +1,4 @@
+say (fold '*),
+say (fold '+ 1 2 3 4 5),
+say (fold '* 1 2 3 4 5),
+say (fold '* (1 + up 5))

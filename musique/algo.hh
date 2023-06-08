@@ -47,7 +47,7 @@ namespace algo
 		for (; lhs != lhs_range.end() && rhs != rhs_range.end(); ++lhs, ++rhs) {
 			if ((result = *lhs <=> *rhs) != 0) {
 				return result;
-			} 
+			}
 		}
 		return result;
 	}

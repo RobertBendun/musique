@@ -1,5 +1,6 @@
 #include <array>
 #include <musique/unicode.hh>
+#include <tuple>
 
 static constexpr std::array<u8, 4> payloads {
 	0b0111'1111, 0b0001'1111, 0b0000'1111, 0b0000'0111
@@ -52,9 +53,8 @@ auto utf8::decode(std::string_view s) -> std::pair<u32, std::string_view>
 	return { result, s };
 }
 
-std::ostream& operator<<(std::ostream& os, utf8::Print const& print)
+static std::tuple<std::array<std::uint8_t, utf8::Max_Bytes>, std::size_t> utf8_encode(u32 r)
 {
-	auto r = print.rune;
 	std::array<u8, utf8::Max_Bytes> buffer;
 	unsigned length = 0;
 
@@ -77,7 +77,20 @@ std::ostream& operator<<(std::ostream& os, utf8::Print const& print)
 		buffer[3] = ((r >>  0) & 0x3f) | 0x80;
 		length = 4;
 	}
-	return os.write((char const*)buffer.data(), length);
+
+	return {buffer, length};
+}
+
+auto utf8::encode(u32 r) -> std::string
+{
+	auto [buffer, length] = utf8_encode(r);
+	return std::string(reinterpret_cast<char const*>(buffer.data()), length);
+}
+
+std::ostream& operator<<(std::ostream& os, utf8::Print const& print)
+{
+	auto [buffer, length] = utf8_encode(print.rune);
+	return os.write(reinterpret_cast<char const*>(buffer.data()), length);
 }
 
 bool unicode::is_digit(u32 digit)
@@ -103,13 +116,18 @@ bool unicode::is_space_or_newline(u32 space)
 	return '\n' == space || unicode::is_space(space);
 }
 
-bool unicode::is_identifier(u32 letter, unicode::First_Character is_first_character)
+bool unicode::is_identifier(u32 rune, unicode::First_Character is_first_character)
 {
-	return (unicode::is_letter(letter)
-		|| letter == '\''
-		|| letter == '_'
-		|| letter == '#'
-		|| letter == '$'
-		|| letter == '@')
-	|| (!bool(is_first_character) && unicode::is_digit(letter));
+
+	return (unicode::is_letter(rune)
+		|| rune == '\''
+		|| rune == '_'
+		|| rune == '#'
+		|| rune == '$'
+		|| rune == '@'
+		// This characters are not consider identifiers by Unicode but it would be a shame to not include them
+		// see: https://en.wikipedia.org/wiki/Musical_Symbols_(Unicode_block)
+		|| (rune >= 0x1d15d /* aka whole note symbol '𝅝' */ && rune <= 0x1d164 /* aka semihemidemisemiquaver note '𝅘𝅥𝅲' */)
+		|| (rune >= 0x1d13b /* aka whole rest symbol '𝄻' */ && rune <= 0x1d142 /* aka semihemidemisemiquaver rest '𝅂' */)
+	) || (!bool(is_first_character) && unicode::is_digit(rune));
 }

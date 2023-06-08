@@ -3,11 +3,23 @@ import argparse
 import dataclasses
 import json
 import os
+import platform
 import subprocess
 
 TEST_DIR = "regression-tests"
 TEST_DB = "test_db.json"
-INTERPRETER = "bin/linux/debug/musique"
+
+
+SYSTEM_TO_DIRECTORY = {
+    "Darwin": "macos",
+    "Linux": "linux",
+}
+
+system = platform.system()
+assert system in SYSTEM_TO_DIRECTORY.keys(), "platform is not supported yet"
+INTERPRETER = "bin/{system}/debug/musique".format(**{
+    "system": SYSTEM_TO_DIRECTORY[system]
+})
 
 @dataclasses.dataclass
 class Result:
@@ -26,7 +38,7 @@ class TestCase:
 
     def run(self, interpreter: str, source: str, cwd: str):
         result = subprocess.run(
-            args=[interpreter, "run", source],
+            args=[interpreter, "run", source, "--dont-automatically-connect"],
             capture_output=True,
             cwd=cwd,
             text=True
@@ -82,8 +94,10 @@ class TestCase:
                 print(f"       Got: {actual[diff_line]}")
             elif len(expected) > len(actual):
                 print(f"Expected {name} is {len(expected) - len(actual)} lines longer then actual")
+                print(f"  Extra lines: ", expected[len(actual):])
             else:
                 print(f"Actual {name} is {len(actual) - len(expected)} lines longer then expected")
+                print(f"  Extra lines: ", actual[len(expected):])
 
         return False
 
@@ -181,10 +195,11 @@ def test():
             total += 1
 
     print(f"Passed {successful} out of {total} ({100 * successful // total}%)")
+    exit(1 if successful != total else 0)
 
 if __name__ == "__main__":
     if not os.path.exists(INTERPRETER):
-        subprocess.run("make debug", shell=True, check=True)
+        subprocess.run("make mode=debug", shell=True, check=True)
 
     parser = argparse.ArgumentParser(description="Regression test runner for Musique programming language")
     parser.add_argument("-d", "--discover", action="store_true", help="Discover all tests that are not in testing database")
@@ -226,4 +241,4 @@ if __name__ == "__main__":
     if to_record:
         with open(test_db_path, "w") as f:
             json_suites = [dataclasses.asdict(suite) for suite in suites]
-            json.dump(json_suites, f, indent=2)
+            json.dump(json_suites, f, separators=(',', ':'))

@@ -117,10 +117,10 @@ Result<Value> wrap_value(Result<T> &&value)
 	return std::move(value).map([](auto &&value) { return Value(std::move(value)); });
 }
 
-template<typename Desired>
-constexpr Desired& get_ref(Value &v)
+template<typename Desired, typename V>
+constexpr Desired& get_ref(V &v)
 {
-	if constexpr (std::is_same_v<Desired, Value>) {
+	if constexpr (std::is_same_v<Desired, V>) {
 		return v;
 	} else {
 		if (auto result = get_if<Desired>(v)) { return *result; }

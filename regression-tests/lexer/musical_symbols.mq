@@ -1,0 +1,5 @@
+-- Test presence of symbols for note and rests from Musical Symbols Unicode block
+-- see: https://en.wikipedia.org/wiki/Musical_Symbols_(Unicode_block)
+
+say 𝅝 𝅗𝅥 𝅘𝅥 𝅘𝅥𝅮 𝅘𝅥𝅯 𝅘𝅥𝅰 𝅘𝅥𝅱 𝅘𝅥𝅲,
+say 𝄻 𝄼 𝄽 𝄾 𝄿 𝅀 𝅁 𝅂,

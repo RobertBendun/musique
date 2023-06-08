@@ -1,4 +1,5 @@
 #include <charconv>
+#include <chrono>
 #include <csignal>
 #include <cstdio>
 #include <cstring>
@@ -6,20 +7,14 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
-#include <musique/cmd.hh>
-#include <musique/format.hh>
-#include <musique/interpreter/builtin_function_documentation.hh>
-#include <musique/interpreter/env.hh>
-#include <musique/interpreter/interpreter.hh>
+#include <musique/bit_field.hh>
 #include <musique/lexer/lines.hh>
-#include <musique/midi/midi.hh>
-#include <musique/parser/parser.hh>
-#include <musique/platform.hh>
 #include <musique/pretty.hh>
+#include <musique/runner.hh>
 #include <musique/try.hh>
+#include <musique/ui/program_arguments.hh>
 #include <musique/unicode.hh>
 #include <musique/user_directory.hh>
-#include <musique/value/block.hh>
 #include <span>
 #include <thread>
 #include <unordered_set>
@@ -39,7 +34,9 @@ namespace fs = std::filesystem;
 bool tokens_only_mode = false;
 bool ast_only_mode = false;
 bool enable_repl = false;
-static unsigned repl_line_number = 1;
+
+// TODO: This variable is sus. It is used in a care-free manner and it usage should be reviewed
+unsigned repl_line_number = 1;
 
 #define Ignore(Call) do { auto const ignore_ ## __LINE__ = (Call); (void) ignore_ ## __LINE__; } while(0)
 
@@ -76,132 +73,9 @@ static void trim(std::string_view &s)
 	}
 }
 
-static std::string filename_to_function_name(std::string_view filename)
-{
-	if (filename == "-") {
-		return "stdin";
-	}
-
-	auto stem = fs::path(filename).stem().string();
-	auto stem_view = std::string_view(stem);
-
-	std::string name;
-
-	auto is_first = unicode::First_Character::Yes;
-	while (!stem_view.empty()) {
-		auto [rune, next_stem] = utf8::decode(stem_view);
-		if (!unicode::is_identifier(rune, is_first)) {
-			if (rune != ' ' && rune != '-') {
-				// TODO Nicer error
-				std::cerr << "[ERROR] Failed to construct function name from filename " << stem
-					        << "\n       due to presence of invalid character: " << utf8::Print{rune} << "(U+" << std::hex << rune << ")\n"
-									<< std::flush;
-				std::exit(1);
-			}
-			name += '_';
-		} else {
-			name += stem_view.substr(0, stem_view.size() - next_stem.size());
-		}
-		stem_view = next_stem;
-	}
-	return name;
-}
-
-/// Runs interpreter on given source code
-struct Runner
-{
-	static inline Runner *the;
-
-	Interpreter interpreter;
-
-	/// Setup interpreter and midi connection with given port
-	explicit Runner()
-		: interpreter{}
-	{
-		ensure(the == nullptr, "Only one instance of runner is supported");
-		the = this;
-
-		interpreter.current_context->connect(std::nullopt);
-
-		Env::global->force_define("say", +[](Interpreter &interpreter, std::vector<Value> args) -> Result<Value> {
-			for (auto it = args.begin(); it != args.end(); ++it) {
-				std::cout << Try(format(interpreter, *it));
-				if (std::next(it) != args.end())
-					std::cout << ' ';
-			}
-			std::cout << std::endl;
-			return {};
-		});
-	}
-
-	Runner(Runner const&) = delete;
-	Runner(Runner &&) = delete;
-	Runner& operator=(Runner const&) = delete;
-	Runner& operator=(Runner &&) = delete;
-
-	/// Consider given input file as new definition of parametless function
-	///
-	/// Useful for deffering execution of files to the point when all configuration of midi devices
-	/// is beeing known as working.
-	std::optional<Error> deffered_file(std::string_view source, std::string_view filename)
-	{
-		auto ast = Try(Parser::parse(source, filename, repl_line_number, tokens_only_mode));
-		if (ast_only_mode) {
-			dump(ast);
-			return {};
-		}
-
-		auto name = filename_to_function_name(filename);
-
-		Block block;
-		block.file = ast.file;
-		block.body = std::move(ast);
-		block.context = Env::global;
-		std::cout << "Defined function " << name << " as file " << filename << std::endl;
-		Env::global->force_define(std::move(name), Value(std::move(block)));
-		return {};
-	}
-
-	/// Run given source
-	std::optional<Error> run(std::string_view source, std::string_view filename, bool output = false)
-	{
-		auto ast = Try(Parser::parse(source, filename, repl_line_number, tokens_only_mode));
-
-		if (ast_only_mode) {
-			dump(ast);
-			return {};
-		}
-		try {
-			if (auto result = Try(interpreter.eval(std::move(ast))); output && not holds_alternative<Nil>(result)) {
-				std::cout << Try(format(interpreter, result)) << std::endl;
-			}
-		} catch (KeyboardInterrupt const&) {
-			interpreter.turn_off_all_active_notes();
-			interpreter.starter.stop();
-			std::cout << std::endl;
-		}
-		return {};
-	}
-};
-
 /// All source code through life of the program should stay allocated, since
 /// some of the strings are only views into source
 std::vector<std::string> eternal_sources;
-
-#if 0
-void completion(char const* buf, bestlineCompletions *lc)
-{
-	std::string_view in{buf};
-
-	for (auto scope = Runner::the->interpreter.env.get(); scope != nullptr; scope = scope->parent.get()) {
-		for (auto const& [name, _] : scope->variables) {
-			if (name.starts_with(in)) {
-				bestlineAddCompletion(lc, name.c_str());
-			}
-		}
-	}
-}
-#endif
 
 /// Handles commands inside REPL session (those starting with ':')
 ///
@@ -210,6 +84,7 @@ static Result<bool> handle_repl_session_commands(std::string_view input, Runner 
 {
 	using Handler = std::optional<Error>(*)(Runner &runner, std::optional<std::string_view> arg);
 	using Command = std::pair<std::string_view, Handler>;
+
 	static constexpr auto Commands = std::array {
 		Command { "exit",
 			+[](Runner&, std::optional<std::string_view>) -> std::optional<Error> {
@@ -276,6 +151,33 @@ static Result<bool> handle_repl_session_commands(std::string_view input, Runner 
 				return {};
 			},
 		},
+
+		Command {
+			"time",
+			+[](Runner& runner, std::optional<std::string_view> command) -> std::optional<Error> {
+				std::optional<bool> enable = std::nullopt;
+				if (command) {
+					if (command == "enable") {
+						enable = true;
+					} else if (command == "disable") {
+						enable = false;
+					}
+				}
+
+				if (!enable.has_value()) {
+					enable = !holds_alternative<Execution_Options::Time_Execution>(runner.default_options);
+				}
+
+				if (*enable) {
+					std::cout << "Timing execution is on" << std::endl;
+					runner.default_options |= Execution_Options::Time_Execution;
+				} else {
+					std::cout << "Timing execution is off" << std::endl;
+					runner.default_options &= ~Execution_Options::Time_Execution;
+				}
+				return {};
+			},
+		},
 	};
 
 	if (input.starts_with('!')) {
@@ -312,21 +214,22 @@ void sigint_handler(int sig)
 }
 
 /// Fancy main that supports Result forwarding on error (Try macro)
+[[maybe_unused]]
 static std::optional<Error> Main(std::span<char const*> args)
 {
 	enable_repl = args.empty();
 
-	if (cmd::is_tty() && getenv("NO_COLOR") == nullptr) {
+	// TODO: is_tty should be in ui namespace
+	if (ui::program_arguments::is_tty() && getenv("NO_COLOR") == nullptr) {
 		pretty::terminal_mode();
 	}
 
-	std::vector<cmd::Run> runnables;
+	std::vector<ui::program_arguments::Run> runnables;
 
-
-	while (args.size()) if (auto failed = cmd::accept_commandline_argument(runnables, args)) {
+	while (args.size()) if (auto failed = ui::program_arguments::accept_commandline_argument(runnables, args)) {
 		std::cerr << pretty::begin_error << "musique: error:" << pretty::end;
 		std::cerr << " Failed to recognize parameter " << std::quoted(*failed) << std::endl;
-		cmd::print_close_matches(args.front());
+		ui::program_arguments::print_close_matches(args.front());
 		std::exit(1);
 	}
 
@@ -335,7 +238,7 @@ static std::optional<Error> Main(std::span<char const*> args)
 	std::signal(SIGINT, sigint_handler);
 
 	for (auto const& [type, argument] : runnables) {
-		if (type == cmd::Run::Argument) {
+		if (type == ui::program_arguments::Run::Argument) {
 			Lines::the.add_line("<arguments>", argument, repl_line_number);
 			Try(runner.run(argument, "<arguments>"));
 			repl_line_number++;
@@ -345,17 +248,17 @@ static std::optional<Error> Main(std::span<char const*> args)
 		if (path == "-") {
 			eternal_sources.emplace_back(std::istreambuf_iterator<char>(std::cin), std::istreambuf_iterator<char>());
 		} else {
-			if (not fs::exists(path)) {
+			if (not std::filesystem::exists(path)) {
 				std::cerr << pretty::begin_error << "musique: error:" << pretty::end;
 				std::cerr << " couldn't open file: " << path << std::endl;
 				std::exit(1);
 			}
-			std::ifstream source_file{fs::path(path)};
+			std::ifstream source_file{std::filesystem::path(path)};
 			eternal_sources.emplace_back(std::istreambuf_iterator<char>(source_file), std::istreambuf_iterator<char>());
 		}
 
 		Lines::the.add_file(std::string(path), eternal_sources.back());
-		if (type == cmd::Run::File) {
+		if (type == ui::program_arguments::Run::File) {
 			Try(runner.run(eternal_sources.back(), path));
 		} else {
 			Try(runner.deffered_file(eternal_sources.back(), argument));
@@ -363,7 +266,7 @@ static std::optional<Error> Main(std::span<char const*> args)
 	}
 
 	enable_repl = enable_repl || (!runnables.empty() && std::all_of(runnables.begin(), runnables.end(),
-		[](cmd::Run const& run) { return run.type == cmd::Run::Deffered_File; }));
+		[](ui::program_arguments::Run const& run) { return run.type == ui::program_arguments::Run::Deffered_File; }));
 
 	if (enable_repl) {
 		repl_line_number = 1;
@@ -409,7 +312,7 @@ static std::optional<Error> Main(std::span<char const*> args)
 			}
 
 			Lines::the.add_line("<repl>", raw, repl_line_number);
-			auto result = runner.run(raw, "<repl>", true);
+			auto result = runner.run(raw, "<repl>", Execution_Options::Print_Result);
 			using Traits = Try_Traits<std::decay_t<decltype(result)>>;
 			if (not Traits::is_ok(result)) {
 				std::cout << std::flush;
@@ -423,6 +326,8 @@ static std::optional<Error> Main(std::span<char const*> args)
 	return {};
 }
 
+#ifndef MUSIQUE_UNIT_TESTING
+
 int main(int argc, char const** argv)
 {
 	auto const args = std::span(argv, argc).subspan(1);
@@ -433,3 +338,5 @@ int main(int argc, char const** argv)
 	}
 	return 0;
 }
+
+#endif // MUSIQUE_UNIT_TESTING

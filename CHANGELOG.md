@@ -5,11 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+Types of changes
+
+- __Added__ for new features.
+- __Changed__ for changes in existing functionality.
+- __Deprecated__ for soon-to-be removed features.
+- __Removed__ for now removed features.
+- __Fixed__ for any bug fixes.
+- __Security__ in case of vulnerabilities.
+
+
 ## [Unreleased]
 
 ### Added
 
 - Internal parameter for listing tokens: `musique tokens`
+
+## [0.6.0] - 2023-06-09
+
+### Added
+
+- Builtin `seed` to provide seed for all functions using random number generation
+- New `make` target: `full` - make everything that can be made for local developement
+- `time` REPL command for measurement of execution time
+- Unit testing strikes again! `make mode=unit-test`
+- Continuous Integration with Github Actions
+- [Musical Symbols Unicode block](https://en.wikipedia.org/wiki/Musical_Symbols_(Unicode_block)) can be used as an identifiers
+    - by default they are lengths of notes and rests appropiate for given symbol
+
+### Changed
+
+- Simplified `make` definition, `make mode=debug` for debug builds
+- More regression tests
+
+### Fixed
+
+- function documentation generator proper cmdline parameter handling
+- deterministic random number generation is now cross platform (setting the same seed on different platforms gives the same results)
+- `nprimes 1` returns correctly `(2)`
 
 ## [0.5.0] - 2023-03-05
 
