@@ -1,0 +1,11 @@
+-- Parameterless anonymous function
+anon = (| 0)
+print(anon())
+
+-- Parameterfull anonymous function
+anon = (x y | x * 2 + y)
+print(anon(3, 1))
+
+-- Block evaluation (sequence)
+anon = (10, 20, 30)
+print(anon)

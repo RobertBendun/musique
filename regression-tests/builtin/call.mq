@@ -1,8 +1,0 @@
--- Call executes blocks without parameters
-say (call (|42)),
-
--- Call executes block passing parameters
-say (call (n | n + 1) 10),
-
--- Call executes builtin functions
-call say 43,

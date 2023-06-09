@@ -1,6 +1,9 @@
 #include <musique/lexer/lexer.hh>
 #include <musique/parser/parser.hh>
 #include <musique/try.hh>
+#include <musique/location.hh>
+
+#include <source_location>
 
 #include <iostream>
 #include <numeric>
@@ -80,23 +83,61 @@ static unsigned skip_separators(Parser &parser)
 	return separators_skipped;
 }
 
+
+struct log_guard {
+	inline static size_t indent = 0;
+
+	inline log_guard(Parser const* parser, std::source_location caller = std::source_location::current())
+	{
+		if (!std::getenv("TRACE_MUSIQUE_PARSER")) {
+			return;
+		}
+
+		for (auto i = 0u; i < indent; ++i) std::cerr.put(' ');
+		std::cerr << "called " << caller.function_name();
+		if (parser->token_id < parser->tokens.size()) {
+			std::cerr << ", next = " << parser->tokens[parser->token_id];
+		}
+		std::cerr << std::endl;
+		indent++;
+	}
+
+	inline ~log_guard() noexcept
+	{
+		indent--;
+	}
+};
+
+#ifdef Debug
+#define log_parser_function(...) [[maybe_unused]] log_guard log_guard##__LINE__{__VA_ARGS__}
+#else
+#define log_parser_function(...)
+#endif
+
 // sequence = {expression, {newline|comma}}
 Result<Ast> Parser::parse_sequence()
 {
+	log_parser_function(this);
 	std::vector<Ast> seq;
 
 	if (token_id < tokens.size()) {
+		skip_separators(*this);
 		seq.push_back(Try(parse_expression()));
-		while (token_id < tokens.size() && skip_separators(*this) >= 1) {
+		while (skip_separators(*this) >= 1) {
+			if (token_id >= tokens.size()) {
+				break;
+			}
 			seq.push_back(Try(parse_expression()));
 		}
 	}
+
 	return Ast::sequence(std::move(seq));
 }
 
 // expression = assigment | infix
 Result<Ast> Parser::parse_expression()
 {
+	log_parser_function(this);
 	if (expect(std::pair{Token::Type::Keyword, "if"sv})) {
 		return parse_if_else();
 	}
@@ -119,6 +160,7 @@ Result<Ast> Parser::parse_expression()
 // TODO: Support if ... then ... (current implementation supports only if ... ...)
 Result<Ast> Parser::parse_if_else()
 {
+	log_parser_function(this);
 	auto if_token = consume();
 	ensure(if_token.type == Token::Type::Keyword && if_token.source == "if", "parse_if_else() called and first token was not if");
 
@@ -143,12 +185,14 @@ Result<Ast> Parser::parse_if_else()
 /// Parse either infix expression or variable declaration
 Result<Ast> Parser::parse_for()
 {
+	log_parser_function(this);
 	unimplemented();
 }
 
 // infix = arithmetic_prefix, [ operator, infix ]
 Result<Ast> Parser::parse_infix()
 {
+	log_parser_function(this);
 	auto lhs = Try(parse_arithmetic_prefix());
 
 	bool const next_is_operator = expect(Token::Type::Operator)
@@ -181,6 +225,7 @@ Result<Ast> Parser::parse_infix()
 // >   1 2 3    <
 Result<Ast> Parser::parse_rhs_of_infix(Ast &&lhs)
 {
+	log_parser_function(this);
 	auto rhs = Try(parse_arithmetic_prefix());
 
 	bool const next_is_operator = expect(Token::Type::Operator)
@@ -230,6 +275,7 @@ Result<Ast> Parser::parse_rhs_of_infix(Ast &&lhs)
 
 Result<Ast> Parser::parse_arithmetic_prefix()
 {
+	log_parser_function(this);
 	if (expect(std::pair{Token::Type::Operator, "-"sv}) || expect(std::pair{Token::Type::Operator, "+"sv})) {
 		// TODO Add unary operator AST node type
 		Ast unary;
@@ -244,6 +290,7 @@ Result<Ast> Parser::parse_arithmetic_prefix()
 
 Result<Ast> Parser::parse_index_or_function_call()
 {
+	log_parser_function(this);
 	auto result = Try(parse_atomic());
 	while (token_id < tokens.size()) {
 		auto const& token = tokens[token_id];
@@ -258,6 +305,7 @@ Result<Ast> Parser::parse_index_or_function_call()
 
 Result<Ast> Parser::parse_function_call(Ast &&callee)
 {
+	log_parser_function(this);
 	auto open = consume();
 	ensure(open.type == Token::Type::Bra, "parse_function_call must be called only when it can parse function call");
 
@@ -291,6 +339,7 @@ endloop:
 
 Result<Ast> Parser::parse_index(Ast &&indexable)
 {
+	log_parser_function(this);
 	auto open = consume();
 	ensure(open.type == Token::Type::Open_Index, "parse_function_call must be called only when it can parse function call");
 
@@ -331,6 +380,7 @@ endloop:
 
 Result<Ast> Parser::parse_assigment()
 {
+	log_parser_function(this);
 	auto lvalue = parse_identifier();
 	if (not lvalue.has_value()) {
 		auto details = lvalue.error().details;
@@ -354,6 +404,7 @@ Result<Ast> Parser::parse_assigment()
 
 Result<Ast> Parser::parse_identifier()
 {
+	log_parser_function(this);
 
 	if (not expect(Token::Type::Symbol)) {
 		// TODO Specific error message
@@ -371,6 +422,7 @@ Result<Ast> Parser::parse_identifier()
 
 Result<Ast> Parser::parse_note()
 {
+	log_parser_function(this);
 	auto note = Ast::literal(filename, consume());
 	std::optional<Ast> arg;
 
@@ -413,6 +465,7 @@ Result<Ast> Parser::parse_note()
 // The real culprit is a syntax probably, but this function needs to be investigated
 Result<Ast> Parser::parse_block()
 {
+	log_parser_function(this);
 	auto open = consume();
 	ensure(open.type == Token::Type::Bra, "parse_block expects that it can parse");
 
@@ -420,45 +473,44 @@ Result<Ast> Parser::parse_block()
 		return Ast::block(open.location(filename) + consume().location(filename), Ast::sequence({}));
 	}
 
-	Ast sequence;
-	sequence.type = Ast::Type::Sequence;
-	sequence.file = open.location(filename);
-
-	auto start_token_offset = token_id;
-
 	bool is_lambda = false;
 	std::vector<Ast> parameters;
 
-	while (token_id < tokens.size()) {
-		auto const& current_token = tokens[token_id];
-		switch (current_token.type) {
-		break; case Token::Type::Ket:
-			sequence.file += consume().location(filename);
-			goto endloop;
+	// Block can be either an anonymous function (lambda) or just regular sequence
+	// Lambda has a parameter separator, so we try to find it first
+	// parameters = { parameter, [ ',', '\n' ]* }, '|'
+	{
+		auto parameter_separator = token_id;
+		std::vector<unsigned> identifier_looking;
 
-		break; case Token::Type::Parameter_Separator:
-		{
-			ensure(not is_lambda, "Only one parameter separator is allowed inside a block"); // TODO(assert)
-			std::vector<unsigned> identifier_looking;
-
-			for (auto i = start_token_offset; i < token_id; ++i) {
-				switch (tokens[i].type) {
+		for (; parameter_separator < tokens.size(); ++parameter_separator) {
+			// We want to report to the user that they provided something
+			// that looks like parameter but is not in parameter definition section of a lambda
+			// This is purerly to provide nice error message
+			switch (tokens[parameter_separator].type) {
 				case Token::Type::Chord:
 				case Token::Type::Keyword:
-					identifier_looking.push_back(i);
+					identifier_looking.push_back(parameter_separator);
 					break;
 
 				case Token::Type::Symbol:
+				case Token::Type::Nl:
+				case Token::Type::Comma:
 					continue;
 
-				// TODO Weird things before parameter separator error
 				default:
-					unimplemented();
-				}
+					goto endloop;
 			}
+		}
+endloop:
 
-			// TODO Report all instances of identifier looking parameters
+		if (parameter_separator < tokens.size() && tokens[parameter_separator].type == Token::Type::Parameter_Separator) {
+			// We have parameter separator, so this block really is an anonymous function
+			is_lambda = true;
+
+			// If in parameter section we have found anything that may look like identifier but really isn't then we report special error to the user
 			if (identifier_looking.size()) {
+				// TODO Report all instances of identifier looking parameters
 				auto const& token = tokens[identifier_looking.front()];
 				return Error {
 					.details = errors::Literal_As_Identifier {
@@ -469,19 +521,33 @@ Result<Ast> Parser::parse_block()
 				};
 			}
 
+			// Consume all parameters
+			while (token_id < parameter_separator) {
+				parameters.push_back(Ast::literal(filename, consume()));
+			}
+
+			// Consume parameter separator
 			consume();
-			is_lambda = true;
-			std::swap(sequence.arguments, parameters);
-		}
-
-		break; case Token::Type::Comma: case Token::Type::Nl:
-			sequence.file += consume().location(filename);
-
-		break; default:
-			sequence.arguments.push_back(Try(parse_expression()));
+			ensure(parameter_separator+1 == token_id, "parameter section was not properly parsed");
 		}
 	}
-endloop:
+
+	// If this is an anonymous function then we successfully parsed parameter section and we need to parse function body
+	// If not then we are at the beggining of the block and we need to parse it
+	// Both are parsed as sequence
+	auto sequence = Try(parse_sequence());
+	sequence.file.start = open.start;
+
+	if (expect(Token::Type::Ket)) {
+		consume();
+	} else {
+		// TODO This may be a missing comma or newline error
+		// Code to reach this error: (say 42)
+		if (token_id < tokens.size()) {
+			std::cerr << "stopped at: " << tokens[token_id] << std::endl;
+		}
+		unimplemented("unmatched ket");
+	}
 
 	if (is_lambda) {
 		return Ast::lambda(sequence.file, std::move(sequence), std::move(parameters));
@@ -492,6 +558,7 @@ endloop:
 
 Result<Ast> Parser::parse_atomic()
 {
+	log_parser_function(this);
 	auto token = Try(peek());
 	switch (token.type) {
 	case Token::Type::Keyword:
@@ -649,8 +716,6 @@ void dump(Ast const& tree, unsigned indent)
 		if (tree.arguments.size() >= 1) { std::cout << +i << ".cond = "; dump(tree.arguments[0], +i); }
 		if (tree.arguments.size() >= 2) { std::cout << +i << ".then = "; dump(tree.arguments[1], +i); }
 		if (tree.arguments.size() >= 3) { std::cout << +i << ".else = "; dump(tree.arguments[2], +i); }
-
-
 
 	break; default:
 		if (!tree.arguments.empty()) {
