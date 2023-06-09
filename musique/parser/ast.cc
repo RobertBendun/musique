@@ -51,15 +51,6 @@ Ast Ast::sequence(std::vector<Ast> expressions)
 	return ast;
 }
 
-Ast Ast::block(File_Range file, Ast seq)
-{
-	Ast ast;
-	ast.type = Type::Block;
-	ast.file = file;
-	ast.arguments.push_back(std::move(seq));
-	return ast;
-}
-
 Ast Ast::lambda(File_Range file, Ast body, std::vector<Ast> parameters)
 {
 	Ast ast;

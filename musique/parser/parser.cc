@@ -72,7 +72,7 @@ Result<Ast> Parser::parse(std::string_view source, std::string_view filename, un
 	auto const result = parse_sequence(parser);
 
 	if (result.has_value() && parser.token_id < parser.tokens.size()) {
-		if (parser.expect(Token::Type::Ket)) {
+		if (parser.expect(Token::Type::Close_Paren)) {
 			auto const tok = parser.consume();
 			return Error {
 				.details = errors::Closing_Token_Without_Opening {
@@ -312,8 +312,8 @@ Result<Ast> parse_index_or_function_call(Parser &p)
 	while (p.token_id < p.tokens.size()) {
 		auto const& token = p.tokens[p.token_id];
 		switch (token.type) {
-		break; case Token::Type::Bra:        result = Try(parse_function_call(p, std::move(result)));
-		break; case Token::Type::Open_Index: result = Try(parse_index(p, std::move(result)));
+		break; case Token::Type::Open_Paren:        result = Try(parse_function_call(p, std::move(result)));
+		break; case Token::Type::Open_Bracket: result = Try(parse_index(p, std::move(result)));
 		break; default: return result;
 		}
 	}
@@ -324,7 +324,7 @@ Result<Ast> parse_function_call(Parser &p, Ast &&callee)
 {
 	log_parser_function(this);
 	auto open = p.consume();
-	ensure(open.type == Token::Type::Bra, "parse_function_call must be called only when it can parse function call");
+	ensure(open.type == Token::Type::Open_Paren, "parse_function_call must be called only when it can parse function call");
 
 	Ast call;
 	call.type = Ast::Type::Call;
@@ -335,7 +335,7 @@ Result<Ast> parse_function_call(Parser &p, Ast &&callee)
 		ensure(p.token_id < p.tokens.size(), "Missing closing )"); // TODO(assert)
 
 		switch (p.tokens[p.token_id].type) {
-		break; case Token::Type::Ket:
+		break; case Token::Type::Close_Paren:
 			call.file += p.consume().location(p.filename);
 			goto endloop;
 
@@ -358,7 +358,7 @@ Result<Ast> parse_index(Parser &p, Ast &&indexable)
 {
 	log_parser_function(this);
 	auto open = p.consume();
-	ensure(open.type == Token::Type::Open_Index, "parse_function_call must be called only when it can parse function call");
+	ensure(open.type == Token::Type::Open_Bracket, "parse_function_call must be called only when it can parse function call");
 
 	Ast index;
 	index.type = Ast::Type::Binary;
@@ -374,7 +374,7 @@ Result<Ast> parse_index(Parser &p, Ast &&indexable)
 		ensure(p.token_id < p.tokens.size(), "Missing closing ]"); // TODO(assert)
 
 		switch (p.tokens[p.token_id].type) {
-		break; case Token::Type::Close_Index:
+		break; case Token::Type::Close_Bracket:
 			sequence.file += p.consume().location(p.filename);
 			index.file += sequence.file;
 			goto endloop;
@@ -484,10 +484,10 @@ Result<Ast> parse_block(Parser &p)
 {
 	log_parser_function(this);
 	auto open = p.consume();
-	ensure(open.type == Token::Type::Bra, "parse_block expects that it can parse");
+	ensure(open.type == Token::Type::Open_Paren, "parse_block expects that it can parse");
 
-	if (p.expect(Token::Type::Ket)) {
-		return Ast::block(open.location(p.filename) + p.consume().location(p.filename), Ast::sequence({}));
+	if (p.expect(Token::Type::Close_Paren)) {
+		return Ast::sequence({}); // () is the same as nil
 	}
 
 	bool is_lambda = false;
@@ -540,7 +540,10 @@ endloop:
 
 			// Consume all parameters
 			while (p.token_id < parameter_separator) {
-				parameters.push_back(Ast::literal(p.filename, p.consume()));
+				auto token = p.consume();
+				if (token.type == Token::Type::Symbol) {
+					parameters.push_back(Ast::literal(p.filename, std::move(token)));
+				}
 			}
 
 			// Consume parameter separator
@@ -555,7 +558,7 @@ endloop:
 	auto sequence = Try(parse_sequence(p));
 	sequence.file.start = open.start;
 
-	if (p.expect(Token::Type::Ket)) {
+	if (p.expect(Token::Type::Close_Paren)) {
 		p.consume();
 	} else {
 		// TODO This may be a missing comma or newline error
@@ -596,7 +599,7 @@ Result<Ast> parse_atomic(Parser &p)
 	break; case Token::Type::Chord:
 		return parse_note(p);
 
-	break; case Token::Type::Bra:
+	break; case Token::Type::Open_Paren:
 		return parse_block(p);
 
 	break; default:
@@ -668,7 +671,6 @@ bool operator==(Ast const& lhs, Ast const& rhs)
 			&& lhs.arguments.size() == rhs.arguments.size()
 			&& std::equal(lhs.arguments.begin(), lhs.arguments.end(), rhs.arguments.begin());
 
-	case Ast::Type::Block:
 	case Ast::Type::Call:
 	case Ast::Type::Lambda:
 	case Ast::Type::Sequence:
@@ -684,7 +686,6 @@ std::ostream& operator<<(std::ostream& os, Ast::Type type)
 {
 	switch (type) {
 	case Ast::Type::Binary:               return os << "BINARY";
-	case Ast::Type::Block:                return os << "BLOCK";
 	case Ast::Type::Call:                 return os << "CALL";
 	case Ast::Type::If:                   return os << "IF";
 	case Ast::Type::Lambda:               return os << "LAMBDA";

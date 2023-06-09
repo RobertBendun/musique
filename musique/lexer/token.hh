@@ -18,10 +18,10 @@ struct Token
 		Parameter_Separator,  ///< "|" separaters arguments from block body
 		Comma,                ///< "," separates expressions. Used mainly to separate calls, like `foo 1 2; bar 3 4`
 		Nl,										///< "\n" seperates expressions similar to Comma
-		Bra,                  ///< "(" starts anonymous block of code (potentially a function)
-		Ket,                  ///< ")" ends anonymous block of code (potentially a function)
-		Open_Index,           ///< "[" starts index section of index expression
-		Close_Index						///< "]" ends index section of index expression
+		Open_Paren,           ///< "(" starts anonymous block of code (potentially a function)
+		Close_Paren,          ///< ")" ends anonymous block of code (potentially a function)
+		Open_Bracket,         ///< "[" starts index section of index expression
+		Close_Bracket,				///< "]" ends index section of index expression
 	};
 
 	/// Type of token

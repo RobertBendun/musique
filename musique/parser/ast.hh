@@ -34,8 +34,7 @@ struct Ast
 	{
 		Unary,                ///< Unary operator like -foo or +xd
 		Binary,               ///< Binary operator application like `1 + 2`
-		Block,                ///< Block expressions like `[42; hello]`
-		Lambda,               ///< Block expression beeing functions like `[i|i+1]`
+		Lambda,               ///< Block expression beeing functions like `(i|i+1)`
 		Call,                 ///< Function call application like `print 42`
 		Literal,              ///< Compile time known constant like `c` or `1`
 		Sequence,             ///< Several expressions sequences like `42`, `42; 32`

@@ -643,36 +643,6 @@ static Result<Value> builtin_primes(Interpreter&, std::vector<Value> args)
 	};
 }
 
-//: Funkcja `nprimes` zwraca zadaną liczbę kolejnych liczb pierwszych.
-//:
-//: # Przykład
-//: ```
-//: > for (nprimes 4) (say)
-//: 2
-//: 3
-//: 5
-//: 7
-//: ```
-/// Iterate over container
-static Result<Value> builtin_for(Interpreter &i, std::vector<Value> args)
-{
-	constexpr auto guard = Guard<1> {
-		.name = "for",
-		.possibilities = { "(array, callback) -> any" }
-	};
-
-	if (auto a = match<Collection, Function>(args)) {
-		auto& [collection, func] = *a;
-		Value result{};
-		for (size_t n = 0; n < collection.size(); ++n) {
-			result = Try(func(i, { Try(collection.index(i, n)) }));
-		}
-		return result;
-	} else {
-		return guard.yield_error();
-	}
-}
-
 //: Funkcja `fold` TODO.
 //:
 //: # Przykład
@@ -772,85 +742,6 @@ static Result<Value> builtin_scan(Interpreter &interpreter, std::vector<Value> a
 	};
 }
 
-//: Funkcja `if` wykonuje określony blok po spełnieniu warunku, alternatywnie wykonuje inny blok kodu w przeciwnym wypadku.
-//:
-//: # Przykład
-//: ```
-//: > if true (say 42)
-//: 42
-//: > if false (say 42)
-//: >
-//: > if true (say 42) (say 0)
-//: 42
-//: > if false (say 42) (say 0)
-//: 0
-//: ```
-/// Execute blocks depending on condition
-static Result<Value> builtin_if(Interpreter &i, std::span<Ast> args)  {
-	static constexpr auto guard = Guard<2> {
-		.name = "if",
-		.possibilities = {
-			"(any, function) -> any",
-			"(any, function, function) -> any"
-		}
-	};
-
-	if (args.size() != 2 && args.size() != 3) {
-		return guard.yield_error();
-	}
-
-	if (Try(i.eval((Ast)args.front())).truthy()) {
-		if (args[1].type == Ast::Type::Block) {
-			return Try(i.eval((Ast)args[1].arguments.front()));
-		} else {
-			return Try(i.eval((Ast)args[1]));
-		}
-	} else if (args.size() == 3) {
-		if (args[2].type == Ast::Type::Block) {
-			return Try(i.eval((Ast)args[2].arguments.front()));
-		} else {
-			return Try(i.eval((Ast)args[2]));
-		}
-	}
-
-	return Value{};
-}
-
-//: Funkcja `while` wykonuje określony blok dopóki warunek jest spełniony.
-//:
-//: # Przykład
-//: ```
-//: > i := 0
-//: > while (i < 10) (say i, i += 2)
-//: 0
-//: 2
-//: 4
-//: 6
-//: 8
-//: ```
-/// Loop block depending on condition
-static Result<Value> builtin_while(Interpreter &i, std::span<Ast> args)  {
-	static constexpr auto guard = Guard<2> {
-		.name = "while",
-		.possibilities = {
-			"(any, function) -> any"
-		}
-	};
-
-	if (args.size() != 2) {
-		return guard.yield_error();
-	}
-
-	while (Try(i.eval((Ast)args.front())).truthy()) {
-		if (args[1].type == Ast::Type::Block) {
-			Try(i.eval((Ast)args[1].arguments.front()));
-		} else {
-			Try(i.eval((Ast)args[1]));
-		}
-	}
-	return Value{};
-}
-
 //: Funkcja `try` przystępuje do wykonania bloków kodu, a jeżeli którykolwiek z nich zakończy się niepowodzeniem, wykonuje ostatni. Jeżeli ostatni też zakończy się niepowodzeniem, to trudno.
 //:
 //: # Przykład
@@ -868,6 +759,10 @@ static Result<Value> builtin_while(Interpreter &i, std::span<Ast> args)  {
 /// Try executing all but last block and if it fails execute last one
 static Result<Value> builtin_try(Interpreter &interpreter, std::span<Ast> args)
 {
+	(void)interpreter;
+	(void)args;
+	unimplemented();
+#if 0
 	if (args.size() == 1) {
 		// TODO This should be abstracted
 		auto result = (args[0].type == Ast::Type::Block)
@@ -894,6 +789,7 @@ static Result<Value> builtin_try(Interpreter &interpreter, std::span<Ast> args)
 	}
 
 	return success;
+#endif
 }
 
 //: Funkcja `update` aktualizuje dany element listy na nową wartość.
@@ -1760,9 +1656,7 @@ void Interpreter::register_builtin_functions()
 	global.force_define("flat",           builtin_flat);
 	global.force_define("floor",          builtin_floor);
 	global.force_define("fold",           builtin_fold);
-	global.force_define("for",            builtin_for);
 	global.force_define("hash",           builtin_hash);
-	global.force_define("if",             builtin_if);
 	global.force_define("instrument",     builtin_program_change);
 	global.force_define("len",            builtin_len);
 	global.force_define("map",            builtin_map);
@@ -1801,5 +1695,4 @@ void Interpreter::register_builtin_functions()
 	global.force_define("unique",         builtin_unique);
 	global.force_define("up",             builtin_up);
 	global.force_define("update",         builtin_update);
-	global.force_define("while",          builtin_while);
 }

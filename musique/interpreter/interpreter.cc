@@ -274,17 +274,14 @@ Result<Value> Interpreter::eval(Ast &&ast)
 			}
 		}
 
-	case Ast::Type::Block:
 	case Ast::Type::Lambda:
 		{
 			Block block;
-			if (ast.type == Ast::Type::Lambda) {
-				auto parameters = std::span<Ast>(ast.arguments.data(), ast.arguments.size() - 1);
-				block.parameters.reserve(parameters.size());
-				for (auto &param : parameters) {
-					ensure(param.type == Ast::Type::Literal && param.token.type == Token::Type::Symbol, "Not a name in parameter section of Ast::lambda");
-					block.parameters.push_back(std::string(std::move(param).token.source));
-				}
+			auto parameters = std::span<Ast>(ast.arguments.data(), ast.arguments.size() - 1);
+			block.parameters.reserve(parameters.size());
+			for (auto &param : parameters) {
+				ensure(param.type == Ast::Type::Literal && param.token.type == Token::Type::Symbol, "Not a name in parameter section of Ast::lambda");
+				block.parameters.push_back(std::string(std::move(param).token.source));
 			}
 
 			block.context = env;
@@ -402,12 +399,6 @@ static void snapshot(std::ostream &out, Ast const& ast) {
 			out << ", ";
 		}
 	}
-	break; case Ast::Type::Block:
-		ensure(ast.arguments.size() == 1, "Block can contain only one node which contains its body");
-		out << "(";
-		snapshot(out, ast.arguments.front());
-		out << ")";
-
 	break; case Ast::Type::Lambda:
 		out << "(";
 		for (auto i = 0u; i+1 < ast.arguments.size(); ++i) {

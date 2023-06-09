@@ -92,10 +92,10 @@ auto Lexer::next_token() -> Result<std::variant<Token, End_Of_File>>
 	}
 
 	switch (peek()) {
-	case '(':  consume(); return Token { Token::Type::Bra,         token_location, finish() };
-	case ')':  consume(); return Token { Token::Type::Ket,         token_location, finish() };
-	case '[':  consume(); return Token { Token::Type::Open_Index,  token_location, finish() };
-	case ']':  consume(); return Token { Token::Type::Close_Index, token_location, finish() };
+	case '(':  consume(); return Token { Token::Type::Open_Paren,         token_location, finish() };
+	case ')':  consume(); return Token { Token::Type::Close_Paren,         token_location, finish() };
+	case '[':  consume(); return Token { Token::Type::Open_Bracket,  token_location, finish() };
+	case ']':  consume(); return Token { Token::Type::Close_Bracket, token_location, finish() };
 	case ',':  consume(); return Token { Token::Type::Comma,       token_location, finish() };
 	case '\n': consume(); return Token { Token::Type::Nl,          token_location, finish() };
 
@@ -282,15 +282,15 @@ std::ostream& operator<<(std::ostream& os, Token const& token)
 std::ostream& operator<<(std::ostream& os, Token::Type type)
 {
 	switch (type) {
-	case Token::Type::Bra:                   return os << "BRA";
+	case Token::Type::Open_Paren:                   return os << "OPEN PAREN";
 	case Token::Type::Chord:                 return os << "CHORD";
-	case Token::Type::Close_Index:           return os << "CLOSE INDEX";
+	case Token::Type::Close_Bracket:           return os << "CLOSE BRACKET";
 	case Token::Type::Comma:                 return os << "COMMA";
-	case Token::Type::Ket:                   return os << "KET";
+	case Token::Type::Close_Paren:                   return os << "CLOSE PAREN";
 	case Token::Type::Keyword:               return os << "KEYWORD";
 	case Token::Type::Nl:                    return os << "NL";
 	case Token::Type::Numeric:               return os << "NUMERIC";
-	case Token::Type::Open_Index:            return os << "OPEN INDEX";
+	case Token::Type::Open_Bracket:            return os << "OPEN BRACKET";
 	case Token::Type::Operator:              return os << "OPERATOR";
 	case Token::Type::Parameter_Separator:   return os << "PARAMETER SEPARATOR";
 	case Token::Type::Symbol:                return os << "SYMBOL";
@@ -301,15 +301,15 @@ std::ostream& operator<<(std::ostream& os, Token::Type type)
 std::string_view type_name(Token::Type type)
 {
 	switch (type) {
-	case Token::Type::Bra:                   return "(";
+	case Token::Type::Open_Paren:                   return "(";
 	case Token::Type::Chord:                 return "chord";
-	case Token::Type::Close_Index:           return "]";
+	case Token::Type::Close_Bracket:           return "]";
 	case Token::Type::Comma:                 return ",";
-	case Token::Type::Ket:                   return ")";
+	case Token::Type::Close_Paren:                   return ")";
 	case Token::Type::Keyword:               return "keyword";
 	case Token::Type::Nl:                    return "newline";
 	case Token::Type::Numeric:               return "numeric";
-	case Token::Type::Open_Index:            return "[";
+	case Token::Type::Open_Bracket:            return "[";
 	case Token::Type::Operator:              return "operator";
 	case Token::Type::Parameter_Separator:   return "parameter separator";
 	case Token::Type::Symbol:                return "symbol";
