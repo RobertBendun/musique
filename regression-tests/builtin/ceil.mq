@@ -1,11 +1,11 @@
-say (ceil -4),
-say (ceil -4.2),
-say (ceil -4.5),
-say (ceil -4.8),
-say (ceil -5),
+say(ceil(-4))
+say(ceil(-4.2))
+say(ceil(-4.5))
+say(ceil(-4.8))
+say(ceil(-5))
 
-say (ceil 4),
-say (ceil 4.2),
-say (ceil 4.5),
-say (ceil 4.8),
-say (ceil 5),
+say(ceil(4))
+say(ceil(4.2))
+say(ceil(4.5))
+say(ceil(4.8))
+say(ceil(5))

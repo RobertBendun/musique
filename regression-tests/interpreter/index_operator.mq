@@ -1,8 +1,8 @@
-say (up 10)[true],
-say (up 10)[false],
-say (up 10)[3],
-say (up 10)[down 10],
-say (up 10)[up 10],
-say (up 10)[up 10 % 2 == 0],
-say (up 10)[up 10 % 2 != 0],
-say (up 10)[range 3 7],
+say(up(10)[true])
+say(up(10)[false])
+say(up(10)[3])
+say(up(10)[down(10)])
+say(up(10)[up(10)])
+say(up(10)[up(10) % 2 == 0])
+say(up(10)[up(10) % 2 != 0])
+say(up(10)[range(3, 7)])

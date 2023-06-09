@@ -120,8 +120,8 @@ Result<Ast> Parser::parse_sequence()
 	log_parser_function(this);
 	std::vector<Ast> seq;
 
+	skip_separators(*this);
 	if (token_id < tokens.size()) {
-		skip_separators(*this);
 		seq.push_back(Try(parse_expression()));
 		while (skip_separators(*this) >= 1) {
 			if (token_id >= tokens.size()) {
@@ -277,8 +277,8 @@ Result<Ast> Parser::parse_arithmetic_prefix()
 {
 	log_parser_function(this);
 	if (expect(std::pair{Token::Type::Operator, "-"sv}) || expect(std::pair{Token::Type::Operator, "+"sv})) {
-		// TODO Add unary operator AST node type
 		Ast unary;
+		unary.type = Ast::Type::Unary;
 		unary.token = consume();
 		unary.file = unary.token.location(filename);
 		unary.arguments.push_back(Try(parse_index_or_function_call()));
