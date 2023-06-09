@@ -1,0 +1,31 @@
+-- If executes then first block when condition is true
+if true then say(1) end
+if true then say(2) else say(3) end
+
+-- Ensure that newline and then can be used as separators
+if true
+	say(10)
+	say(11)
+else
+	say(20)
+	say(22)
+end
+
+if true then
+	say(10)
+	say(11)
+else
+	say(20)
+	say(22)
+end
+
+
+-- If executes second block when condition is false
+if false then say(4) else say(5) end
+
+-- If returns nil when without else block
+say(if false then say(6) end)
+
+-- If returns block execution value
+say(if true then 7 end)
+say(if false then say(100), 8 else say(200), 9 end)

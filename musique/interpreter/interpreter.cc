@@ -274,6 +274,14 @@ Result<Value> Interpreter::eval(Ast &&ast)
 			}
 		}
 
+	case Ast::Type::Lazy_Array:
+		{
+			Block block;
+			block.context = env;
+			block.body = std::move(ast);
+			return block;
+		}
+
 	case Ast::Type::Lambda:
 		{
 			Block block;
@@ -379,130 +387,10 @@ std::optional<Error> ensure_midi_connection_available(Interpreter &interpreter, 
 	return {};
 }
 
-static void snapshot(std::ostream& out, Note const& note) {
-	if (note.length) {
-		out << "(" << note << ")";
-	} else {
-		out << note;
-	}
-}
-
-static void snapshot(std::ostream &out, Ast const& ast) {
-	switch (ast.type) {
-	break; case Ast::Type::Unary: case Ast::Type::If:
-		unimplemented();
-
-	break; case Ast::Type::Sequence:
-	{
-		for (auto const& a : ast.arguments) {
-			snapshot(out, a);
-			out << ", ";
-		}
-	}
-	break; case Ast::Type::Lambda:
-		out << "(";
-		for (auto i = 0u; i+1 < ast.arguments.size(); ++i) {
-			ensure(ast.arguments[i].type == Ast::Type::Literal, "Lambda arguments should be an identifiers");
-			out << ast.arguments[i].token.source << " ";
-		}
-		out << "|";
-		snapshot(out, ast.arguments.back());
-		out << ")";
-
-	break; case Ast::Type::Variable_Declaration:
-		ensure(ast.arguments.size() == 2, "Variable declaration snapshots only support single lhs variables");
-		ensure(ast.arguments.front().type == Ast::Type::Literal, "Expected first value to be an identifier");
-		out << ast.arguments[0].token.source << " := ";
-		return snapshot(out, ast.arguments.back());
-
-	break; case Ast::Type::Literal:
-		out << ast.token.source;
-
-	break; case Ast::Type::Binary:
-		out << "(";
-		snapshot(out, ast.arguments[0]);
-		out << ") ";
-		out << ast.token.source;
-		out << " (";
-		snapshot(out, ast.arguments[1]);
-		out << ")";
-
-	break; case Ast::Type::Call:
-		out << "(";
-		for (auto const& a : ast.arguments) {
-			out << "(";
-			snapshot(out, a);
-			out << ") ";
-		}
-		out << ")";
-	}
-}
-
-static void snapshot(std::ostream& out, Value const& value) {
-	std::visit(Overloaded{
-		[&](Nil) { out << "nil"; },
-		[&](Bool const& b) {
-			out << (b ? "true" : "false");
-		},
-		[&](Number const& n) {
-			out << "(" << n.num << "/" << n.den << ")";
-		},
-		[&](Array const& array) {
-			out << "(flat (";
-			for (auto const& nested : array.elements) {
-				snapshot(out, nested);
-				out << ", ";
-			}
-			out << "))";
-		},
-		[&](Chord const& chord) {
-			if (chord.notes.size() == 1) {
-				auto note = chord.notes.front();
-				snapshot(out, note);
-			} else {
-				out << "(chord ";
-				for (auto const &note : chord.notes) {
-					snapshot(out, note);
-					out << " ";
-				}
-				out << ")";
-			}
-		},
-		[&](Symbol const& symbol) {
-			out << "'" << symbol;
-		},
-		[&](Block const& block) {
-			out << "(";
-			for (auto const& param : block.parameters) {
-				out << param << ' ';
-			}
-			out << "| ";
-			snapshot(out, block.body);
-			out << ")";
-		},
-		[](Intrinsic const&) { unreachable(); },
-		[](Macro const&) { unreachable(); }
-	}, value.data);
-}
-
 void Interpreter::snapshot(std::ostream& out)
 {
-	auto const& ctx = *current_context;
-	out << ", oct " << int(ctx.octave) << '\n';
-	out << ", len (" << ctx.length.num << "/" << ctx.length.den << ")\n";
-	out << ", bpm " << ctx.bpm << '\n';
-
-	for (auto current = env.get(); current; current = current->parent.get()) {
-		for (auto const& [name, value] : current->variables) {
-			if (std::holds_alternative<Intrinsic>(value.data) || std::holds_alternative<Macro>(value.data)) {
-				continue;
-			}
-			out << ", " << name << " := ";
-			::snapshot(out, value);
-			out << '\n';
-		}
-	}
-	out << std::flush;
+	(void)out;
+	unimplemented();
 }
 
 // TODO This only supports single-threaded interpreter execution

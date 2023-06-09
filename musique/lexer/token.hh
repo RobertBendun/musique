@@ -45,7 +45,7 @@ struct Token
 	bool operator==(Token::Type type) const;
 };
 
-static constexpr usize Keywords_Count  =  9;
+static constexpr usize Keywords_Count  = 11;
 static constexpr usize Operators_Count = 17;
 
 std::string_view type_name(Token::Type type);

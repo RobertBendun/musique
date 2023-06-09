@@ -17,7 +17,7 @@ static inline std::optional<Error> guard_index(unsigned index, unsigned size)
 Result<Value> Block::index(Interpreter &i, unsigned position) const
 {
 	ensure(parameters.empty(), "cannot index into block with parameters (for now)");
-	if (body.type != Ast::Type::Sequence) {
+	if (body.type != Ast::Type::Lazy_Array) {
 		Try(guard_index(position, 1));
 		return i.eval((Ast)body);
 	}
@@ -28,7 +28,7 @@ Result<Value> Block::index(Interpreter &i, unsigned position) const
 
 usize Block::size() const
 {
-	return body.type == Ast::Type::Sequence ? body.arguments.size() : 1;
+	return body.type == Ast::Type::Lazy_Array ? body.arguments.size() : 1;
 }
 
 Result<Value> Block::operator()(Interpreter &i, std::vector<Value> arguments) const

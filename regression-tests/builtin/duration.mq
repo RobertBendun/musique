@@ -1,5 +1,5 @@
-len (1/4),
-say (duration (chord c e g)),
-say (duration c),
-say (duration (c hn e hn)),
-say (duration (c 0.3)),
+len(1/4)
+say(duration(chord c e g))
+say(duration(c))
+say(duration(c hn e hn))
+say(duration(c 0.3))

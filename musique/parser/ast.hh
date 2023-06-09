@@ -32,14 +32,15 @@ struct Ast
 	/// Available ASt types
 	enum class Type
 	{
-		Unary,                ///< Unary operator like -foo or +xd
 		Binary,               ///< Binary operator application like `1 + 2`
-		Lambda,               ///< Block expression beeing functions like `(i|i+1)`
 		Call,                 ///< Function call application like `print 42`
+		If,                   ///< if_then_else expression
+		Lambda,               ///< Block expression beeing functions like `(i|i+1)`
+		Lazy_Array,           ///< Array literal like [1, 2, 3]
 		Literal,              ///< Compile time known constant like `c` or `1`
 		Sequence,             ///< Several expressions sequences like `42`, `42; 32`
+		Unary,                ///< Unary operator like -foo or +xd
 		Variable_Declaration, ///< Declaration of a variable with optional value assigment like `var x = 10` or `var y`
-		If,                   ///< if_then_else expression
 	};
 
 	/// Type of AST node
@@ -49,7 +50,7 @@ struct Ast
 	File_Range file;
 
 	/// Associated token
-	Token token;
+	Token token{};
 
 	/// Child nodes
 	std::vector<Ast> arguments{};

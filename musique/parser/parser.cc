@@ -16,14 +16,14 @@ constexpr auto Literal_Keywords = std::array {
 	"true"sv,
 };
 
-static_assert(Keywords_Count == Literal_Keywords.size() + 6, "Ensure that all literal keywords are listed");
+static_assert(Keywords_Count == Literal_Keywords.size() + 8, "Ensure that all literal keywords are listed");
 
 constexpr auto Operator_Keywords = std::array {
 	"and"sv,
 	"or"sv
 };
 
-static_assert(Keywords_Count == Operator_Keywords.size() + 7, "Ensure that all keywords that are operators are listed here");
+static_assert(Keywords_Count == Operator_Keywords.size() + 9, "Ensure that all keywords that are operators are listed here");
 
 enum class At_Least : bool
 {
@@ -32,9 +32,9 @@ enum class At_Least : bool
 };
 
 static Result<Ast> parse_arithmetic_prefix(Parser &p);
+static Result<Ast> parse_array_literal(Parser &p);
 static Result<Ast> parse_assigment(Parser &p);
 static Result<Ast> parse_atomic(Parser &p);
-static Result<Ast> parse_block(Parser &p);
 static Result<Ast> parse_expression(Parser &p);
 static Result<Ast> parse_for(Parser &p);
 static Result<Ast> parse_function_call(Parser &p, Ast &&ast);
@@ -44,6 +44,7 @@ static Result<Ast> parse_index(Parser &p, Ast &&ast);
 static Result<Ast> parse_index_or_function_call(Parser &p);
 static Result<Ast> parse_infix(Parser &p);
 static Result<Ast> parse_note(Parser &p);
+static Result<Ast> parse_paren_or_lambda(Parser &p);
 static Result<Ast> parse_rhs_of_infix(Parser &p, Ast &&lhs);
 static Result<Ast> parse_sequence(Parser &p);
 
@@ -103,7 +104,7 @@ static unsigned skip_separators(Parser &parser)
 struct log_guard {
 	inline static size_t indent = 0;
 
-	inline log_guard(Parser const* parser, std::source_location caller = std::source_location::current())
+	inline log_guard(Parser const& parser, std::source_location caller = std::source_location::current())
 	{
 		if (!std::getenv("TRACE_MUSIQUE_PARSER")) {
 			return;
@@ -111,8 +112,8 @@ struct log_guard {
 
 		for (auto i = 0u; i < indent; ++i) std::cerr.put(' ');
 		std::cerr << "called " << caller.function_name();
-		if (parser->token_id < parser->tokens.size()) {
-			std::cerr << ", next = " << parser->tokens[parser->token_id];
+		if (parser.token_id < parser.tokens.size()) {
+			std::cerr << ", next = " << parser.tokens[parser.token_id];
 		}
 		std::cerr << std::endl;
 		indent++;
@@ -133,14 +134,16 @@ struct log_guard {
 // sequence = {expression, {newline|comma}}
 Result<Ast> parse_sequence(Parser &p)
 {
-	log_parser_function(this);
+	log_parser_function(p);
 	std::vector<Ast> seq;
 
 	skip_separators(p);
 	if (p.token_id < p.tokens.size()) {
 		seq.push_back(Try(parse_expression(p)));
 		while (skip_separators(p) >= 1) {
-			if (p.token_id >= p.tokens.size()) {
+			bool const stop = p.token_id >= p.tokens.size()
+				|| (p.tokens[p.token_id].type == Token::Type::Keyword && one_of(p.tokens[p.token_id].source, "else", "end"));
+			if (stop) {
 				break;
 			}
 			seq.push_back(Try(parse_expression(p)));
@@ -153,7 +156,7 @@ Result<Ast> parse_sequence(Parser &p)
 // expression = assigment | infix
 Result<Ast> parse_expression(Parser &p)
 {
-	log_parser_function(this);
+	log_parser_function(p);
 	if (p.expect(std::pair{Token::Type::Keyword, "if"sv})) {
 		return parse_if_else(p);
 	}
@@ -173,15 +176,22 @@ Result<Ast> parse_expression(Parser &p)
 	return parse_infix(p);
 }
 
-// TODO: Support if ... then ... (current implementation supports only if ... ...)
+// if_else = 'if', expression, ('\n' | 'then'), sequence, [ 'else', sequence' ], 'end'
 Result<Ast> parse_if_else(Parser &p)
 {
-	log_parser_function(this);
+	log_parser_function(p);
 	auto if_token = p.consume();
 	ensure(if_token.type == Token::Type::Keyword && if_token.source == "if", "parse_if_else() called and first token was not if");
 
 	auto condition = Try(parse_expression(p));
-	auto then = Try(parse_expression(p));
+
+	if (p.expect(std::pair{Token::Type::Keyword, "then"sv}) || p.expect(Token::Type::Nl)) {
+		p.consume();
+	} else {
+		unimplemented("report that then or newline is required");
+	}
+
+	auto then = Try(parse_sequence(p));
 
 	Ast if_node{};
 	if_node.type = Ast::Type::If;
@@ -191,25 +201,31 @@ Result<Ast> parse_if_else(Parser &p)
 
 	if (p.expect(std::pair{Token::Type::Keyword, "else"sv})) {
 		[[maybe_unused]] auto else_token = p.consume(); // TODO Use for location resolution
-		auto else_ = Try(parse_expression(p));
+		auto else_ = Try(parse_sequence(p));
 		if_node.arguments.push_back(std::move(else_));
 	}
 
-	return if_node;
+	if (p.expect(std::pair{Token::Type::Keyword, "end"sv})) {
+		[[maybe_unused]] auto end_token = p.consume();
+		if_node.file = { .filename = p.filename, .start = if_token.start, .stop = end_token.start };
+		return if_node;
+	}
+
+	unimplemented("report error: missing end in if statement");
 }
 
 /// Parse either infix expression or variable declaration
 Result<Ast> parse_for(Parser &p)
 {
 	(void)p;
-	log_parser_function(this);
+	log_parser_function(p);
 	unimplemented();
 }
 
 // infix = arithmetic_prefix, [ operator, infix ]
 Result<Ast> parse_infix(Parser &p)
 {
-	log_parser_function(this);
+	log_parser_function(p);
 	auto lhs = Try(parse_arithmetic_prefix(p));
 
 	bool const next_is_operator = p.expect(Token::Type::Operator)
@@ -242,7 +258,7 @@ Result<Ast> parse_infix(Parser &p)
 // >   1 2 3    <
 Result<Ast> parse_rhs_of_infix(Parser &p, Ast &&lhs)
 {
-	log_parser_function(this);
+	log_parser_function(p);
 	auto rhs = Try(parse_arithmetic_prefix(p));
 
 	bool const next_is_operator = p.expect(Token::Type::Operator)
@@ -292,7 +308,7 @@ Result<Ast> parse_rhs_of_infix(Parser &p, Ast &&lhs)
 
 Result<Ast> parse_arithmetic_prefix(Parser &p)
 {
-	log_parser_function(this);
+	log_parser_function(p);
 	if (p.expect(std::pair{Token::Type::Operator, "-"sv}) || p.expect(std::pair{Token::Type::Operator, "+"sv})) {
 		Ast unary;
 		unary.type = Ast::Type::Unary;
@@ -307,7 +323,7 @@ Result<Ast> parse_arithmetic_prefix(Parser &p)
 
 Result<Ast> parse_index_or_function_call(Parser &p)
 {
-	log_parser_function(this);
+	log_parser_function(p);
 	auto result = Try(parse_atomic(p));
 	while (p.token_id < p.tokens.size()) {
 		auto const& token = p.tokens[p.token_id];
@@ -322,7 +338,7 @@ Result<Ast> parse_index_or_function_call(Parser &p)
 
 Result<Ast> parse_function_call(Parser &p, Ast &&callee)
 {
-	log_parser_function(this);
+	log_parser_function(p);
 	auto open = p.consume();
 	ensure(open.type == Token::Type::Open_Paren, "parse_function_call must be called only when it can parse function call");
 
@@ -356,7 +372,7 @@ endloop:
 
 Result<Ast> parse_index(Parser &p, Ast &&indexable)
 {
-	log_parser_function(this);
+	log_parser_function(p);
 	auto open = p.consume();
 	ensure(open.type == Token::Type::Open_Bracket, "parse_function_call must be called only when it can parse function call");
 
@@ -397,7 +413,7 @@ endloop:
 
 Result<Ast> parse_assigment(Parser &p)
 {
-	log_parser_function(this);
+	log_parser_function(p);
 	auto lvalue = parse_identifier(p);
 	if (not lvalue.has_value()) {
 		auto details = lvalue.error().details;
@@ -421,7 +437,7 @@ Result<Ast> parse_assigment(Parser &p)
 
 Result<Ast> parse_identifier(Parser &p)
 {
-	log_parser_function(this);
+	log_parser_function(p);
 
 	if (not p.expect(Token::Type::Symbol)) {
 		// TODO Specific error message
@@ -439,7 +455,7 @@ Result<Ast> parse_identifier(Parser &p)
 
 Result<Ast> parse_note(Parser &p)
 {
-	log_parser_function(this);
+	log_parser_function(p);
 	auto note = Ast::literal(p.filename, p.consume());
 	std::optional<Ast> arg;
 
@@ -478,13 +494,41 @@ Result<Ast> parse_note(Parser &p)
 	return call;
 }
 
+Result<Ast> parse_array_literal(Parser &p)
+{
+	log_parser_function(p);
+	auto open = p.consume();
+	ensure(open.type == Token::Type::Open_Bracket, "parse_array_literal expects opening '['");
+
+	if (p.expect(Token::Type::Close_Bracket)) {
+		auto close = p.consume();
+		(void)close;
+		return Ast {
+			.type = Ast::Type::Lazy_Array,
+			.file = { .filename = p.filename, .start = open.start, .stop = close.start },
+		};
+	}
+
+	auto array = Try(parse_sequence(p));
+	array.type = Ast::Type::Lazy_Array;
+
+	if (p.expect(Token::Type::Close_Bracket)) {
+		auto close = p.consume();
+		array .file = { .filename = p.filename, .start = open.start, .stop = close.start };
+		return array;
+	}
+
+	// report an error
+	unimplemented();
+}
+
 // Block parsing algorithm has awful performance, branch predictions and all this stuff
 // The real culprit is a syntax probably, but this function needs to be investigated
-Result<Ast> parse_block(Parser &p)
+Result<Ast> parse_paren_or_lambda(Parser &p)
 {
-	log_parser_function(this);
+	log_parser_function(p);
 	auto open = p.consume();
-	ensure(open.type == Token::Type::Open_Paren, "parse_block expects that it can parse");
+	ensure(open.type == Token::Type::Open_Paren, "parse_paren_or_lambda expects that it can parse");
 
 	if (p.expect(Token::Type::Close_Paren)) {
 		return Ast::sequence({}); // () is the same as nil
@@ -578,7 +622,7 @@ endloop:
 
 Result<Ast> parse_atomic(Parser &p)
 {
-	log_parser_function(this);
+	log_parser_function(p);
 	auto token = Try(p.peek());
 	switch (token.type) {
 	case Token::Type::Keyword:
@@ -599,8 +643,11 @@ Result<Ast> parse_atomic(Parser &p)
 	break; case Token::Type::Chord:
 		return parse_note(p);
 
+	break; case Token::Type::Open_Bracket:
+		return parse_array_literal(p);
+
 	break; case Token::Type::Open_Paren:
-		return parse_block(p);
+		return parse_paren_or_lambda(p);
 
 	break; default:
 		std::cout << "Token at position: " << p.token_id << " with value: " << *p.peek() << std::endl;
@@ -675,6 +722,7 @@ bool operator==(Ast const& lhs, Ast const& rhs)
 	case Ast::Type::Lambda:
 	case Ast::Type::Sequence:
 	case Ast::Type::Variable_Declaration:
+	case Ast::Type::Lazy_Array:
 		return lhs.arguments.size() == rhs.arguments.size()
 			&& std::equal(lhs.arguments.begin(), lhs.arguments.end(), rhs.arguments.begin());
 	}
@@ -689,6 +737,7 @@ std::ostream& operator<<(std::ostream& os, Ast::Type type)
 	case Ast::Type::Call:                 return os << "CALL";
 	case Ast::Type::If:                   return os << "IF";
 	case Ast::Type::Lambda:               return os << "LAMBDA";
+	case Ast::Type::Lazy_Array:           return os << "LAZY_ARRAY";
 	case Ast::Type::Literal:              return os << "LITERAL";
 	case Ast::Type::Sequence:             return os << "SEQUENCE";
 	case Ast::Type::Unary:                return os << "UNARY";
