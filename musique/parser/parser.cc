@@ -142,7 +142,9 @@ Result<Ast> parse_sequence(Parser &p)
 		seq.push_back(Try(parse_expression(p)));
 		while (skip_separators(p) >= 1) {
 			bool const stop = p.token_id >= p.tokens.size()
-				|| (p.tokens[p.token_id].type == Token::Type::Keyword && one_of(p.tokens[p.token_id].source, "else", "end"));
+				|| (p.tokens[p.token_id].type == Token::Type::Keyword && one_of(p.tokens[p.token_id].source, "else", "end"))
+				|| p.tokens[p.token_id].type == Token::Type::Close_Bracket
+				|| p.tokens[p.token_id].type == Token::Type::Close_Paren;
 			if (stop) {
 				break;
 			}
@@ -177,6 +179,7 @@ Result<Ast> parse_expression(Parser &p)
 }
 
 // if_else = 'if', expression, ('\n' | 'then'), sequence, [ 'else', sequence' ], 'end'
+// TODO: elif
 Result<Ast> parse_if_else(Parser &p)
 {
 	log_parser_function(p);

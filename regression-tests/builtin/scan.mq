@@ -1,4 +1,4 @@
-say (scan '*),
-say (scan '+ 1 2 3 4 5),
-say (scan '* 1 2 3 4 5),
-say (scan '* (1 + up 5))
+say(scan('*))
+say(scan('+, 1, 2, 3, 4, 5))
+say(scan('*, 1, 2, 3, 4, 5))
+say(scan('*, 1 + up(5)))

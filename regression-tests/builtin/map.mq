@@ -1,3 +1,3 @@
-say (map (n | n * 2)),
-say (map (n | n * 2) 1 2 3 4),
-say (map (n | n ** 2) (up 5)),
+say(map((n | n * 2)))
+say(map((n | n * 2), 1, 2, 3, 4))
+say(map((n | n ** 2), up(5)))

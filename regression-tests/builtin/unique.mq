@@ -1,5 +1,5 @@
-say (unique (up 10 & down 10)),
-say (unique (1,1,1,3,5,3,4,4,1)),
+say(unique(up(10) & down(10)))
+say(unique(1,1,1,3,5,3,4,4,1))
 
 -- Multiple unique applications shouldn't matter
-say (unique (unique (1,1,1,3,5,3,4,4,1))),
+say(unique(unique(1,1,1,3,5,3,4,4,1)))

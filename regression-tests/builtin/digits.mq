@@ -1,8 +1,8 @@
-say (digits 3456),
-say (digits (100/10)),
-say (digits 0),
-say (digits (0 - 1234)),
-say (digits 0 0 0 0),
-say (digits (4/3)),
-say (digits 0.5),
-say (digits 1234.5678),
+say(digits(3456))
+say(digits(100/10))
+say(digits(0))
+say(digits(0 - 1234))
+say(digits(0, 0, 0, 0))
+say(digits(4/3))
+say(digits(0.5))
+say(digits(1234.5678))

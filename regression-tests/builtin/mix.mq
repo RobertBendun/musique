@@ -1,5 +1,5 @@
-say (mix (range 10 20) (1, 2)),
-say (mix 3 4 (range 10 20) (1, 2)),
-say (mix 3 4 5),
-say (mix (3, 3) 4 5),
-say (call mix),
+say(mix(range(10 20), [1, 2]))
+say(mix(3, 4, range(10, 20), [1, 2]))
+say(mix(3, 4, 5))
+say(mix([3, 3], 4, 5))
+say(mix())
