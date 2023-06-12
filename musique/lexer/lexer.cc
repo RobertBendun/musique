@@ -7,7 +7,7 @@
 constexpr std::string_view Notes_Symbols = "abcedefgp";
 constexpr std::string_view Valid_Operator_Chars =
 	"+-*/:%" // arithmetic
-	"|&^"    // logic & bit operations
+	"&^"    // logic & bit operations
 	"<>=!"   // comparisons
 	"."      // indexing
 	;
@@ -24,6 +24,7 @@ constexpr auto Keywords = std::array {
 	"else"sv,
 	"then"sv,
 	"end"sv,
+	"do"sv,
 };
 
 static_assert(Keywords.size() == Keywords_Count, "Table above should contain all the tokens for lexing");
@@ -94,20 +95,13 @@ auto Lexer::next_token() -> Result<std::variant<Token, End_Of_File>>
 	}
 
 	switch (peek()) {
-	case '(':  consume(); return Token { Token::Type::Open_Paren,         token_location, finish() };
+	case '(':  consume(); return Token { Token::Type::Open_Paren,          token_location, finish() };
 	case ')':  consume(); return Token { Token::Type::Close_Paren,         token_location, finish() };
-	case '[':  consume(); return Token { Token::Type::Open_Bracket,  token_location, finish() };
-	case ']':  consume(); return Token { Token::Type::Close_Bracket, token_location, finish() };
-	case ',':  consume(); return Token { Token::Type::Comma,       token_location, finish() };
-	case '\n': consume(); return Token { Token::Type::Nl,          token_location, finish() };
-
-	case '|':
-		consume();
-		// `|` may be part of operator, like `||`. So we need to check what follows. If next char
-		// is operator, then this character is part of operator sequence.
-		// Additionally we explicitly allow for `|foo|=0` here
-		if (Valid_Operator_Chars.find(peek()) == std::string_view::npos || peek() == '=')
-			return Token { Token::Type::Parameter_Separator, token_location, finish() };
+	case ',':  consume(); return Token { Token::Type::Comma,               token_location, finish() };
+	case '[':  consume(); return Token { Token::Type::Open_Bracket,        token_location, finish() };
+	case '\n': consume(); return Token { Token::Type::Nl,                  token_location, finish() };
+	case ']':  consume(); return Token { Token::Type::Close_Bracket,       token_location, finish() };
+	case '|':  consume(); return Token { Token::Type::Parameter_Separator, token_location, finish() };
 	}
 
 	// Lex numeric literals

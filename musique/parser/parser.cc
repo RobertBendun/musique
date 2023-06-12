@@ -16,14 +16,14 @@ constexpr auto Literal_Keywords = std::array {
 	"true"sv,
 };
 
-static_assert(Keywords_Count == Literal_Keywords.size() + 8, "Ensure that all literal keywords are listed");
+static_assert(Keywords_Count == Literal_Keywords.size() + 9, "Ensure that all literal keywords are listed");
 
 constexpr auto Operator_Keywords = std::array {
 	"and"sv,
 	"or"sv
 };
 
-static_assert(Keywords_Count == Operator_Keywords.size() + 9, "Ensure that all keywords that are operators are listed here");
+static_assert(Keywords_Count == Operator_Keywords.size() + 10, "Ensure that all keywords that are operators are listed here");
 
 enum class At_Least : bool
 {
@@ -43,8 +43,9 @@ static Result<Ast> parse_if_else(Parser &p);
 static Result<Ast> parse_index(Parser &p, Ast &&ast);
 static Result<Ast> parse_index_or_function_call(Parser &p);
 static Result<Ast> parse_infix(Parser &p);
+static Result<Ast> parse_lambda(Parser &p);
 static Result<Ast> parse_note(Parser &p);
-static Result<Ast> parse_paren_or_lambda(Parser &p);
+static Result<Ast> parse_paren(Parser &p);
 static Result<Ast> parse_rhs_of_infix(Parser &p, Ast &&lhs);
 static Result<Ast> parse_sequence(Parser &p);
 
@@ -525,28 +526,20 @@ Result<Ast> parse_array_literal(Parser &p)
 	unimplemented();
 }
 
-// Block parsing algorithm has awful performance, branch predictions and all this stuff
-// The real culprit is a syntax probably, but this function needs to be investigated
-Result<Ast> parse_paren_or_lambda(Parser &p)
+// lambda = '|', parameters, '|', expression
+// parameters = { identifier, (','|'\n')* }
+Result<Ast> parse_lambda(Parser &p)
 {
-	log_parser_function(p);
-	auto open = p.consume();
-	ensure(open.type == Token::Type::Open_Paren, "parse_paren_or_lambda expects that it can parse");
+	auto const parameters_open = p.consume();
+	ensure(parameters_open.type == Token::Type::Parameter_Separator, "parse_lambda expects parameter separator");
 
-	if (p.expect(Token::Type::Close_Paren)) {
-		return Ast::sequence({}); // () is the same as nil
-	}
-
-	bool is_lambda = false;
 	std::vector<Ast> parameters;
 
-	// Block can be either an anonymous function (lambda) or just regular sequence
-	// Lambda has a parameter separator, so we try to find it first
-	// parameters = { parameter, [ ',', '\n' ]* }, '|'
-	{
+	/* Parse parameters */ {
 		auto parameter_separator = p.token_id;
 		std::vector<unsigned> identifier_looking;
 
+		// Lambda has an ending parameter separator, so we try to find it first
 		for (; parameter_separator < p.tokens.size(); ++parameter_separator) {
 			// We want to report to the user that they provided something
 			// that looks like parameter but is not in parameter definition section of a lambda
@@ -569,9 +562,7 @@ Result<Ast> parse_paren_or_lambda(Parser &p)
 endloop:
 
 		if (parameter_separator < p.tokens.size() && p.tokens[parameter_separator].type == Token::Type::Parameter_Separator) {
-			// We have parameter separator, so this block really is an anonymous function
-			is_lambda = true;
-
+			// We have parameter separator, so this is valid parameter section of a lambda
 			// If in parameter section we have found anything that may look like identifier but really isn't then we report special error to the user
 			if (identifier_looking.size()) {
 				// TODO Report all instances of identifier looking parameters
@@ -599,9 +590,20 @@ endloop:
 		}
 	}
 
-	// If this is an anonymous function then we successfully parsed parameter section and we need to parse function body
-	// If not then we are at the beggining of the block and we need to parse it
-	// Both are parsed as sequence
+	auto body = Try(parse_expression(p));
+	return Ast::lambda({ .filename = p.filename, .start = parameters_open.start, .stop = body.file.stop }, std::move(body), std::move(parameters));
+}
+
+Result<Ast> parse_paren(Parser &p)
+{
+	log_parser_function(p);
+	auto open = p.consume();
+	ensure(open.type == Token::Type::Open_Paren, "parse_paren expects that it can parse");
+
+	if (p.expect(Token::Type::Close_Paren)) {
+		return Ast::sequence({}); // TODO: () should be the same as nil literal, not empty sequence I guess
+	}
+
 	auto sequence = Try(parse_sequence(p));
 	sequence.file.start = open.start;
 
@@ -614,10 +616,6 @@ endloop:
 			std::cerr << "stopped at: " << p.tokens[p.token_id] << std::endl;
 		}
 		unimplemented("unmatched ket");
-	}
-
-	if (is_lambda) {
-		return Ast::lambda(sequence.file, std::move(sequence), std::move(parameters));
 	}
 
 	return sequence;
@@ -650,7 +648,10 @@ Result<Ast> parse_atomic(Parser &p)
 		return parse_array_literal(p);
 
 	break; case Token::Type::Open_Paren:
-		return parse_paren_or_lambda(p);
+		return parse_paren(p);
+
+	break; case Token::Type::Parameter_Separator:
+		return parse_lambda(p);
 
 	break; default:
 		std::cout << "Token at position: " << p.token_id << " with value: " << *p.peek() << std::endl;
