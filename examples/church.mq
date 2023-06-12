@@ -1,0 +1,27 @@
+----------------------------------------------
+Having fun with Lambda Calculus inside Musique
+https://en.wikipedia.org/wiki/Church_encoding
+----------------------------------------------
+
+_0 = |fun||x| x
+_1 = |fun||x| fun(x)
+_2 = |fun||x| fun(fun(x))
+_3 = |fun||x| fun(fun(fun(x)))
+
+pred =    |n| |fun||x| n(|w||q| q(w(fun)))(|| x)(|u| u)
+succ =    |n| |fun||x| fun(n(fun)(x))
+plus = |m||n| |fun||x| m(fun)(n(fun)(x))
+mult = |m||n| |fun||x| m(n(fun))(x)
+exp  = |m||n|          n(m)
+
+to_number = |church_numeral| church_numeral(|x| x + 1)(0)
+
+builtin_print = print
+print = |church_numeral| builtin_print(to_number(church_numeral))
+
+print(pred(_3))
+print(_3)
+print(succ(_3))
+print(plus(_3)(_2))
+print(mult(_3)(_2))
+print(exp (_3)(_2))
