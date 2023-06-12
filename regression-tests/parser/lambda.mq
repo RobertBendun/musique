@@ -8,3 +8,11 @@ print(anon(3, 1))
 
 -- Imidietely invoced lambda
 print((|| 30)())
+
+anon = |x y| do
+	say(x)
+	say(y)
+	x + y
+end
+
+print(anon(100, 200))

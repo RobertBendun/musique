@@ -133,6 +133,7 @@ struct log_guard {
 #endif
 
 // sequence = {expression, {newline|comma}}
+// TODO: Introduce do ... end blocks as an alternative to expression
 Result<Ast> parse_sequence(Parser &p)
 {
 	log_parser_function(p);
@@ -526,7 +527,7 @@ Result<Ast> parse_array_literal(Parser &p)
 	unimplemented();
 }
 
-// lambda = '|', parameters, '|', expression
+// lambda = '|', parameters, '|', ( expression | ('do', sequence, 'end'))
 // parameters = { identifier, (','|'\n')* }
 Result<Ast> parse_lambda(Parser &p)
 {
@@ -590,8 +591,23 @@ endloop:
 		}
 	}
 
-	auto body = Try(parse_expression(p));
-	return Ast::lambda({ .filename = p.filename, .start = parameters_open.start, .stop = body.file.stop }, std::move(body), std::move(parameters));
+	Ast body;
+	decltype(File_Range::stop) stop;
+
+	if (p.expect(std::pair{Token::Type::Keyword, "do"sv})) {
+		p.consume();
+		body = Try(parse_sequence(p));
+		if (p.expect(std::pair{Token::Type::Keyword, "end"sv})) {
+			stop = p.consume().start;
+		} else {
+			unimplemented("show error with message: `end` for do block required");
+		}
+	} else {
+		body = Try(parse_expression(p));
+		stop = body.file.stop;
+	}
+
+	return Ast::lambda({ .filename = p.filename, .start = parameters_open.start, .stop = stop }, std::move(body), std::move(parameters));
 }
 
 Result<Ast> parse_paren(Parser &p)
