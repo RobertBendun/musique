@@ -144,7 +144,7 @@ Result<Ast> parse_sequence(Parser &p)
 		seq.push_back(Try(parse_expression(p)));
 		while (skip_separators(p) >= 1) {
 			bool const stop = p.token_id >= p.tokens.size()
-				|| (p.tokens[p.token_id].type == Token::Type::Keyword && one_of(p.tokens[p.token_id].source, "else", "end"))
+				|| (p.tokens[p.token_id].type == Token::Type::Keyword && one_of(p.tokens[p.token_id].keyword_type, Token::Keyword::Else, Token::Keyword::End))
 				|| p.tokens[p.token_id].type == Token::Type::Close_Bracket
 				|| p.tokens[p.token_id].type == Token::Type::Close_Paren;
 			if (stop) {
@@ -161,15 +161,15 @@ Result<Ast> parse_sequence(Parser &p)
 Result<Ast> parse_expression(Parser &p)
 {
 	log_parser_function(p);
-	if (p.expect(std::pair{Token::Type::Keyword, "if"sv})) {
+	if (p.expect(Token::Keyword::If)) {
 		return parse_if_else(p);
 	}
 
-	if (p.expect(std::pair{Token::Type::Keyword, "for"sv})) {
+	if (p.expect(Token::Keyword::For)) {
 		return parse_for(p);
 	}
 
-	if (p.expect(std::pair{Token::Type::Keyword, "while"sv})) {
+	if (p.expect(Token::Keyword::While)) {
 		unimplemented();
 	}
 
@@ -185,12 +185,12 @@ Result<Ast> parse_expression(Parser &p)
 Result<Ast> parse_if_else(Parser &p)
 {
 	log_parser_function(p);
+	ensure(p.expect(Token::Keyword::If), "parse_if_else() called and first token was not if");
 	auto if_token = p.consume();
-	ensure(if_token.type == Token::Type::Keyword && if_token.source == "if", "parse_if_else() called and first token was not if");
 
 	auto condition = Try(parse_expression(p));
 
-	if (p.expect(std::pair{Token::Type::Keyword, "then"sv}) || p.expect(Token::Type::Nl)) {
+	if (p.expect(Token::Keyword::Then) || p.expect(Token::Type::Nl)) {
 		p.consume();
 	} else {
 		unimplemented("report that then or newline is required");
@@ -204,13 +204,13 @@ Result<Ast> parse_if_else(Parser &p)
 	if_node.arguments.push_back(std::move(condition));
 	if_node.arguments.push_back(std::move(then));
 
-	if (p.expect(std::pair{Token::Type::Keyword, "else"sv})) {
+	if (p.expect(Token::Keyword::Else)) {
 		[[maybe_unused]] auto else_token = p.consume(); // TODO Use for location resolution
 		auto else_ = Try(parse_sequence(p));
 		if_node.arguments.push_back(std::move(else_));
 	}
 
-	if (p.expect(std::pair{Token::Type::Keyword, "end"sv})) {
+	if (p.expect(Token::Keyword::End)) {
 		[[maybe_unused]] auto end_token = p.consume();
 		if_node.file = { .filename = p.filename, .start = if_token.start, .stop = end_token.start };
 		return if_node;
@@ -234,8 +234,8 @@ Result<Ast> parse_infix(Parser &p)
 	auto lhs = Try(parse_arithmetic_prefix(p));
 
 	bool const next_is_operator = p.expect(Token::Type::Operator)
-		|| p.expect(std::pair{Token::Type::Keyword, "and"sv})
-		|| p.expect(std::pair{Token::Type::Keyword, "or"sv});
+		|| p.expect(Token::Keyword::And)
+		|| p.expect(Token::Keyword::Or);
 
 	if (next_is_operator) {
 		auto op = p.consume();
@@ -267,8 +267,8 @@ Result<Ast> parse_rhs_of_infix(Parser &p, Ast &&lhs)
 	auto rhs = Try(parse_arithmetic_prefix(p));
 
 	bool const next_is_operator = p.expect(Token::Type::Operator)
-		|| p.expect(std::pair{Token::Type::Keyword, "and"sv})
-		|| p.expect(std::pair{Token::Type::Keyword, "or"sv});
+		|| p.expect(Token::Keyword::And)
+		|| p.expect(Token::Keyword::Or);
 
 	if (!next_is_operator) {
 		lhs.arguments.emplace_back(std::move(rhs));
@@ -594,10 +594,10 @@ endloop:
 	Ast body;
 	decltype(File_Range::stop) stop;
 
-	if (p.expect(std::pair{Token::Type::Keyword, "do"sv})) {
+	if (p.expect(Token::Keyword::Do)) {
 		p.consume();
 		body = Try(parse_sequence(p));
-		if (p.expect(std::pair{Token::Type::Keyword, "end"sv})) {
+		if (p.expect(Token::Keyword::End)) {
 			stop = p.consume().start;
 		} else {
 			unimplemented("show error with message: `end` for do block required");

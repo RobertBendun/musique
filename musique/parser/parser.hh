@@ -31,12 +31,13 @@ struct Parser
 	Token consume(Location const& location = Location::caller());
 
 	template<typename ...Pattern>
-	requires ((std::is_same_v<Pattern, Token::Type> || std::is_same_v<Pattern, std::pair<Token::Type, std::string_view>>) || ...)
+	requires (one_of_v<Pattern, Token::Type, Token::Keyword, std::pair<Token::Type, std::string_view>> || ...)
 	inline bool expect(Pattern const& ...pattern)
 	{
 		auto offset = 0u;
 		auto const body = Overloaded {
 			[&](Token::Type type) { return tokens[token_id + offset++].type == type; },
+			[&](Token::Keyword kw) { auto const &tkn = tokens[token_id + offset++]; return tkn.type == Token::Type::Keyword && tkn.keyword_type == kw; },
 			[&](std::pair<Token::Type, std::string_view> pair) {
 				auto [type, lexeme] = pair;
 				auto &token = tokens[token_id + offset++];

@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <string>
 #include <string_view>
+#include <type_traits>
 
 using namespace std::string_literals;
 using namespace std::string_view_literals;
@@ -68,5 +69,8 @@ constexpr bool one_of(Needle const& needle, Heystack const& ...heystack)
 {
 	return ((needle == heystack) || ...);
 }
+
+template<typename T, typename ...XS>
+static constexpr bool one_of_v = (std::is_same_v<T, XS> || ...);
 
 #endif

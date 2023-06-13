@@ -24,8 +24,28 @@ struct Token
 		Close_Bracket,				///< "]" ends index section of index expression
 	};
 
+	/// Type of Keyword
+	enum class Keyword : u16
+	{
+		And,
+		Do,
+		Else,
+		End,
+		False,
+		For,
+		If,
+		Nil,
+		Or,
+		Then,
+		True,
+		While,
+	};
+
 	/// Type of token
 	Type type;
+
+	/// Type of keyword (only valid when type == Token::Type::Keyword)
+	Keyword keyword_type{};
 
 	/// Offset in source file where token starts
 	unsigned start;

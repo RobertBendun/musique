@@ -12,19 +12,20 @@ constexpr std::string_view Valid_Operator_Chars =
 	"."      // indexing
 	;
 
+
 constexpr auto Keywords = std::array {
-	"false"sv,
-	"nil"sv,
-	"true"sv,
-	"and"sv,
-	"or"sv,
-	"for"sv,
-	"while"sv,
-	"if"sv,
-	"else"sv,
-	"then"sv,
-	"end"sv,
-	"do"sv,
+	std::pair { "and"sv,   Token::Keyword::And   },
+	std::pair { "do"sv,    Token::Keyword::Do    },
+	std::pair { "else"sv,  Token::Keyword::Else  },
+	std::pair { "end"sv,   Token::Keyword::End   },
+	std::pair { "false"sv, Token::Keyword::False },
+	std::pair { "for"sv,   Token::Keyword::For   },
+	std::pair { "if"sv,    Token::Keyword::If    },
+	std::pair { "nil"sv,   Token::Keyword::Nil   },
+	std::pair { "or"sv,    Token::Keyword::Or    },
+	std::pair { "then"sv,  Token::Keyword::Then  },
+	std::pair { "true"sv,  Token::Keyword::True  },
+	std::pair { "while"sv, Token::Keyword::While },
 };
 
 static_assert(Keywords.size() == Keywords_Count, "Table above should contain all the tokens for lexing");
@@ -95,13 +96,13 @@ auto Lexer::next_token() -> Result<std::variant<Token, End_Of_File>>
 	}
 
 	switch (peek()) {
-	case '(':  consume(); return Token { Token::Type::Open_Paren,          token_location, finish() };
-	case ')':  consume(); return Token { Token::Type::Close_Paren,         token_location, finish() };
-	case ',':  consume(); return Token { Token::Type::Comma,               token_location, finish() };
-	case '[':  consume(); return Token { Token::Type::Open_Bracket,        token_location, finish() };
-	case '\n': consume(); return Token { Token::Type::Nl,                  token_location, finish() };
-	case ']':  consume(); return Token { Token::Type::Close_Bracket,       token_location, finish() };
-	case '|':  consume(); return Token { Token::Type::Parameter_Separator, token_location, finish() };
+	case '(':  consume(); return Token { .type = Token::Type::Open_Paren,          .start = token_location, .source = finish() };
+	case ')':  consume(); return Token { .type = Token::Type::Close_Paren,         .start = token_location, .source = finish() };
+	case ',':  consume(); return Token { .type = Token::Type::Comma,               .start = token_location, .source = finish() };
+	case '[':  consume(); return Token { .type = Token::Type::Open_Bracket,        .start = token_location, .source = finish() };
+	case '\n': consume(); return Token { .type = Token::Type::Nl,                  .start = token_location, .source = finish() };
+	case ']':  consume(); return Token { .type = Token::Type::Close_Bracket,       .start = token_location, .source = finish() };
+	case '|':  consume(); return Token { .type = Token::Type::Parameter_Separator, .start = token_location, .source = finish() };
 	}
 
 	// Lex numeric literals
@@ -118,7 +119,7 @@ auto Lexer::next_token() -> Result<std::variant<Token, End_Of_File>>
 				rewind();
 			}
 		}
-		return Token { Token::Type::Numeric, token_location, finish() };
+		return Token { .type = Token::Type::Numeric, .start = token_location, .source = finish() };
 	}
 
 	// Lex chord declaration
@@ -133,7 +134,7 @@ auto Lexer::next_token() -> Result<std::variant<Token, End_Of_File>>
 			goto symbol_lexing;
 		}
 
-		return Token { Token::Type::Chord, token_location, finish() };
+		return Token { .type = Token::Type::Chord, .start = token_location, .source = finish() };
 	}
 
 	using namespace std::placeholders;
@@ -143,7 +144,7 @@ auto Lexer::next_token() -> Result<std::variant<Token, End_Of_File>>
 		for (auto predicate = std::bind(unicode::is_identifier, _1, unicode::First_Character::No);
 				consume_if(predicate) || consume_if(Valid_Operator_Chars);) {}
 
-		Token t = { Token::Type::Symbol, token_location, finish() };
+		Token t = { .type = Token::Type::Symbol, .start = token_location, .source = finish() };
 		return t;
 	}
 
@@ -153,9 +154,13 @@ auto Lexer::next_token() -> Result<std::variant<Token, End_Of_File>>
 		for (auto predicate = std::bind(unicode::is_identifier, _1, unicode::First_Character::No);
 				consume_if(predicate);) {}
 
-		Token t = { Token::Type::Symbol, token_location, finish() };
-		if (std::find(Keywords.begin(), Keywords.end(), t.source) != Keywords.end()) {
-			t.type = Token::Type::Keyword;
+		Token t = { .type = Token::Type::Symbol, .start = token_location, .source = finish() };
+		for (auto const& [keyword_name, keyword_type] : Keywords) {
+			if (keyword_name == t.source) {
+				t.type = Token::Type::Keyword;
+				t.keyword_type = keyword_type;
+				return t;
+			}
 		}
 		return t;
 	}
@@ -163,7 +168,7 @@ auto Lexer::next_token() -> Result<std::variant<Token, End_Of_File>>
 	// Lex operator
 	if (consume_if(Valid_Operator_Chars)) {
 		while (consume_if(Valid_Operator_Chars)) {}
-		return Token { Token::Type::Operator, token_location, finish() };
+		return Token { .type = Token::Type::Operator, .start = token_location, .source = finish() };
 	}
 
 	return Error {
