@@ -41,13 +41,17 @@ Location& Location::advance(u32 rune)
 
 std::ostream& operator<<(std::ostream& os, Location const& location)
 {
-	return os << location.filename << ':' << location.line << ':' << location.column;
+	os << location.filename << ':' << location.line << ':' << location.column;
+	if (location.function_name.size()) {
+		os << ":" <<  location.function_name;
+	}
+	return os;
 }
 
 #if defined(__cpp_lib_source_location)
-Location Location::caller(std::source_location loc = std::source_location::current())
+Location Location::caller(std::source_location loc)
 {
-	return Location { loc.file_name(), loc.line(), loc.column() };
+	return Location { loc.file_name(), loc.line(), loc.column(), loc.function_name() };
 }
 #elif (__has_builtin(__builtin_FILE) and __has_builtin(__builtin_LINE))
 Location Location::caller(char const* file, usize line)

@@ -2,11 +2,11 @@ TARGET_OBJ = $(addprefix $(PREFIX)/,$(Obj)) $(PREFIX)/builtin_function_documenta
 
 $(PREFIX)/%.o: musique/%.cc
 	@echo "CXX $@"
-	@$(CXX) $(CXXFLAGS) $(CPPFLAGS) -o $@ $< -c
+	@$(CXX) $(CXXFLAGS) $(CXX_WARNING_FLAGS) $(CPPFLAGS) -o $@ $< -c
 
 $(PREFIX)/$(Target): $(TARGET_OBJ) $(MAIN) $(PREFIX)/rtmidi.o
 	@echo "CXX $@"
-	@$(CXX) $(CXXFLAGS) $(CPPFLAGS) -o $@ $(shell CXX=$(CXX) os=$(os) scripts/build_replxx.sh) $^ $(LDFLAGS) $(LDLIBS)
+	@$(CXX) $(CXXFLAGS) $(CXX_WARNING_FLAGS) $(CPPFLAGS) -o $@ $(shell CXX=$(CXX) os=$(os) scripts/build_replxx.sh) $^ $(LDFLAGS) $(LDLIBS)
 
 $(PREFIX)/builtin_function_documentation.o: $(PREFIX)/builtin_function_documentation.cc
 	@echo "CXX $@"

@@ -280,6 +280,17 @@ Result<Value> Interpreter::eval(Ast &&ast)
 			}
 		}
 
+	case Ast::Type::While:
+		{
+			// FIXME: We really copy entire condition subtree just to evaluate it...
+			while (Try(eval((Ast)ast.arguments.front())).truthy()) {
+				Try(eval((Ast)ast.arguments[1]));
+			}
+
+			// TODO: Think about returning values using break statement, or maybe even introducing while ... do ... else ... end
+			return Value{};
+		}
+
 	case Ast::Type::Lazy_Array:
 		{
 			Block block;

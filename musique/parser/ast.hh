@@ -41,6 +41,7 @@ struct Ast
 		Sequence,             ///< Several expressions sequences like `42`, `42; 32`
 		Unary,                ///< Unary operator like -foo or +xd
 		Variable_Declaration, ///< Declaration of a variable with optional value assigment like `var x = 10` or `var y`
+		While,                ///< while expression
 	};
 
 	/// Type of AST node

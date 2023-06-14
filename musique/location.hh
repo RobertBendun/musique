@@ -1,7 +1,7 @@
 #ifndef MUSIQUE_LOCATION_HH
 #define MUSIQUE_LOCATION_HH
 
-#if defined(__cpp_lib_source_location)
+#if __has_include(<source_location>)
 #include <source_location>
 #endif
 
@@ -30,6 +30,7 @@ struct Location
 	std::string_view filename = "<unnamed>"; ///< File that location is pointing to
 	usize line   = 1;                        ///< Line number (1 based) that location is pointing to
 	usize column = 1;                        ///< Column number (1 based) that location is pointing to
+	std::string_view function_name = "";     ///< Name of the function where location is pointing to
 
 	/// Advances line and column numbers based on provided rune
 	///

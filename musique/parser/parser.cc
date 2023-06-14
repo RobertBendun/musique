@@ -45,6 +45,7 @@ static Result<Ast> parse_assigment(Parser &p);
 static Result<Ast> parse_atomic(Parser &p);
 static Result<Ast> parse_expression(Parser &p);
 static Result<Ast> parse_for(Parser &p);
+static Result<Ast> parse_while(Parser &p);
 static Result<Ast> parse_function_call(Parser &p, Ast &&ast);
 static Result<Ast> parse_identifier(Parser &p);
 static Result<Ast> parse_if_else(Parser &p);
@@ -224,7 +225,7 @@ Result<Ast> parse_expression(Parser &p)
 	}
 
 	if (p.expect(Token::Keyword::While)) {
-		unimplemented();
+		return parse_while(p);
 	}
 
 	if (p.expect(Token::Type::Symbol, std::pair{Token::Type::Operator, "="sv})) {
@@ -301,7 +302,38 @@ Result<Ast> parse_if_else(Parser &p)
 	unimplemented("report error: missing end in if statement");
 }
 
-/// Parse either infix expression or variable declaration
+// while = 'while', expression, ('do'|'\n'), sequence, 'end'
+Result<Ast> parse_while(Parser &p)
+{
+	log_parser_function(p);
+	ensure(p.expect(Token::Keyword::While), "parse_if_else() called and first token was not if");
+	auto while_token = p.consume();
+
+	auto condition = Try(parse_expression(p));
+
+	if (p.expect(Token::Keyword::Do) || p.expect(Token::Type::Nl)) {
+		p.consume();
+	} else {
+		unimplemented("report that do or newline is required");
+	}
+
+	auto then = Try(parse_sequence(p));
+
+	Ast while_node{};
+	while_node.type = Ast::Type::While;
+	while_node.token = while_token;
+	while_node.arguments.push_back(std::move(condition));
+	while_node.arguments.push_back(std::move(then));
+
+	if (p.expect(Token::Keyword::End)) {
+		[[maybe_unused]] auto end_token = p.consume();
+		while_node.file = { .filename = p.filename, .start = while_token.start, .stop = end_token.start };
+		return while_node;
+	}
+
+	unimplemented("report error: missing end in if statement");
+}
+
 // for = 'for', identifier, '=', expression, ('do'|'\n'), sequence, 'end'
 Result<Ast> parse_for(Parser &p)
 {
@@ -809,6 +841,7 @@ bool operator==(Ast const& lhs, Ast const& rhs)
 
 	switch (lhs.type) {
 	case Ast::Type::If:
+	case Ast::Type::While:
 		return std::equal(lhs.arguments.begin(), lhs.arguments.end(), rhs.arguments.begin(), rhs.arguments.end());
 
 	case Ast::Type::Literal:
@@ -845,6 +878,7 @@ std::ostream& operator<<(std::ostream& os, Ast::Type type)
 	case Ast::Type::Sequence:             return os << "SEQUENCE";
 	case Ast::Type::Unary:                return os << "UNARY";
 	case Ast::Type::Variable_Declaration: return os << "VAR";
+	case Ast::Type::While:                return os << "WHILE";
 	}
 	unreachable();
 }

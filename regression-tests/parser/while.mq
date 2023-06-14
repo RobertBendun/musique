@@ -1,0 +1,15 @@
+-- Print 10 fibonacci numbers
+x = 1, y = 0, n = 0, while n < 10 do t = x, x += y, y = t, print(x), n += 1 end
+
+n = 0, x = 1, y = 0
+while n < 10
+	t = x  -- std::exchange (or Python multiple variable assigment) where are you :<
+	x += y
+	y = t
+	print(x)
+	n += 1
+end
+
+while false
+	print(1000100101) -- this should not be printed!
+end

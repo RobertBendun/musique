@@ -11,9 +11,10 @@ endif
 
 VERSION := $(MAJOR).$(MINOR).$(PATCH)-dev+$(COMMIT)
 
-CXXFLAGS := $(CXXFLAGS) -std=c++20 -Wall -Wextra -Werror=switch -Werror=return-type -Werror=unused-result
+CXXFLAGS := $(CXXFLAGS) -std=c++20
+CXX_WARNING_FLAGS := -Wall -Wextra -Werror=switch -Werror=return-type -Werror=unused-result
 CPPFLAGS := $(CPPFLAGS) -DMusique_Version='"$(VERSION)"' \
-	-Ilib/expected/ -I. -Ilib/rtmidi/ -Ilib/link/include -Ilib/asio/include/ -Ilib/edit_distance.cc/ -Ilib/replxx/include  -DREPLXX_STATIC
+	-Ilib/expected/ -I. -Ilib/rtmidi/ -isystem lib/link/include -Ilib/asio/include/ -Ilib/edit_distance.cc/ -Ilib/replxx/include  -DREPLXX_STATIC
 LDFLAGS =-flto=auto
 LDLIBS = -lpthread
 
