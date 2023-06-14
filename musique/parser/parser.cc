@@ -16,14 +16,22 @@ constexpr auto Literal_Keywords = std::array {
 	"true"sv,
 };
 
-static_assert(Keywords_Count == Literal_Keywords.size() + 9, "Ensure that all literal keywords are listed");
+// TODO: Reintroduce this assert. Parhaps the best option would be to mention for each X macro invocation what
+//       type of keyword it is. For example:
+//          X(False, Keyword_Type::Literal),
+//          X(If,    Keyword_Type::Generic),
+//          X(and,   Keyword_Type::Operator),
+//        Then this type of query would be performed automagically
+// static_assert(Keywords_Count == Literal_Keywords.size() + 9, "Ensure that all literal keywords are listed");
 
+[[maybe_unused]] // TODO: Since it is unused, why we define it?
 constexpr auto Operator_Keywords = std::array {
 	"and"sv,
 	"or"sv
 };
 
-static_assert(Keywords_Count == Operator_Keywords.size() + 10, "Ensure that all keywords that are operators are listed here");
+// TODO: Same as above
+// static_assert(Keywords_Count == Operator_Keywords.size() + 10, "Ensure that all keywords that are operators are listed here");
 
 enum class At_Least : bool
 {
@@ -132,6 +140,53 @@ struct log_guard {
 #define log_parser_function(...)
 #endif
 
+
+// Returns true for all tokens that terminate current context (ends of block)
+static constexpr bool is_termination_token(Token const& token) noexcept
+{
+	// All options are listed explicitly in this function to ensure that when new type of token is introduced
+	// this list will be updated accordingly. Type it all once and worry less in the future :)
+
+	switch (token.type) {
+	case Token::Type::Close_Bracket:
+	case Token::Type::Close_Paren:
+	case Token::Type::Comma:
+	case Token::Type::Nl:
+		return true;
+
+	case Token::Type::Chord:
+	case Token::Type::Numeric:
+	case Token::Type::Open_Bracket:
+	case Token::Type::Open_Paren:
+	case Token::Type::Operator:
+	case Token::Type::Parameter_Separator:
+	case Token::Type::Symbol:
+		return false;
+
+	case Token::Type::Keyword:
+		switch (token.keyword_type) {
+		case Token::Keyword::Else:
+		case Token::Keyword::Else_If:
+		case Token::Keyword::End:
+			return true;
+
+		case Token::Keyword::And:
+		case Token::Keyword::Do:
+		case Token::Keyword::False:
+		case Token::Keyword::For:
+		case Token::Keyword::If:
+		case Token::Keyword::Nil:
+		case Token::Keyword::Or:
+		case Token::Keyword::Then:
+		case Token::Keyword::True:
+		case Token::Keyword::While:
+			return false;
+		}
+	}
+
+	unreachable();
+}
+
 // sequence = {expression, {newline|comma}}
 // TODO: Introduce do ... end blocks as an alternative to expression
 Result<Ast> parse_sequence(Parser &p)
@@ -141,13 +196,12 @@ Result<Ast> parse_sequence(Parser &p)
 
 	skip_separators(p);
 	if (p.token_id < p.tokens.size()) {
+		if (is_termination_token(p.tokens[p.token_id]))
+			return Ast::sequence({});
+
 		seq.push_back(Try(parse_expression(p)));
 		while (skip_separators(p) >= 1) {
-			bool const stop = p.token_id >= p.tokens.size()
-				|| (p.tokens[p.token_id].type == Token::Type::Keyword && one_of(p.tokens[p.token_id].keyword_type, Token::Keyword::Else, Token::Keyword::End))
-				|| p.tokens[p.token_id].type == Token::Type::Close_Bracket
-				|| p.tokens[p.token_id].type == Token::Type::Close_Paren;
-			if (stop) {
+			if (p.token_id >= p.tokens.size() || is_termination_token(p.tokens[p.token_id])) {
 				break;
 			}
 			seq.push_back(Try(parse_expression(p)));
@@ -180,8 +234,10 @@ Result<Ast> parse_expression(Parser &p)
 	return parse_infix(p);
 }
 
-// if_else = 'if', expression, ('\n' | 'then'), sequence, [ 'else', sequence' ], 'end'
-// TODO: elif
+// if_else = 'if', expression, ('\n' | 'then'), sequence
+//         , { 'elseif', expression, ('\n' | 'then'), sequence }
+//         , [ 'else', sequence ]
+//         , 'end'
 Result<Ast> parse_if_else(Parser &p)
 {
 	log_parser_function(p);
@@ -204,10 +260,36 @@ Result<Ast> parse_if_else(Parser &p)
 	if_node.arguments.push_back(std::move(condition));
 	if_node.arguments.push_back(std::move(then));
 
+	Ast *root = &if_node;
+
+	while (p.expect(Token::Keyword::Else_If)) {
+		auto else_if_token = p.consume();
+		auto condition = Try(parse_expression(p));
+
+		if (p.expect(Token::Keyword::Then) || p.expect(Token::Type::Nl)) {
+			p.consume();
+		} else {
+			unimplemented("report that then or newline is required");
+		}
+
+		auto then = Try(parse_sequence(p));
+
+		Ast &else_if_node = root->arguments.emplace_back();
+		// TODO: Maybe this requires new node type? Only relevant in case of error reporting I guess
+		// Additionally current error reporting system needs to be carefull in what terms it should be talking
+		// about if - probably it should based the naming on token, this will automatically handle difference
+		// between if and elseif
+		else_if_node.type = Ast::Type::If;
+		else_if_node.token = else_if_token;
+		else_if_node.arguments.push_back(std::move(condition));
+		else_if_node.arguments.push_back(std::move(then));
+		root = &else_if_node;
+	}
+
 	if (p.expect(Token::Keyword::Else)) {
 		[[maybe_unused]] auto else_token = p.consume(); // TODO Use for location resolution
 		auto else_ = Try(parse_sequence(p));
-		if_node.arguments.push_back(std::move(else_));
+		root->arguments.push_back(std::move(else_));
 	}
 
 	if (p.expect(Token::Keyword::End)) {
@@ -220,6 +302,7 @@ Result<Ast> parse_if_else(Parser &p)
 }
 
 /// Parse either infix expression or variable declaration
+// for = 'for', identifier, '=', expression, ('do'|'\n'), sequence, 'end'
 Result<Ast> parse_for(Parser &p)
 {
 	(void)p;

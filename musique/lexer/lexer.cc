@@ -12,23 +12,33 @@ constexpr std::string_view Valid_Operator_Chars =
 	"."      // indexing
 	;
 
-
 constexpr auto Keywords = std::array {
-	std::pair { "and"sv,   Token::Keyword::And   },
-	std::pair { "do"sv,    Token::Keyword::Do    },
-	std::pair { "else"sv,  Token::Keyword::Else  },
-	std::pair { "end"sv,   Token::Keyword::End   },
-	std::pair { "false"sv, Token::Keyword::False },
-	std::pair { "for"sv,   Token::Keyword::For   },
-	std::pair { "if"sv,    Token::Keyword::If    },
-	std::pair { "nil"sv,   Token::Keyword::Nil   },
-	std::pair { "or"sv,    Token::Keyword::Or    },
-	std::pair { "then"sv,  Token::Keyword::Then  },
-	std::pair { "true"sv,  Token::Keyword::True  },
-	std::pair { "while"sv, Token::Keyword::While },
+	std::pair { "and"sv,    Token::Keyword::And      },
+	std::pair { "do"sv,     Token::Keyword::Do       },
+	std::pair { "elif"sv,   Token::Keyword::Else_If  }, // Used by: Algol, Python, C preprocessor
+	std::pair { "else"sv,   Token::Keyword::Else     },
+	std::pair { "elseif"sv, Token::Keyword::Else_If  }, // Used by: APL, Fortran, Visual Basic
+	std::pair { "elsif"sv,  Token::Keyword::Else_If  }, // Used by: Ada, Modula-2, Ruby
+	std::pair { "end"sv,    Token::Keyword::End      },
+	std::pair { "false"sv,  Token::Keyword::False    },
+	std::pair { "for"sv,    Token::Keyword::For      },
+	std::pair { "if"sv,     Token::Keyword::If       },
+	std::pair { "nil"sv,    Token::Keyword::Nil      },
+	std::pair { "or"sv,     Token::Keyword::Or       },
+	std::pair { "then"sv,   Token::Keyword::Then     },
+	std::pair { "true"sv,   Token::Keyword::True     },
+	std::pair { "while"sv,  Token::Keyword::While    },
 };
 
-static_assert(Keywords.size() == Keywords_Count, "Table above should contain all the tokens for lexing");
+#define X(Expected_Keyword) \
+	static_assert([] { \
+		for (auto const [_, actual_keyword] : Keywords) { \
+			if (actual_keyword == Token::Keyword::Expected_Keyword) return true; \
+		} \
+		return false; \
+	}(), "Keyword " #Expected_Keyword " doesn't have defined textual representation");
+Keywords_Enumeration(X)
+#undef X
 
 void Lexer::skip_whitespace_and_comments()
 {

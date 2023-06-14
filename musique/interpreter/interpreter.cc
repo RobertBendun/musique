@@ -156,6 +156,11 @@ Result<Value> Interpreter::eval(Ast &&ast)
 					};
 				}
 
+				unreachable();
+
+				// TODO: This part will become relevant in the future when we provide proper lvalues or differentiate
+				// between declaration and assigment
+#if 0
 				Value *v = env->find(std::string(lhs.token.source));
 				if (v == nullptr) {
 					return Error {
@@ -166,6 +171,7 @@ Result<Value> Interpreter::eval(Ast &&ast)
 					};
 				}
 				return *v = Try(eval(std::move(rhs)).with(ast.file));
+#endif
 			}
 
 			if (ast.token.source == "and" || ast.token.source == "or") {

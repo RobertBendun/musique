@@ -27,18 +27,24 @@ struct Token
 	/// Type of Keyword
 	enum class Keyword : u16
 	{
-		And,
-		Do,
-		Else,
-		End,
-		False,
-		For,
-		If,
-		Nil,
-		Or,
-		Then,
-		True,
-		While,
+#define Keywords_Enumeration(X) \
+		X(And) \
+		X(Do) \
+		X(Else) \
+		X(Else_If) \
+		X(End) \
+		X(False) \
+		X(For) \
+		X(If) \
+		X(Nil) \
+		X(Or) \
+		X(Then) \
+		X(True) \
+		X(While)
+
+	#define X(KW) KW,
+	Keywords_Enumeration(X)
+	#undef X
 	};
 
 	/// Type of token
@@ -65,7 +71,6 @@ struct Token
 	bool operator==(Token::Type type) const;
 };
 
-static constexpr usize Keywords_Count  = 12;
 static constexpr usize Operators_Count = 17;
 
 std::string_view type_name(Token::Type type);

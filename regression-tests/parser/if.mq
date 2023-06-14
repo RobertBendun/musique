@@ -19,7 +19,6 @@ else
 	say(22)
 end
 
-
 -- If executes second block when condition is false
 if false then say(4) else say(5) end
 
@@ -29,3 +28,39 @@ say(if false then say(6) end)
 -- If returns block execution value
 say(if true then 7 end)
 say(if false then say(100), 8 else say(200), 9 end)
+
+-- Check empty blocks
+if true then else end
+if false then else end
+
+if true  then elif true  then else end
+if false then elif false then else end
+if false then elif true  then else end
+if true  then elif false then else end
+
+if true  then elsif true  then else end
+if false then elsif false then else end
+if false then elsif true  then else end
+if true  then elsif false then else end
+
+if true  then elseif true  then else end
+if false then elseif false then else end
+if false then elseif true  then else end
+if true  then elseif false then else end
+
+if false then elif false then elsif false then elseif false then else end
+
+if true
+elif true
+else
+end
+
+if true
+elsif true
+else
+end
+
+if true
+elseif true
+else
+end

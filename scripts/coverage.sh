@@ -1,7 +1,7 @@
 #!/bin/sh
 
 if [ "$1" != "ci" ]; then
-	make test
+	CXXFLAGS=--coverage make test
 fi
 
 lcov --directory . --capture --output-file coverage.info
