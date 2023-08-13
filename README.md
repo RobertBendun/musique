@@ -7,7 +7,12 @@ Reference implementation of Musique programming language.
 
 ## Building
 
-Reference [`build_instructions.md`](./build_instructions.md).
+```
+$ meson build
+$ cd build
+$ ninja
+```
+
 You can find prebuild releases [here](https://musique.students.wmi.amu.edu.pl/).
 
 ## Syntax highlighting
