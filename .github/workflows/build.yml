@@ -1,5 +1,5 @@
 name: Build and test Musique
-on: [push]
+on: [push, workflow_call]
 jobs:
   build-ubuntu-legacy:
     name: "Builds on Ubuntu 20.04"
